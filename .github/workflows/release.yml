@@ -28,6 +28,11 @@ jobs:
   publish:
     needs: gates
     runs-on: ubuntu-latest
+    # Must match the environment name in the PyPI trusted publisher for this
+    # project. PyPI recommends an environment so the publisher can require a
+    # protected deployment; a mismatch shows up as `environment: MISSING` (or
+    # the wrong value) in an `invalid-publisher` error.
+    environment: pypi
     steps:
       - uses: actions/checkout@v4
 

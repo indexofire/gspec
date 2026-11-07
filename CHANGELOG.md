@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.1] - 2026-11-08
+
+### Fixed
+
+- **Publishing declares the `pypi` deployment environment.** The trusted
+  publisher is registered with an environment, so the release job must claim
+  the same value; without it the upload is refused with
+  `invalid-publisher` (`environment: MISSING`).
+
 ## [0.10.0] - 2026-11-08
 
 ### Changed
