@@ -60,7 +60,7 @@ class RenameReceipt(BaseModel, frozen=True):
     db: str
     renamed_from: str
     records: int
-    kind: Literal["gene", "cluster"]
+    kind: Literal["gene", "cluster", "composite"]
     destination: str
 
 

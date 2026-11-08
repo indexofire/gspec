@@ -1,5 +1,49 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Composite databases (`gspec.composite/1`)** — a database directory whose
+  `composite.json` plans an analysis: ordered stages over several panels and methods
+  (blastn gene panels, minimap2 cluster loci, `kmer` sets, `pcr` primers), fused into one
+  typing result. Built with `gspec db build NAME -C composite.json [--bundle]`, listed by
+  `gspec db list` (`KIND=composite`), inspected with `gspec db info`, and run by
+  `gspec screen -d NAME` — one verb, one artifact, no separate command.
+  Stages sharing a panel share one screen run (a locus database carrying
+  `tier_a`/`tier_b`/`tier_c` schemes is aligned and typed once); the first accepted
+  call wins and every stage's raw call stays in the result as evidence.
+- **`best_hit` typing rule — evidence ranking on the gene path.** A rule's
+  floors gate the call and the declared metric (`identity`, `coverage`,
+  `identity_coverage`) scores it, so homologous references resolve on evidence
+  instead of declaration order. Optional `rank` (`identity_coverage_length`,
+  `aligned_identity`) separates eligibility from ordering for reference sets
+  whose members differ in length; the ambiguity margin then compares the
+  ordering value. `GeneCall`/`ScreenRow` now carry `subject_len`.
+- **`kind: "kmer"` composite stages** — an alignment-free evidence source inside a composite:
+  the stage reads a database's `gspec.kmerdb/1` sidecar, counts the query's canonical
+  k-mers once (process-parallel) and maps differential sets to phenotypes with a
+  `min_fraction` floor. Together with `db` (blastn gene panels, minimap2 cluster loci) and
+  `pcr` (gseek.ispcr) a single composite can mix four method families.
+- **`kind: "pcr"` composite stages — in-silico PCR refinement** through
+  `gseek.ispcr` (pure stdlib): a primer set plus ordered rules that override a
+  call or bracket a complex type by product size, with `when` gating on the
+  base type, `max_mismatches` per run, and only the rule-named pairs scanned.
+  Relative primer paths resolve next to the composite document.
+- **`--bundle`** — with `db build -C`, copies every panel the composite names into
+  `<composite>/dbs` and pins `db_root`; the directory then runs on a machine where none of
+  those databases is installed (resolution: bundle first, datadir second).
+- **`gspec.screen/2` evidence model** for the blastn path: `coverage`
+  (`best_hsp` | `union`), `dedup` (`query` | `subject`) and `min_aligned_len`.
+  `union` aggregates every block of a reference into union breadth (capped at
+  100, aligned-length-weighted identity, contigs joined) and drops blastn's
+  `-culling_limit 1`; defaults reproduce SPEC.md §4 byte for byte.
+
+### Changed
+
+- The ambiguity margin compares the *ordering* value, so a `best_hit.rank`
+  scheme never turns a call ambiguous because the longer winner scores lower.
+
 ## [0.10.1] - 2026-11-08
 
 ### Fixed

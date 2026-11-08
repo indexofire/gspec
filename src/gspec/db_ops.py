@@ -66,7 +66,7 @@ class DbListEntry(BaseModel, frozen=True):
     records: int | None = None
     # Installed providers inherit their manifest's kind (cluster for a
     # GBK/GFF-built db shadowing a provider name); the default is gene.
-    kind: Literal["gene", "cluster"] = "gene"
+    kind: Literal["gene", "cluster", "composite"] = "gene"
     # Whether the database carries a typing scheme (typing.json). Gene-kind
     # databases designate through `gspec typing`; cluster-kind databases are
     # evaluated inside `gspec screen` (typing can only reformat their JSON).
@@ -248,6 +248,29 @@ def _extra_entries(root: Path, bundled: frozenset[str]) -> list[DbListEntry]:
         manifest_file = manifest_path(database.path)
         manifest = read_manifest(manifest_file) if manifest_file.is_file() else None
         info_description, info_vendor = _local_listing_metadata(database.path)
+        if database.kind == "composite":
+            # A composite carries no sequences panel: its "records" are stages
+            # and it is never BLAST-indexed.
+            entries.append(
+                DbListEntry(
+                    name=database.name,
+                    vendor=info_vendor or LOCAL_VENDOR,
+                    description=info_description
+                    or (
+                        manifest.note
+                        if manifest and manifest.note
+                        else "composite analysis database"
+                    ),
+                    dbtype=manifest.dbtype if manifest else "nucl",
+                    installed=True,
+                    indexed=False,
+                    records=manifest.n_records if manifest else None,
+                    kind="composite",
+                    typing=True,
+                    source="local",
+                )
+            )
+            continue
         entries.append(
             DbListEntry(
                 name=database.name,

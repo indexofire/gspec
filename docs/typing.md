@@ -110,8 +110,8 @@ Which engine evaluates the document depends on the database kind:
 
 Two hard constraints by kind:
 
-- A **gene database** evaluates `weighted_genes` and `exact_set` rules only (no loci exist to
-  feed `cluster_match`/`learned_linear`).
+- A **gene database** evaluates `weighted_genes`, `exact_set` and `best_hit` rules only (no
+  loci exist to feed `cluster_match`/`learned_linear`).
 - A **cluster database** renders one of two contracts, picked by scheme count: a document
   with exactly **one** scheme (a `gspec.typing/1` document included) renders the
   byte-frozen `gspec.cluster/1` — one phenotype slot per file, `best.phenotype` — while a
@@ -139,11 +139,37 @@ this is the working reference.
 |---|---|---|
 | `weighted_genes` | gene-presence sum, normalized to [0, 1] by the positive-weight total | `weights`, `negative` (count against the score when present), `identity_floor` (required), `coverage_floor` (optional), `require_any` (any-of gate that zeroes the rule when unsatisfied) |
 | `exact_set` | 1.0 iff every `requires` gene is present AND at least one `requires_any` gene is present (when that set is non-empty) AND every `excludes` gene is absent, else 0.0 | `requires`, `requires_any` (any-of gate), `excludes`, floors defaulting to 90/90 |
+| `best_hit` | the gene's own evidence: `coverage_floor`/`identity_floor` gate the call, then the declared metric (`identity_coverage` = `pident/100 * coverage/100`, or `identity`/`coverage`) scores it in [0, 1] | `gene`, `identity_floor`, `coverage_floor`, `score`, `rank` |
 | `cluster_match` | weighted coverage + identity + key-genes components over the best covered locus, each component floored | `coverage{weight,floor}`, `identity{weight,floor}`, `key_genes{weight,genes}` |
 | `learned_linear` | sigmoid over weighted named features + bias | `features` (`gene:<id>:<cov\|ident\|present>`, `cluster:<locus>:<coverage\|identity>`), `weights`, `bias`, `trained_on` |
 
 A gene "counts" as present for `weighted_genes`/`exact_set` when its best surviving hit (or
-gene call, on the cluster path) clears the rule's floors. Keep `coverage + identity` weights
+gene call, on the cluster path) clears the rule's floors.
+
+`best_hit.rank` separates *eligibility* from *ordering*. Floors decide whether a reference is
+a candidate at all; the scheme `cutoff` reads `score`; but the winner among candidates is
+chosen by `rank` when declared:
+
+| `rank` | Ordering value | Use when |
+|---|---|---|
+| absent | `score` | every candidate is the same size (alleles, amplicons) |
+| `identity_coverage_length` | `pident/100 * coverage/100 * reference_kb` | references differ in length (full loci): this is the `pident * cov * bitscore` strength ordering Kaptive and CjejuniTyper use, so a 41 kb locus at 95% outranks a 16 kb one at 99% |
+| `aligned_identity` | as above weighted by aligned fraction | alignments that only partially cover |
+
+The ambiguity margin compares the ordering value, so a rank-ordered scheme never turns a call
+ambiguous just because the longer winner has a slightly lower `score`. Set the scheme `cutoff`
+to the floor product (e.g. `0.895` for 99.5/90 floors): eligibility is already the floors' job,
+and the cutoff only has to reject "no rule matched".
+
+`best_hit` exists because presence models cannot *rank*. A reference set whose members are
+homologous (38 Penner CPS loci, Kaptive K-loci, allele panels) gives several references the
+same query block, and `exact_set` scores every satisfied rule 1.0, so the call falls back to
+declaration order. `best_hit` scores the gene's evidence instead, and the scheme's
+`cutoff`/`ambiguity_margin` then pick the winner — which is what makes tiered locus layers
+(`tier_a` 99.5/90, `tier_b` 90/60, `tier_c` 80/40) expressible in configuration. Pair it
+with the `gspec.screen/2` union-coverage evidence model (`screen.json`) when a divergent
+locus aligns as several blocks: single-HSP coverage measures the largest block, union
+breadth measures the locus. Keep `coverage + identity` weights
 of a `cluster_match` rule below the cutoff: key genes should decide, so a fully covered but
 key-gene-less locus cannot steal the call.
 

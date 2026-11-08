@@ -42,6 +42,7 @@ class ScreenRow(NamedTuple):
     identity_pct: float
     coverage_pct: float
     alignment_start_pct: float | None
+    subject_len: int | None = None
 
 
 class _Columns(NamedTuple):
@@ -176,12 +177,14 @@ def _reads_present(cell: str, label: str, line_number: int) -> bool:
     raise _malformed(label, line_number, f"PRESENT must be yes or no, got {cell!r}")
 
 
-def _alignment_start_pct(cell: str, label: str, line_number: int) -> float:
-    """The COVERAGE cell's 5' position as a percentage of the marker length.
+def _coverage_range(cell: str, label: str, line_number: int) -> tuple[float, int]:
+    """The COVERAGE cell as ``(5' start percent, subject length)``.
 
-    ``1-831/957`` → 0.0 (3' truncation), ``253-957/957`` → 26.33 (5'
-    truncation).  Anything that is not ascending, in-range marker coordinates
-    is a malformed row, never a silent 0.0.
+    ``1-831/957`` → ``(0.0, 957)`` (3' truncation), ``253-957/957`` →
+    ``(26.33, 957)`` (5' truncation).  Anything that is not ascending,
+    in-range marker coordinates is a malformed row, never a silent 0.0.
+    The length is the reference the row aligned to — the ranking metric a
+    ``best_hit.rank`` rule needs.
     """
     match = _COVERAGE_RANGE.fullmatch(cell.strip())
     if match is None:
@@ -197,7 +200,7 @@ def _alignment_start_pct(cell: str, label: str, line_number: int) -> float:
             line_number,
             f"COVERAGE coordinates out of range: {cell!r}",
         )
-    return 100.0 * (start - 1) / length
+    return 100.0 * (start - 1) / length, length
 
 
 def _numeric_detail(header: _Columns) -> str:
@@ -238,11 +241,12 @@ def parse_table(label: str, text: str) -> list[ScreenRow]:
             )
         except ValueError as exc:
             raise _malformed(label, line_number, _numeric_detail(header)) from exc
-        alignment_start = (
-            None
-            if header.coverage_range is None
-            else _alignment_start_pct(columns[header.coverage_range], label, line_number)
-        )
+        alignment_start: float | None = None
+        subject_len: int | None = None
+        if header.coverage_range is not None:
+            alignment_start, subject_len = _coverage_range(
+                columns[header.coverage_range], label, line_number
+            )
         rows.append(
             ScreenRow(
                 columns[header.file],
@@ -251,6 +255,7 @@ def parse_table(label: str, text: str) -> list[ScreenRow]:
                 identity,
                 coverage,
                 alignment_start,
+                subject_len,
             )
         )
     return rows

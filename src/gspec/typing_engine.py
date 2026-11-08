@@ -30,6 +30,7 @@ from gspec.typing_decide import decide_scheme
 from gspec.typing_models import TypingScheme
 from gspec.typing_results import LocusEvidence, ScoreComponent, ScoredRule
 from gspec.typing_rules import (
+    BestHitRule,
     ClusterMatchRule,
     ExactSetRule,
     KeyGenesComponent,
@@ -80,6 +81,44 @@ def score_weighted_genes(
         _component(gene_id, score / denominator if denominator > 0 else score)
         for gene_id, score in contributions
     )
+
+
+def score_best_hit(
+    rule: BestHitRule, calls: dict[str, GeneCall]
+) -> tuple[float, tuple[ScoreComponent, ...], float | None]:
+    """Evidence score of one gene's best call, gated by the rule's floors.
+
+    0.0 when the gene is absent or either floor is missed; otherwise the
+    declared metric in [0, 1]. This is the gene-path ranking primitive: the
+    decision layer then ranks rules by score, so homologous references
+    resolve on coverage/identity instead of declaration order.
+    """
+    call = calls.get(rule.gene)
+    if call is None or call.identity_pct < rule.identity_floor:
+        return 0.0, (), None
+    if call.coverage_pct < rule.coverage_floor:
+        return 0.0, (), None
+    identity = call.identity_pct / 100.0
+    coverage = call.coverage_pct / 100.0
+    match rule.score:
+        case "identity":
+            value = identity
+        case "coverage":
+            value = coverage
+        case _:
+            value = identity * coverage
+    value = _clamp01(value)
+    rank: float | None = None
+    if rule.rank is not None:
+        # Reference length in kb: GeneCall carries the subject length only when
+        # the caller supplies it (the screen table's COVERAGE column does);
+        # absent, the eligible-but-unrankable rule keeps a None rank.
+        kb = (call.subject_len / 1000.0) if call.subject_len else 0.0
+        if rule.rank == "identity_coverage_length":
+            rank = identity * coverage * kb
+        else:  # aligned_identity
+            rank = identity * coverage * (call.coverage_pct / 100.0) * kb
+    return value, (_component(rule.gene, value),), rank
 
 
 def score_exact_set(

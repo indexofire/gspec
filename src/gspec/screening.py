@@ -19,6 +19,7 @@ import click
 from gspec import db
 from gspec.blast import ensure_blast, screen_file
 from gspec.bundled import find_bundled, materialize_bundled, resolve_screen_datadir
+from gspec.composite_models import DOCUMENT_FILENAME
 from gspec.engines import AlignerEnum, Emit, OutputFormat
 from gspec.errors import DatabaseError, InputError, ensure_input_file, usage_fail
 from gspec.formats.json import render_json
@@ -63,6 +64,44 @@ def _resolve_inputs(files: list[Path] | None, fofn: Path | None) -> list[Path]:
     return inputs
 
 
+def run_composite_screen(
+    inputs: list[Path],
+    db_name: str,
+    document_path: Path,
+    *,
+    datadir: Path | None,
+    threads: int,
+    jobs: int,
+    quiet: bool,
+    noheader: bool,
+    output_format: OutputFormat,
+    emit: Emit | None,
+    stdout_emit: bool,
+) -> str:
+    """Run a composite database and render its fused typing result.
+
+    A composite carries ``composite.json`` instead of a panel: `screen` runs its
+    stages (panels, k-mer sets, in-silico PCR) and renders the fused call — the
+    TSV table or ``gspec.composite_result/1`` JSON.
+    """
+    from gspec.composite_models import read_composite
+    from gspec.composite_ops import render_composite_json, render_composite_tsv, run_composite
+
+    if output_format is OutputFormat.md:
+        usage_fail("--format md is not available for an analysis scheme (use tsv or json)")
+    document = read_composite(document_path)
+    results = run_composite(
+        inputs, document, datadir=datadir, threads=threads, jobs=jobs, quiet=quiet
+    )
+    if output_format is OutputFormat.json:
+        text = render_composite_json(results, document)
+    else:
+        text = render_composite_tsv(results, document, noheader=noheader)
+    if emit is not None:
+        emit(text)
+    return "" if emit is not None and not stdout_emit else text
+
+
 def find_database(datadir: Path, name: str, *, quiet: bool = False) -> db.Database:
     """Look up a database by name under the datadir; unknown names list what
     exists.
@@ -93,12 +132,55 @@ def find_database(datadir: Path, name: str, *, quiet: bool = False) -> db.Databa
         for database in db.discover_databases(datadir):
             if database.name == name:
                 return database
+    from gspec.composite_build import composite_names
+
     available = ", ".join(entry.name for entry in databases) or "(none)"
+    # ``datadir`` here is the resolved databases directory; schemes live under it.
+    schemes = composite_names(datadir)
+    scheme_hint = f". Analysis schemes: {', '.join(schemes)}" if schemes else ""
     raise DatabaseError(
-        f"Database {name} is not in {datadir}. Available: {available}",
+        f"Database {name} is not in {datadir}. Available: {available}{scheme_hint}",
         code="DATABASE_NOT_FOUND",
         context={"db": name, "datadir": str(datadir)},
     )
+
+
+def _reject_database_flags_for_composite(
+    name: str,
+    *,
+    minid: float,
+    mincov: float,
+    min_gene_cov: float,
+    min_gene_id: float,
+    min_cluster_cov: float,
+    merge_fragments: bool,
+    coverage: str,
+    dedup: str,
+    min_aligned_len: int | None,
+    aligner: object,
+    detail: bool,
+) -> None:
+    """A composite configures its stages in its own document, not through db flags."""
+    non_default = (
+        (minid != 80.0, "--minid"),
+        (mincov != 80.0, "--mincov"),
+        (min_gene_cov != 90.0, "--min-gene-cov"),
+        (min_gene_id != 90.0, "--min-gene-id"),
+        (min_cluster_cov != 96.0, "--min-cluster-cov"),
+        (merge_fragments, "--merge-fragments"),
+        (coverage != "best_hsp", "the coverage model"),
+        (dedup != "query", "the dedup key"),
+        (min_aligned_len is not None, "--min-aligned-len"),
+        (aligner is not None, "--aligner"),
+        (detail, "--detail"),
+    )
+    offending = [flag for set_, flag in non_default if set_]
+    if offending:
+        usage_fail(
+            f"{', '.join(offending)} apply to single-panel screening;"
+            f" {name!r} is a composite database — configure its stages in its own"
+            f" {DOCUMENT_FILENAME}"
+        )
 
 
 def run_screen(
@@ -116,6 +198,10 @@ def run_screen(
     debug: bool,
     output_format: OutputFormat,
     merge_fragments: bool = False,
+    database: db.Database | None = None,
+    coverage: str = "best_hsp",
+    dedup: str = "query",
+    min_aligned_len: int | None = None,
     aligner: AlignerEnum | None = None,
     min_gene_cov: float = 90.0,
     min_gene_id: float = 90.0,
@@ -137,13 +223,48 @@ def run_screen(
     ``blastdbcmd -info``) fire once up front, so MISSING_DEPENDENCY and
     DATABASE_NOT_INDEXED errors precede any "Processing:" stderr lines.
     ``merge_fragments`` is the opt-in cross-contig gene-fragment merge
-    (gspec extension; default off keeps abricate parity).
+    (gspec extension; default off keeps abricate parity). ``coverage``/
+    ``dedup``/``min_aligned_len`` are the ``gspec.screen/2`` evidence-model
+    knobs (defaults reproduce the abricate-parity single-HSP fold).
 
     A cluster-kind database dispatches to the minimap2 cluster engine
     (gspec.cluster) after the kind guards: gene-engine flags on a cluster
     db and cluster flags on a gene db are usage errors; the gene path below
     the dispatch is byte-identical to the pre-cluster behavior.
     """
+    inputs = _resolve_inputs(files, fofn)
+    # A caller that already resolved the database (composite stages) keeps it:
+    # re-resolving by name would look for a panel under the datadir.
+    if database is None:
+        database = find_database(resolve_screen_datadir(datadir, db_name), db_name, quiet=quiet)
+    if database.kind == "composite":
+        _reject_database_flags_for_composite(
+            db_name,
+            minid=minid,
+            mincov=mincov,
+            min_gene_cov=min_gene_cov,
+            min_gene_id=min_gene_id,
+            min_cluster_cov=min_cluster_cov,
+            merge_fragments=merge_fragments,
+            coverage=coverage,
+            dedup=dedup,
+            min_aligned_len=min_aligned_len,
+            aligner=aligner,
+            detail=detail,
+        )
+        return run_composite_screen(
+            inputs,
+            db_name,
+            database.document_path or (database.path / DOCUMENT_FILENAME),
+            datadir=datadir,
+            threads=threads,
+            jobs=jobs,
+            quiet=quiet,
+            noheader=noheader,
+            output_format=output_format,
+            emit=emit,
+            stdout_emit=stdout_emit,
+        )
     if not 0.0 < minid <= 100.0:
         usage_fail(f"--minid must be in (0, 100]: got {minid}")
     if not 0.0 <= mincov <= 100.0:
@@ -152,8 +273,6 @@ def run_screen(
         usage_fail(f"--threads must be >= 1: got {threads}")
     if jobs < 1:
         usage_fail(f"--jobs must be >= 1: got {jobs}")
-    inputs = _resolve_inputs(files, fofn)
-    database = find_database(resolve_screen_datadir(datadir, db_name), db_name, quiet=quiet)
     if database.kind == "cluster":
         reject_gene_engine_flags(minid, mincov, merge_fragments, aligner)
         return run_cluster_screen(
@@ -179,6 +298,9 @@ def run_screen(
         mincov=mincov,
         threads=threads,
         merge_fragments=merge_fragments,
+        coverage=coverage,
+        dedup=dedup,
+        min_aligned_len=min_aligned_len,
     )
     ensure_blast()
     dbtype = db.blast_db_info(database.sequences_path).dbtype

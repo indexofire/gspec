@@ -53,7 +53,7 @@ def decide_typing(
     (``winner``) only when the call is rule-based (top >= cutoff): an
     ambiguous call keeps it (the detail exists even though the call is
     null), a fallback drops it (no rule cleared the cutoff)."""
-    ranked = sorted(enumerate(scored), key=lambda pair: (-pair[1].score, pair[0]))
+    ranked = sorted(enumerate(scored), key=lambda pair: (-pair[1].order_key, pair[0]))
     top = ranked[0][1]
     second = ranked[1][1] if len(ranked) > 1 else None
     exact_tie = (
@@ -62,7 +62,15 @@ def decide_typing(
         and second.score == 1.0
         and (top.exact or second.exact)
     )
-    separated = second is None or exact_tie or (top.score - second.score) >= scheme.ambiguity_margin
+    # The ambiguity margin measures how close the two candidates are IN THE
+    # ORDERING METRIC: rules without an explicit rank order on score, so
+    # parity is unchanged; a `best_hit.rank` scheme orders on alignment
+    # strength, and comparing plain scores there would let a longer-but-lower
+    # scoring winner look "unseparated" (negative difference) and turn every
+    # such call ambiguous.
+    separated = (
+        second is None or exact_tie or (top.order_key - second.order_key) >= scheme.ambiguity_margin
+    )
     if top.score >= scheme.cutoff and separated:
         phenotype, confidence = top.phenotype, "high"
     elif top.score >= scheme.cutoff:

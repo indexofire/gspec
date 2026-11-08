@@ -46,12 +46,20 @@ class BlastDbInfo(BaseModel, frozen=True):
 class Database(BaseModel, frozen=True):
     """One discovered database directory under the datadir. ``kind`` comes
     from the gspec manifest (cluster databases declare it); legacy/abricate
-    directories without a manifest are gene databases."""
+    directories without a manifest are gene databases.
+
+    ``kind="composite"`` is an analysis composite: the directory carries a
+    ``composite.json`` (several panels, methods and fusion rules) instead of a
+    ``sequences`` panel, and ``sequences_path`` is simply the conventional
+    (absent) path — screening dispatches on ``kind`` before touching it.
+    """
 
     name: str
     path: Path
     sequences_path: Path
-    kind: Literal["gene", "cluster"] = "gene"
+    kind: Literal["gene", "cluster", "composite"] = "gene"
+    #: ``<dir>/composite.json`` for composite databases, None otherwise.
+    document_path: Path | None = None
 
 
 class DatabaseInfo(BaseModel, frozen=True):
@@ -269,6 +277,18 @@ def discover_databases(datadir: Path) -> list[Database]:
     for child in datadir.iterdir():
         if child.name.startswith(TXN_PREFIX):
             # hidden siblings are transactional build/backup/lock entries
+            continue
+        composite = child / "composite.json"
+        if child.is_dir() and composite.is_file():
+            databases.append(
+                Database(
+                    name=child.name,
+                    path=child,
+                    sequences_path=child / "sequences",
+                    kind="composite",
+                    document_path=composite,
+                )
+            )
             continue
         sequences = child / "sequences"
         if child.is_dir() and sequences.is_file() and os.access(sequences, os.R_OK):

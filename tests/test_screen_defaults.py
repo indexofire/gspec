@@ -1,4 +1,4 @@
-"""gspec.screen/1 per-database defaults: parsing, discovery, validation."""
+"""gspec.screen/1 and /2 per-database defaults: parsing, discovery, validation."""
 
 import json
 from pathlib import Path
@@ -48,7 +48,10 @@ def test_missing_file_is_input_not_found(tmp_path: Path) -> None:
     "text",
     [
         "{nope",
-        '{"schema": "gspec.screen/2", "reads": {}}',
+        '{"schema": "gspec.screen/3", "reads": {}}',
+        '{"schema": "gspec.screen/2", "contigs": {"coverage": "sum"}}',
+        '{"schema": "gspec.screen/2", "contigs": {"dedup": "gene"}}',
+        '{"schema": "gspec.screen/2", "contigs": {"min_aligned_len": 0}}',
         '{"schema": "gspec.screen/1", "reads": {"min_mapq": -1}}',
         '{"schema": "gspec.screen/1", "reads": {"min_relative_depth": 1.5}}',
         '{"schema": "gspec.screen/1", "contigs": {"minid": 101}}',
@@ -60,6 +63,30 @@ def test_malformed_documents_are_typed(tmp_path: Path, text: str) -> None:
     with pytest.raises(DatabaseError) as exc_info:
         read_screen_defaults(path)
     assert exc_info.value.code == "SCREEN_DEFAULTS_MALFORMED"
+
+
+V2 = json.dumps(
+    {
+        "schema": "gspec.screen/2",
+        "contigs": {
+            "minid": 80.0,
+            "mincov": 40.0,
+            "coverage": "union",
+            "dedup": "subject",
+            "min_aligned_len": 3000,
+        },
+    }
+)
+
+
+def test_v2_evidence_model_knobs_parse() -> None:
+    document = ScreenDefaults.model_validate_json(V2)
+    assert document.schema_name == "gspec.screen/2"
+    assert document.contigs.coverage == "union"
+    assert document.contigs.dedup == "subject"
+    assert document.contigs.min_aligned_len == 3000
+    # Unset knobs stay None so the caller keeps SPEC.md §4 parity defaults.
+    assert ScreenDefaults.model_validate_json(VALID).contigs.coverage is None
 
 
 def test_loader_reads_installed_sidecar(tmp_path: Path) -> None:

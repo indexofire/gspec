@@ -87,6 +87,40 @@ class ExactSetRule(BaseModel, frozen=True):
         return self
 
 
+class BestHitRule(BaseModel, frozen=True):
+    """``best_hit`` — gene-path *evidence ranking* (the abricate/Kaptive-style
+    "best allele wins" step).
+
+    ``exact_set``/``weighted_genes`` answer presence questions and always
+    score 1.0 for a satisfied rule, so a gene database whose references are
+    homologous loci (several references match the same assembly block, at
+    different coverage/identity) cannot rank its candidates: every satisfied
+    rule ties at 1.0 and declaration order decides. ``best_hit`` scores the
+    gene's own evidence instead: the rule is satisfied when the gene's best
+    call clears both floors, and its score is the declared metric in [0, 1]
+    (``identity_coverage`` = ``pident/100 * coverage/100`` — the product
+    Kaptive/CjejuniTyper rank by). Cross-rule ranking, the scheme's
+    ``cutoff`` and ``ambiguity_margin`` then decide the phenotype, so
+    competing references resolve on evidence rather than declaration order.
+
+    Gene databases only (there is no per-gene call on the k-mer path).
+    """
+
+    model: Literal["best_hit"]
+    phenotype: str = Field(min_length=1)
+    gene: str = Field(min_length=1)
+    identity_floor: float = Field(default=90.0, ge=0.0, le=100.0)
+    coverage_floor: float = Field(default=60.0, ge=0.0, le=100.0)
+    score: Literal["identity_coverage", "identity", "coverage"] = "identity_coverage"
+    # Ordering metric, independent of ``score`` (which the scheme cutoff reads).
+    # ``identity_coverage_length`` = pident/100 * coverage/100 * reference_kb —
+    # the alignment-strength ranking Kaptive/CjejuniTyper use (their
+    # ``pident * cov * bitscore``), so a longer reference at slightly lower
+    # identity outranks a short one. None keeps ranking on ``score``.
+    rank: Literal["identity_coverage_length", "aligned_identity"] | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
 class CoverageComponent(BaseModel, frozen=True):
     weight: float
     floor: float = Field(ge=0.0, le=100.0)
@@ -153,7 +187,7 @@ class LearnedLinearRule(BaseModel, frozen=True):
 
 
 TypingRule = Annotated[
-    WeightedGenesRule | ExactSetRule | ClusterMatchRule | LearnedLinearRule,
+    WeightedGenesRule | ExactSetRule | BestHitRule | ClusterMatchRule | LearnedLinearRule,
     Field(discriminator="model"),
 ]
 
@@ -187,6 +221,8 @@ def check_rule_references(
             referenced = (
                 ("gene", name) for name in (*rule.requires, *rule.requires_any, *rule.excludes)
             )
+        case BestHitRule():
+            referenced = iter((("gene", rule.gene),))
         case ClusterMatchRule():
             referenced = (
                 ("gene", name)

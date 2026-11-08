@@ -159,3 +159,12 @@ class ScoredRule(NamedTuple):
     notes: tuple[str, ...] = ()
     exact: bool = False
     winner: SkipJsonSchema[LocusEvidence | None] = None
+    # Ordering key when a rule declares an explicit ranking metric
+    # (``best_hit.rank``); None means "rank on score".
+    rank: float | None = None
+
+    @property
+    def order_key(self) -> float:
+        """The value the decision layer sorts by: the explicit rank when a
+        rule declares one, else its score."""
+        return self.score if self.rank is None else self.rank

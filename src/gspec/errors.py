@@ -17,6 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 ERROR_CODES: frozenset[str] = frozenset(
     {
         "ARCHIVE_INVALID",
+        "COMPOSITE_MALFORMED",
+        "COMPOSITE_NOT_FOUND",
         "KMERDB_MALFORMED",
         "KMERDB_SET_MISSING",
         "KMERDB_UNKNOWN_LOCUS",

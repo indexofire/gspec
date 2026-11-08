@@ -353,6 +353,58 @@ Merged-row semantics:
 Without the flag nothing about this path runs: default output stays byte-identical to
 abricate (the Notes below still apply in full).
 
+## Coverage model (`gspec.screen/2`)
+
+Single-HSP coverage measures the largest aligned block of a reference, not the reference.
+For a locus that is 97% identical to its reference — or that carries a repeat — blastn
+reports several blocks, the abricate-parity fold keeps one of them, and a genuinely present
+locus reads as 46% covered. A database can therefore declare its **evidence model** in its
+own `screen.json` (`gspec.screen/2`):
+
+```json
+{"schema": "gspec.screen/2",
+ "contigs": {"minid": 80.0, "mincov": 40.0, "merge_fragments": false,
+             "coverage": "union", "dedup": "subject", "min_aligned_len": 500}}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `coverage` | `best_hsp` | `union` aggregates **all** of a reference's blocks into one hit: `%COVERAGE` is the union of the subject intervals (capped at 100), `%IDENTITY` is the aligned-length-weighted mean, `SEQUENCE` is the comma-joined contigs (a locus split across contigs counts once), `START`/`END`/`STRAND` come from the longest block |
+| `dedup` | `query` | `subject` widens the dedup key to `(subject, contig, start, end)`. The parity key is the *query* interval, so when homologous references share a query block only the first subject keeps it — which is exactly what starves a locus of its blocks |
+| `min_aligned_len` | off | Drop `union` hits whose total ungapped aligned length is below this many bases (spurious short-HSP guard). Keep it below your shortest reference — a 792 bp control gene cannot clear 3000 |
+
+Defaults reproduce the SPEC.md §4 (abricate) behaviour byte for byte, and the JSON report
+carries the non-default keys under `params`. `coverage: "union"` also drops blastn's
+`-culling_limit 1`, without which BLAST returns only one HSP per subject.
+
+This is the evidence model tiered locus schemes need: pair `coverage: "union"` with the
+`best_hit` typing rule ([Typing schemes](./typing.md)) and a three-tier scheme set.
+
+## Composite databases (`gspec screen -d <composite>`)
+
+A **composite** is a database whose `composite.json` plans an analysis — several databases and methods
+(blastn panels, minimap2 loci, k-mer sets, in-silico PCR) fused into one typing
+result. It is not screened panel by panel; `screen` sees `KIND=composite`, refuses
+single-panel flags and runs the whole plan:
+
+```console
+$ gspec db build NAME -C scheme.json          # or --install ... --bundle
+$ gspec screen -d cje_penner_quad -t 16 -j 8 *.fna
+FILE                  PHENOTYPE  TIER  STAGE     SCORE    EVIDENCE
+GCF_000009085.1.fna   HS2        A     marker_a  1.0000   marker_a=HS2(1.0000)|…
+$ gspec screen -d cje_penner_quad -f json *.fna       # gspec.composite_result/1
+$ gspec screen -d cje_penner_quad -i 95 *.fna
+gspec.error/1 USAGE_ERROR  --minid apply to database screening; 'cje_penner_quad'
+is an analysis scheme — configure its stages in its own document
+```
+
+What changes versus a database: `-t/-j/-n/-o/--format` apply; `--minid`,
+`--mincov`, `--min-gene-cov`, `--min-gene-id`, `--min-cluster-cov`,
+`--merge-fragments`, `--aligner`, `--detail` and the `gspec.screen/2` evidence
+knobs do **not** (each stage carries its own, in the scheme document). The
+installed scheme list is `gspec db list`, and unknown names list it in the
+error. Details of the document and its stage kinds: [Composite databases](./composites.md).
+
 ## Cluster databases (`kind: cluster`)
 
 When `--db` names a cluster database — built from GBK/GFF via

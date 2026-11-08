@@ -12,10 +12,10 @@ from pydantic import BaseModel
 
 from gspec.db import Database
 from gspec.errors import DependencyError, GapitError, InputError
-from gspec.fragments import merge_fragment_hits
+from gspec.fragments import merge_fragment_hits, union_coverage_map, union_coverage_pct
 from gspec.gene_floors import apply_hit_floors, gene_floors
 from gspec.gseek_engine import engine, run_blast_gseek
-from gspec.hits import process_rows, process_rows_with_partials
+from gspec.hits import Hit, _hit, _swap_dedup, process_rows, process_rows_with_partials
 from gspec.report import Report, ScreeningParams
 from gspec.seqconvert import SeqFormat, detect_format, to_fasta_lines
 
@@ -163,6 +163,17 @@ def _pipeline(fasta_text: str, argv: list[str]) -> str:
     return result.stdout
 
 
+def _hsps(params: ScreeningParams) -> list[str]:
+    """HSP-selection flags: parity culling, or none for union coverage.
+
+    ``-culling_limit 1`` keeps one HSP per subject (abricate parity), which is
+    exactly what makes single-HSP coverage measure only the largest block of a
+    split locus. ``coverage="union"`` needs every block, so culling is dropped
+    there and BLAST's default (unlimited) HSP count applies.
+    """
+    return [] if params.coverage == "union" else ["-culling_limit", "1"]
+
+
 def run_blastn(
     query: Path,
     database: Database,
@@ -195,8 +206,7 @@ def run_blastn(
             str(params.threads),
             "-evalue",
             "1E-20",
-            "-culling_limit",
-            "1",
+            *_hsps(params),
             "-max_target_seqs",
             "10000",
         ]
@@ -218,8 +228,7 @@ def run_blastn(
             str(params.threads),
             "-evalue",
             "1E-20",
-            "-culling_limit",
-            "1",
+            *_hsps(params),
             "-max_target_seqs",
             "10000",
         ]
@@ -241,6 +250,72 @@ def run_blastn(
     return switch.run(legacy_rows, gseek_rows)
 
 
+def union_hits(
+    rows: Iterable[BlastRow],
+    *,
+    mincov: float,
+    min_aligned_len: int | None,
+    default_db: str,
+) -> list[Hit]:
+    """Fold every reference's HSPs into ONE union-breadth hit (``coverage="union"``).
+
+    The evidence model this implements is the one a divergent or repeat-laden
+    locus needs: a 97%-identity locus aligns as several blocks, so single-HSP
+    coverage measures the largest block while the true breadth (the union of
+    the subject intervals) is near 100%. Per subject:
+
+    - coverage = union of the subject intervals / subject length (capped at 100)
+    - identity = aligned-length weighted mean of the block identities
+    - sequence = comma-joined contigs (a locus split across contigs counts once)
+    - anchor = the longest block (query span, product, strand)
+
+    Blocks are grouped across contigs on purpose: union breadth is additive,
+    so a split assembly reaches the same figure as a finished one.
+    ``min_aligned_len`` drops subjects whose total ungapped aligned length is
+    too small to be a real locus (spurious short-HSP guard).
+    """
+    groups: dict[str, list[tuple[BlastRow, int, int]]] = {}
+    for row, s_start, s_end in _swap_dedup(rows, dedup="subject"):
+        groups.setdefault(row.sseqid, []).append((row, s_start, s_end))
+    hits: list[Hit] = []
+    for blocks in groups.values():
+        slen = blocks[0][0].slen
+        if slen <= 0:
+            continue
+        aligned = sum(row.length - row.gaps for row, _, _ in blocks)
+        if min_aligned_len is not None and aligned < min_aligned_len:
+            continue
+        spans = [(s_start, s_end) for _, s_start, s_end in blocks]
+        coverage_pct = min(100.0, union_coverage_pct(spans, slen))
+        if coverage_pct < mincov:
+            continue
+        anchor = max(blocks, key=lambda block: block[0].length - block[0].gaps)[0]
+        identity_pct = (
+            sum((row.length - row.gaps) * row.pident for row, _, _ in blocks) / aligned
+            if aligned
+            else 0.0
+        )
+        gap_openings = sum(row.gapopen for row, _, _ in blocks)
+        hit = _hit(
+            anchor,
+            min(start for _, start, _ in blocks),
+            max(end for _, _, end in blocks),
+            coverage_pct,
+            default_db,
+        ).model_copy(
+            update={
+                "sequence": ",".join(sorted({row.qseqid for row, _, _ in blocks})),
+                "coverage_map": union_coverage_map(spans, slen, broken=gap_openings > 0),
+                "gap_openings": gap_openings,
+                "gaps": sum(row.gaps for row, _, _ in blocks),
+                "identity_pct": identity_pct,
+                "aligned_len": aligned,
+            }
+        )
+        hits.append(hit)
+    return hits
+
+
 def report_from_rows(
     rows: Iterable[BlastRow],
     query: Path,
@@ -255,16 +330,25 @@ def report_from_rows(
     run and the per-run ``ensure_blast``/dbtype gates.
     """
     floors = gene_floors(database)
-    if merge_fragments:
+    if params.coverage == "union":
+        hits = union_hits(
+            rows,
+            mincov=params.mincov,
+            min_aligned_len=params.min_aligned_len,
+            default_db=params.db,
+        )
+        if floors is not None:
+            hits = apply_hit_floors(hits, floors)
+    elif merge_fragments:
         hits, partials = process_rows_with_partials(
-            rows, mincov=params.mincov, default_db=params.db
+            rows, mincov=params.mincov, default_db=params.db, dedup=params.dedup
         )
         if floors is not None:
             hits = apply_hit_floors(hits, floors)
             partials = apply_hit_floors(partials, floors)
         hits = merge_fragment_hits(hits, partials, mincov=params.mincov)
     else:
-        hits = process_rows(rows, mincov=params.mincov, default_db=params.db)
+        hits = process_rows(rows, mincov=params.mincov, default_db=params.db, dedup=params.dedup)
         if floors is not None:
             hits = apply_hit_floors(hits, floors)
     ordered = sorted(hits, key=lambda hit: (hit.sequence, hit.start))

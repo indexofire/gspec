@@ -9,12 +9,14 @@ input's records, copied into the database as ``typing.json``, and recorded
 in the manifest's ``typing_schema``.
 """
 
+import json
 from pathlib import Path
 
 import click
 
 from gspec.db_build_ops import Dbtype, Kind, perform_build
 from gspec.dispatch import datadir_option, dispatch, quiet_option
+from gspec.errors import usage_fail
 
 
 @click.argument("name", help="Target database name (created under the datadir).")
@@ -27,6 +29,22 @@ from gspec.dispatch import datadir_option, dispatch, quiet_option
         " (.gz/.bz2 accepted). Omit it to re-project the installed NAME from its"
         " own records.jsonl."
     ),
+)
+@click.option(
+    "--composite",
+    "-C",
+    "composite",
+    type=click.Path(path_type=Path),
+    help=(
+        "Build a COMPOSITE database from this gspec.composite/1 document (several"
+        " panels and methods fused into one typing result) instead of a FASTA."
+    ),
+)
+@click.option(
+    "--bundle",
+    "-B",
+    is_flag=True,
+    help="With --composite: copy the panels into <name>/dbs (self-contained).",
 )
 @click.option(
     "--tsv",
@@ -96,6 +114,8 @@ from gspec.dispatch import datadir_option, dispatch, quiet_option
 @quiet_option()
 def db_build_command(
     name: str,
+    composite: Path | None,
+    bundle: bool,
     fasta: Path | None,
     tsv: Path | None,
     dbtype: Dbtype | None,
@@ -120,6 +140,23 @@ def db_build_command(
         def warn(message: str) -> None:
             if not quiet:
                 click.echo(f"WARNING: {message}", err=True)
+
+        if composite is not None:
+            from gspec.composite_build import build_composite
+
+            if fasta is not None:
+                usage_fail("db build takes either a FASTA/GBK input or --composite, not both")
+            installed = build_composite(composite, datadir, name=name, force=force, bundle=bundle)
+            click.echo(
+                json.dumps(
+                    {
+                        "db": name,
+                        "kind": "composite",
+                        "document": str(installed),
+                    }
+                )
+            )
+            return
 
         receipt = perform_build(
             name,

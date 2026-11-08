@@ -29,13 +29,14 @@ exact_set rules only — cluster_match and learned_linear need loci
 from gspec.cluster import GeneCall
 from gspec.errors import DatabaseError
 from gspec.typing_decide import compose_call, decide_scheme
-from gspec.typing_engine import score_exact_set, score_weighted_genes
+from gspec.typing_engine import score_best_hit, score_exact_set, score_weighted_genes
 from gspec.typing_models import TypingDocument, TypingScheme, scheme_genes
 from gspec.typing_results import (
     SchemeCall,
     ScoredRule,
 )
 from gspec.typing_rules import (
+    BestHitRule,
     ClusterMatchRule,
     ExactSetRule,
     LearnedLinearRule,
@@ -73,6 +74,8 @@ def validate_gene_typing(document: TypingDocument, genes: frozenset[str]) -> Non
                     names = (*rule.weights, *rule.negative, *rule.require_any)
                 case ExactSetRule():
                     names = (*rule.requires, *rule.requires_any, *rule.excludes)
+                case BestHitRule():
+                    names = (rule.gene,)
                 case ClusterMatchRule() | LearnedLinearRule():
                     raise _unsupported_rule(rule)
             for name in names:
@@ -92,15 +95,20 @@ def score_gene_scheme(scheme: TypingScheme, calls: dict[str, GeneCall]) -> list[
     scored: list[ScoredRule] = []
     for rule in scheme.rules:
         exact = False
+        rank: float | None = None
         match rule:
             case WeightedGenesRule():
                 score, components = score_weighted_genes(rule, calls)
             case ExactSetRule():
                 score, components = score_exact_set(rule, calls)
                 exact = True
+            case BestHitRule():
+                score, components, rank = score_best_hit(rule, calls)
             case ClusterMatchRule() | LearnedLinearRule():
                 raise _unsupported_rule(rule)
-        scored.append(ScoredRule(rule.phenotype, score, components, tuple(rule.notes), exact))
+        scored.append(
+            ScoredRule(rule.phenotype, score, components, tuple(rule.notes), exact, rank=rank)
+        )
     return scored
 
 

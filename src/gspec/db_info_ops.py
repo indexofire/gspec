@@ -63,7 +63,7 @@ class DbInfoDocument(BaseModel, frozen=True):
     name: str
     description: str
     vendor: str
-    kind: Literal["gene", "cluster"]
+    kind: Literal["gene", "cluster", "composite"]
     dbtype: Literal["nucl", "prot"]
     status: Literal["installed", "bundled", "available"]
     records: int | None = None

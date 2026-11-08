@@ -76,6 +76,10 @@ class GeneCall(BaseModel, frozen=True):
     # the reference marker (0.0 = the 5' end is covered).  Cluster screens
     # and reads tables leave it None; only `gspec typing` populates it.
     alignment_start_pct: float | None = None
+    # Reference (subject) length in bases, when the source carries it: the
+    # screen table's COVERAGE cell (`sstart-send/slen`) does, the cluster path
+    # knows its loci. Feeds `best_hit.rank` length-aware ordering.
+    subject_len: int | None = None
 
 
 class LocusCall(BaseModel, frozen=True):

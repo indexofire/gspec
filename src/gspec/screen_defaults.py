@@ -26,7 +26,10 @@ Schema (all keys optional)::
       "contigs": {
         "minid": 80.0,
         "mincov": 80.0,
-        "merge_fragments": true
+        "merge_fragments": true,
+        "coverage": "best_hsp",
+        "dedup": "query",
+        "min_aligned_len": 3000
       }
     }
 
@@ -63,19 +66,32 @@ class ReadsScreenDefaults(BaseModel, frozen=True):
 
 
 class ContigScreenDefaults(BaseModel, frozen=True):
-    """Contig-mode defaults for one database; None = use the CLI default."""
+    """Contig-mode defaults for one database; None = use the CLI default.
+
+    ``coverage``/``dedup``/``min_aligned_len`` (schema ``gspec.screen/2``) move
+    the blastn path's evidence model into configuration: ``coverage="union"``
+    aggregates a reference's blocks into union breadth instead of reporting the
+    single best HSP, ``dedup="subject"`` keeps per-subject HSPs, and
+    ``min_aligned_len`` guards against spurious short-HSP inflation. Omitting
+    them keeps SPEC.md §4 (abricate) parity exactly.
+    """
 
     minid: _Pct | None = None
     mincov: _Pct | None = None
     merge_fragments: bool | None = None
+    coverage: Literal["best_hsp", "union"] | None = None
+    dedup: Literal["query", "subject"] | None = None
+    min_aligned_len: int | None = Field(default=None, ge=1)
 
 
 class ScreenDefaults(BaseModel, frozen=True):
-    """gspec.screen/1 — one database's mode-wide screening defaults."""
+    """gspec.screen/1 or /2 — one database's mode-wide screening defaults."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    schema_name: Literal["gspec.screen/1"] = Field(default="gspec.screen/1", alias="schema")
+    schema_name: Literal["gspec.screen/1", "gspec.screen/2"] = Field(
+        default="gspec.screen/1", alias="schema"
+    )
     reads: ReadsScreenDefaults = Field(default_factory=ReadsScreenDefaults)
     contigs: ContigScreenDefaults = Field(default_factory=ContigScreenDefaults)
 

@@ -71,6 +71,11 @@ class ParamsDocument(BaseModel, frozen=True):
     mincov: float
     threads: int
     merge_fragments: bool | None = None
+    # gspec.screen/2 evidence model; omitted when at the parity default so
+    # existing report documents stay byte-identical.
+    coverage: str | None = None
+    dedup: str | None = None
+    min_aligned_len: int | None = None
 
 
 class ToolDocument(BaseModel, frozen=True):
@@ -151,6 +156,9 @@ def render_json(reports: Iterable[Report], params: ScreeningParams, *, now: date
             mincov=params.mincov,
             threads=params.threads,
             merge_fragments=True if params.merge_fragments else None,
+            coverage=params.coverage if params.coverage != "best_hsp" else None,
+            dedup=params.dedup if params.dedup != "query" else None,
+            min_aligned_len=params.min_aligned_len,
         ),
         files=[
             FileDocument(

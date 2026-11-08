@@ -106,7 +106,9 @@ class Manifest(BaseModel, frozen=True):
     dbtype: Literal["nucl", "prot"]
     # gene: per-gene records pipeline (default; legacy dirs are gene dbs).
     # cluster: GBK/GFF-built gene-cluster db (features.json + locus FASTA).
-    kind: Literal["gene", "cluster"] = "gene"
+    # composite: an analysis database whose composite.json plans several panels
+    # and methods (no sequences panel of its own).
+    kind: Literal["gene", "cluster", "composite"] = "gene"
     # gspec/v1: tagged per-gene headers; plain: bare locus-id headers (cluster).
     header_format: Literal["gspec/v1", "plain"] = "gspec/v1"
 

@@ -68,17 +68,31 @@ class Hit(BaseModel, frozen=True):
     fragments: tuple[Fragment, ...] = ()
 
 
-def _swap_dedup(rows: Iterable["BlastRow"]) -> Iterator[tuple["BlastRow", int, int]]:
-    """SPEC.md §4 steps 1-2: minus-strand swap (subject coords only) and dedup
-    on ``(qseqid, qstart, qend)`` — first row wins, the key ignores strand,
-    and the key is claimed even if the row is later coverage-filtered."""
-    seen: set[tuple[str, int, int]] = set()
+def _swap_dedup(
+    rows: Iterable["BlastRow"], *, dedup: Literal["query", "subject"] = "query"
+) -> Iterator[tuple["BlastRow", int, int]]:
+    """SPEC.md §4 steps 1-2: minus-strand swap (subject coords only) and dedup —
+    first row wins, the key ignores strand, and the key is claimed even if the
+    row is later coverage-filtered.
+
+    ``dedup="query"`` (the abricate-parity default) keys on
+    ``(qseqid, qstart, qend)``: one survival per query interval, so when
+    homologous references share a query block only the first subject keeps it.
+    ``dedup="subject"`` keys on ``(sseqid, qseqid, qstart, qend)`` instead, so
+    every reference keeps its own HSPs — required by ``coverage="union"``,
+    which aggregates all of a subject's blocks into one breadth figure.
+    """
+    seen: set[tuple[str, ...]] = set()
     for row in rows:
         if row.sstrand == "minus":
             s_start, s_end = row.send, row.sstart
         else:
             s_start, s_end = row.sstart, row.send
-        key = (row.qseqid, row.qstart, row.qend)
+        key: tuple[str, ...] = (
+            (row.qseqid, row.qstart, row.qend)
+            if dedup == "query"
+            else (row.sseqid, row.qseqid, row.qstart, row.qend)
+        )
         if key in seen:
             continue
         seen.add(key)
@@ -115,7 +129,13 @@ def _hit(row: "BlastRow", s_start: int, s_end: int, coverage_pct: float, default
     )
 
 
-def process_rows(rows: Iterable["BlastRow"], *, mincov: float, default_db: str) -> list[Hit]:
+def process_rows(
+    rows: Iterable["BlastRow"],
+    *,
+    mincov: float,
+    default_db: str,
+    dedup: Literal["query", "subject"] = "query",
+) -> list[Hit]:
     """Turn BLAST rows into hits, strictly in SPEC.md §4 order:
 
     1. minus-strand swap (subject coords only), 2. dedup on
@@ -123,9 +143,12 @@ def process_rows(rows: Iterable["BlastRow"], *, mincov: float, default_db: str) 
     is claimed even if the row is later coverage-filtered, 3. coverage filter
     on the unrounded float, 4. header decode (native ``gspec|`` codec or
     legacy ``~~~`` rules), 5. product cleanup.
+
+    ``dedup="subject"`` widens the dedup key to include the subject id; see
+    :func:`_swap_dedup`.
     """
     hits: list[Hit] = []
-    for row, s_start, s_end in _swap_dedup(rows):
+    for row, s_start, s_end in _swap_dedup(rows, dedup=dedup):
         # 3. coverage filter on the unrounded float (decode stays after the
         # filter: a malformed native header on a filtered row never raises)
         coverage_pct = 100.0 * (row.length - row.gaps) / row.slen
@@ -136,7 +159,11 @@ def process_rows(rows: Iterable["BlastRow"], *, mincov: float, default_db: str) 
 
 
 def process_rows_with_partials(
-    rows: Iterable["BlastRow"], *, mincov: float, default_db: str
+    rows: Iterable["BlastRow"],
+    *,
+    mincov: float,
+    default_db: str,
+    dedup: Literal["query", "subject"] = "query",
 ) -> tuple[list[Hit], list[Hit]]:
     """Merge-mode variant of :func:`process_rows`: returns ``(hits, partials)``
     where ``partials`` are the sub-mincov dedup survivors, decoded so the
@@ -148,7 +175,7 @@ def process_rows_with_partials(
     """
     hits: list[Hit] = []
     partials: list[Hit] = []
-    for row, s_start, s_end in _swap_dedup(rows):
+    for row, s_start, s_end in _swap_dedup(rows, dedup=dedup):
         coverage_pct = 100.0 * (row.length - row.gaps) / row.slen
         hit = _hit(row, s_start, s_end, coverage_pct, default_db)
         (hits if coverage_pct >= mincov else partials).append(hit)
