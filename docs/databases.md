@@ -329,6 +329,25 @@ Its `ipaH_c` control is split into two non-overlapping presence fragments
 A regression test pins that no `VF*` / `VFDB` / `ARO:` tags appear in any
 of the seven bundles' headers.
 
+A `gspec.serotype/1` profile resolves its ordered marker-set rules with one
+policy knob, `decision`. The default, `ambiguous`, reports every matching rule's
+phenotype as an ambiguity — a marker set that fits two serovars is never decided
+by declaration order. `most_specific` instead drops any match whose positive
+markers are a strict subset of another match, which is what lets a full
+antigenic formula (`O + H1 + H2` → serovar) sit above the generic "O group
+known, H undetermined" row it implies; matches that are not comparable stay
+ambiguous. `sen_sero` is the first profile to use it, and `shi_sero` keeps the
+default so its committed output does not move.
+
+A rule may also gate on *ranking* instead of presence: `outranks` names one
+competitor list per positive marker, and the rule matches only when that marker
+scores strictly higher (`identity × coverage`, the `best_hit` metric) than every
+listed competitor. This is how near-identical alleles are separated — O:2 and
+O:9 differ in 1–2 % of their `tyr` gene, so a presence floor cannot decide them
+between, and `sen_sero` declares the gate in both directions. A tie matches
+neither rule, so the profile reports its `unresolved` string instead of
+defaulting to a group.
+
 `vch_vf` is a screen-only gene panel: CTX core (`ctxA`, `ctxB`, `zot`, `ace`,
 `cep`, `orfU`), RS2 (`rstR`, `rstA`, `rstB`), allele-specific `ctxB_classical` /
 `ctxB_eltor`, and `tcpA_classical` / `tcpA_eltor` / `tcpA_o139`. O139 uses the

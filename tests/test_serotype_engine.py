@@ -59,6 +59,162 @@ def test_multiple_matching_rules_are_ambiguous() -> None:
     assert {entry.phenotype for entry in call.ambiguous} == {"type A", "type B"}
 
 
+def _nested_document(decision: str) -> SerotypeDocument:
+    """A full-formula rule and the generic group rule it implies."""
+    return SerotypeDocument(
+        name="nested",
+        control_gene="control",
+        decision=decision,  # type: ignore[arg-type]
+        rules=(
+            SerotypeRule(phenotype="serovar X (4:i:1,2)", requires=("o4", "h_i", "h_12")),
+            SerotypeRule(phenotype="group O:4, H not determined", requires=("o4",)),
+        ),
+    )
+
+
+def test_default_decision_reports_nested_rules_as_ambiguous() -> None:
+    """Given the default policy, When a specific rule and the generic rule it
+    implies both match, Then the call stays ambiguous — existing profiles
+    (shi_sero) keep their behaviour."""
+    calls = {
+        "control": _call("control"),
+        "o4": _call("o4"),
+        "h_i": _call("h_i"),
+        "h_12": _call("h_12"),
+    }
+    call = evaluate_serotype(calls, _nested_document("ambiguous"))
+    assert call.confidence == "ambiguous"
+    assert {entry.phenotype for entry in call.ambiguous} == {
+        "serovar X (4:i:1,2)",
+        "group O:4, H not determined",
+    }
+
+
+def test_most_specific_decision_prefers_the_full_formula() -> None:
+    """Under most_specific, the 3-marker rule outranks the 1-marker rule it
+    implies, so the complete antigenic formula wins."""
+    calls = {
+        "control": _call("control"),
+        "o4": _call("o4"),
+        "h_i": _call("h_i"),
+        "h_12": _call("h_12"),
+    }
+    call = evaluate_serotype(calls, _nested_document("most_specific"))
+    assert (call.phenotype, call.confidence) == ("serovar X (4:i:1,2)", "high")
+
+
+def test_most_specific_keeps_the_generic_rule_for_partial_formulas() -> None:
+    """Given only the O antigen, Then the generic rule answers instead of
+    falling back: "O group known, H undetermined" is a real result."""
+    calls = {"control": _call("control"), "o4": _call("o4")}
+    call = evaluate_serotype(calls, _nested_document("most_specific"))
+    assert call.phenotype == "group O:4, H not determined"
+    assert call.confidence == "high"
+
+
+def test_most_specific_keeps_incomparable_matches_ambiguous() -> None:
+    """Two rules that are not in a subset relation stay ambiguous: the policy
+    resolves specificity, never genuine conflict."""
+    document = SerotypeDocument(
+        name="conflict",
+        control_gene="control",
+        decision="most_specific",
+        rules=(
+            SerotypeRule(phenotype="type A", requires=("a",)),
+            SerotypeRule(phenotype="type B", requires=("b",)),
+        ),
+    )
+    call = evaluate_serotype(
+        {"control": _call("control"), "a": _call("a"), "b": _call("b")}, document
+    )
+    assert call.confidence == "ambiguous"
+
+
+def _ranked_document() -> SerotypeDocument:
+    """O:2 vs O:9: two near-identical alleles, decided by ranking.
+
+    Both directions declare the gate — the DB pattern — so whichever allele
+    scores higher wins and the other is blocked by its own gate.
+    """
+    return SerotypeDocument(
+        name="ranked",
+        control_gene="control",
+        unresolved="no allele ranked",
+        rules=(
+            SerotypeRule(phenotype="O2", requires=("tyr_A",), outranks={"tyr_A": ("rfbE_D1",)}),
+            SerotypeRule(phenotype="O9", requires=("rfbE_D1",), outranks={"rfbE_D1": ("tyr_A",)}),
+        ),
+    )
+
+
+def _ranked_call(gene: str, identity: float, coverage: float = 100.0) -> dict[str, GeneCall]:
+    return {gene: _call(gene, identity=identity, coverage=coverage)}
+
+
+def test_outranks_prefers_the_higher_scoring_allele() -> None:
+    """Given a group-A copy (100%) against a group-D1 copy (98.9%), Then the A
+    rule fires and the D1 rule is blocked by its own gate."""
+    calls = {
+        "control": _call("control"),
+        **_ranked_call("tyr_A", 100.0),
+        **_ranked_call("rfbE_D1", 98.9),
+    }
+    call = evaluate_serotype(calls, _ranked_document())
+    assert (call.phenotype, call.confidence) == ("O2", "high")
+
+
+def test_outranks_blocks_the_lower_scoring_allele() -> None:
+    """Given the D1 copy on top, Then the A rule's gate fails and D1 wins."""
+    calls = {
+        "control": _call("control"),
+        **_ranked_call("tyr_A", 98.9),
+        **_ranked_call("rfbE_D1", 100.0),
+    }
+    call = evaluate_serotype(calls, _ranked_document())
+    assert (call.phenotype, call.confidence) == ("O9", "high")
+
+
+def test_outranks_tie_reports_unresolved_not_a_guess() -> None:
+    """A tie fails "strictly greater" on both sides, so neither allele is
+    called. SeqSero2 defaults to O:9 here; gspec reports the missing decision
+    instead of inheriting a preference from the tool it replaced."""
+    calls = {
+        "control": _call("control"),
+        **_ranked_call("tyr_A", 100.0),
+        **_ranked_call("rfbE_D1", 100.0),
+    }
+    call = evaluate_serotype(calls, _ranked_document())
+    assert (call.phenotype, call.confidence) == ("no allele ranked", "low")
+
+
+def test_outranks_ignores_an_absent_competitor() -> None:
+    calls = {"control": _call("control"), **_ranked_call("tyr_A", 100.0)}
+    call = evaluate_serotype(calls, _ranked_document())
+    assert call.phenotype == "O2"
+
+
+def test_outranks_competitor_below_the_floor_does_not_block() -> None:
+    """A competitor that cannot pass its own floor is not evidence to beat."""
+    calls = {
+        "control": _call("control"),
+        **_ranked_call("tyr_A", 100.0),
+        **_ranked_call("rfbE_D1", 60.0),  # below the 80% rule floor
+    }
+    call = evaluate_serotype(calls, _ranked_document())
+    assert call.phenotype == "O2"
+
+
+def test_outranks_requires_a_positive_marker() -> None:
+    """The gate must name a marker the rule itself requires."""
+    with pytest.raises(ValueError, match="not a positive marker"):
+        SerotypeRule(phenotype="bad", requires=("a",), outranks={"b": ("c",)})
+
+
+def test_outranks_rejects_a_self_reference() -> None:
+    with pytest.raises(ValueError, match="names itself"):
+        SerotypeRule(phenotype="bad", requires=("a",), outranks={"a": ("a",)})
+
+
 def test_missing_control_falls_back_without_control_exempt() -> None:
     call = evaluate_serotype({"a": _call("a")}, _document())
     assert (call.phenotype, call.confidence) == ("Not Shigella/EIEC", "low")

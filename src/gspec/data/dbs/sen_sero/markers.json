@@ -146,6 +146,19 @@
       },
       "length": 1482,
       "note": "phase-1 flagellin H:r (fliC, fliD/fliB synteny); 90.4% identical to fliC_i, the closest H1 pair in the panel, still far below the 98% rule floor"
+    },
+    {
+      "marker": "tyr_A",
+      "role": "o_allele",
+      "serovar": "Paratyphi A",
+      "source": {
+        "genome": "NC_006511.1",
+        "protein_id": "WP_011233005.1",
+        "product": "CDP-paratose 2-epimerase",
+        "phase_check": "-"
+      },
+      "length": 1032,
+      "note": "CDP-paratose 2-epimerase (tyr) of group A (O:2), 98.5-99.2% identical to the group D1 copy (rfbE_D1): decided by rule-level ranking (`outranks`), the SeqSero2 'tyr-O-2 vs tyr-O-9' step"
     }
   ]
 }

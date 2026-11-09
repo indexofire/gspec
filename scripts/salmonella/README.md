@@ -45,6 +45,7 @@ Every marker is selected by an **annotated identifier** (`gene=` symbol or
 | `fljB_12` vs the Paratyphi A H2-region flagellin | 97.0 % | H2 presence needs a floor above 97 %, otherwise a monophasic genome "carries" H2 |
 | `rfc` group B vs D1 vs A | 98.5–99.9 % | **`rfc` cannot resolve O groups** — it is not an O marker here |
 | `rfbS` group A vs D1 | 98.5–99.3 % | why the D1 marker here is `rfbE` (a different gene) rather than `rfbS`; it is also why O:2 vs O:9 is not a presence question |
+| `tyr_A` (group A) vs `rfbE_D1` (group D1) | 98.5–99.2 % | **near-identical by design**: separated by the rule-level `outranks` ranking, never by a presence floor — the mechanism SeqSero2 and SISTR both use |
 | `rfbJ` (group B, CDP-abequose synthase) vs everything else | 13–36 % | group B (O:4) *is* separable at the gene level |
 | `fliC_i` (H:i) vs `fliC_r` (H:r) | 87.8–90.4 % | closest H1 pair in the panel; still far below the 98 % floor |
 | `fljB` H:1,2 of Typhimurium vs Heidelberg | 99.9 % | one shared H2 marker covers both group-B serovars |
@@ -68,14 +69,56 @@ and from blastn behaviour on the synthetic fixtures in
 `tests/test_sen_sero.py` — **re-calibrate against real genomes before trusting a
 call** (see caveats below).
 
+## How the reference tools separate O:2 from O:9 (and what that means here)
+
+Neither SeqSero2 nor SISTR decides O:2 vs O:9 by gene presence — both use
+**allele-level best-hit ranking** against near-identical references:
+
+- **SeqSero2** (GPL-2.0, read for method only) keeps two references,
+  `tyr-O-2__608` and `tyr-O-9__609`, in
+  `seqsero2_db/H_and_O_and_specific_genes.fasta`. After the O:9,46 markers
+  establish the group family, `decide_O_type_and_get_special_genes()` compares
+  the *scores* of the best hit to each tyr allele and takes the larger
+  (`if O2 > O9: O_choice = "O-2"`), with an explicit tie-break note favouring
+  O:9. It is a strict `>` comparison, so the effective margin is zero.
+- **SISTR** (Apache-2.0, same) BLASTs against `data/antigens/{wzx,wzy,fliC,fljB}.fasta`,
+  whose record IDs end in the antigen name (`...|O:2`, `...|O:9`), takes the
+  **top hit** per antigen (`get_antigen_name(qseqid)`), and looks the triplet up
+  in the WHO 2007 serogroup/antigen table. Again: ranking, then a formula table.
+
+`sen_sero` applies that step inside the naming profile: `gspec.serotype/1` rules
+gained an `outranks` gate — a ranked allele must be present **and** score
+strictly higher (identity × coverage, the `best_hit` metric) than each named
+competitor — and the panel declares it in **both directions**:
+
+```json
+{"phenotype": "Salmonella Typhi", "requires": ["rfbE_D1", "fliC_d"],
+ "excludes": ["fljB_12"], "outranks": {"rfbE_D1": ["tyr_A"]}}
+{"phenotype": "Salmonella Paratyphi A", "requires": ["tyr_A", "fliC_a"],
+ "outranks": {"tyr_A": ["rfbE_D1"]}}
+```
+
+Both generic group rows carry the same gate, so a tie (a synthetic genome
+carrying both alleles at 100 %) reports the unresolved string instead of
+inheriting SeqSero2's O:9 tie-break. `tests/test_serotype_engine.py` pins the
+five gate outcomes (higher wins, lower blocked, tie unresolved, absent
+competitor ignores, competitor below floor ignores);
+`tests/test_sen_sero.py::test_the_o2_o9_pair_is_decided_by_ranking` pins the
+wiring, and `test_both_tyr_alleles_tied_leave_the_group_undecided` pins the tie.
+
+What this panel therefore does **not** need is a different alignment of the
+`rfb` cluster: measured over the whole locus, group A and D1 are ~99 % identical
+and differ by copy number/arrangement (A carries five duplicated
+glycosyltransferase ORFs between `rfbE` and `rfbN`; D1 carries one), so cluster
+identity, k-mer sets and gene presence all fail for the same reason. Ranking two
+allele references is the correct — and cheapest — mechanism.
+
 ## Known limitations of this first slice
 
-1. **O:2 (group A) vs O:9 (group D1) is not resolved by gene presence.** The
-   two groups differ in whether the paratose 2-epimerase is functional, not in
-   which genes are present (Paratyphi A carries a pseudogene), so a presence
-   panel cannot separate them. The next increment is an `rfb`-locus **cluster**
-   stage (minimap2 asm20 against per-O-group locus references), the SeqSero2
-   shape, fused with this panel through a composite database.
+1. **O groups beyond B/D1/A are not in the panel.** Group C1/C2, E1 and the
+   rest need their own allele references curated the same way (wzx/wzy allele
+   ranking, as SISTR does). The `rfbS_A` marker stays in `sequences` as evidence
+   of the group-A backbone but gates no rule any more.
 2. **Paratyphi A is provisional.** Its rule requires `rfbS` + `fliC_a` and
    excludes the D1 `rfbE`; that exclusion fires only when the D1 allele is
    absent or divergent, which is not guaranteed — the test suite asserts the

@@ -21,8 +21,8 @@
       }
     ],
     "caveats": [
-      "Gene panel only: O:2 (group A) and O:9 (group D1) are not separated by presence markers (rfc 98.5-99.9% and rfbS 98.5-99.3% identical across groups); the definitive O call needs an rfb-locus cluster stage.",
-      "Paratyphi A is provisional: its rule excludes the D1 rfbE allele, which that serovar may carry as a pseudogene.",
+      "Gene panel only: whole-rfb-cluster approaches add nothing here. The A and D1 clusters are ~99% identical and differ by copy number (A carries five duplicated glycosyltransferase ORFs between rfbE and rfbN), so cluster identity, k-mer sets and gene presence all fail the same way; allele ranking is the mechanism both reference tools use.",
+      "O:2 (group A) vs O:9 (group D1) is decided by ranking, not presence: the two tyr alleles are 98.5-99.2% identical, so each rule declares outranks against the other and the higher-scoring allele wins (the SeqSero2 'tyr-O-2 vs tyr-O-9' comparison). A tie reports the unresolved string rather than defaulting to a group.",
       "Vi antigen (tviB/tviC) is not screened, so Typhi reports 9,12:d:- rather than asserting Vi.",
       "Only subsp. enterica is typed by design; the other subspecies need biochemical differentiation."
     ]

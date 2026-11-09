@@ -7,6 +7,7 @@
   "fallback": "Salmonella subsp. enterica (serovar not in panel)",
   "ambiguous": "No prediction (markers of several serovars)",
   "unresolved": "Salmonella subsp. enterica (no complete antigen set)",
+  "decision": "most_specific",
   "rules": [
     {
       "phenotype": "Salmonella Typhimurium",
@@ -22,6 +23,12 @@
       "max_alignment_start_pct": {},
       "coverage_floor": 80.0,
       "identity_floor": 98.0,
+      "outranks": {
+        "rfbJ_B": [
+          "tyr_A",
+          "rfbE_D1"
+        ]
+      },
       "control_exempt": false,
       "notes": [
         "formula 4,5,12:i:1,2",
@@ -43,6 +50,11 @@
       "max_alignment_start_pct": {},
       "coverage_floor": 80.0,
       "identity_floor": 98.0,
+      "outranks": {
+        "rfbE_D1": [
+          "tyr_A"
+        ]
+      },
       "control_exempt": false,
       "notes": [
         "formula 9,12:g,m:-",
@@ -65,6 +77,11 @@
       "max_alignment_start_pct": {},
       "coverage_floor": 80.0,
       "identity_floor": 98.0,
+      "outranks": {
+        "rfbE_D1": [
+          "tyr_A"
+        ]
+      },
       "control_exempt": false,
       "notes": [
         "formula 9,12,[Vi]:d:-",
@@ -86,6 +103,12 @@
       "max_alignment_start_pct": {},
       "coverage_floor": 80.0,
       "identity_floor": 98.0,
+      "outranks": {
+        "rfbJ_B": [
+          "tyr_A",
+          "rfbE_D1"
+        ]
+      },
       "control_exempt": false,
       "notes": [
         "formula 4,[5],12:r:1,2",
@@ -95,23 +118,91 @@
     {
       "phenotype": "Salmonella Paratyphi A",
       "requires": [
-        "rfbS_A",
+        "tyr_A",
         "fliC_a"
       ],
       "requires_any": [],
-      "excludes": [
-        "rfbE_D1"
-      ],
+      "excludes": [],
       "max_coverage": {},
       "min_alignment_start_pct": {},
       "max_alignment_start_pct": {},
       "coverage_floor": 80.0,
       "identity_floor": 98.0,
+      "outranks": {
+        "tyr_A": [
+          "rfbE_D1"
+        ]
+      },
       "control_exempt": false,
       "notes": [
         "formula 2,12:a:-",
         "gene panel: provisional \u2014 excludes the D1 rfbE allele, which a Paratyphi A genome may still carry as a pseudogene",
         " the definitive O:2 call needs the rfb cluster stage"
+      ]
+    },
+    {
+      "phenotype": "Salmonella group B (O:4), H not determined",
+      "requires": [
+        "rfbJ_B"
+      ],
+      "requires_any": [],
+      "excludes": [],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "outranks": {},
+      "control_exempt": false,
+      "notes": [
+        "formula 4,[5],12:-:-",
+        "partial call: group B O antigen detected, no panel H allele matched \u2014 the full serovar rules above outrank this one (decision: most_specific)"
+      ]
+    },
+    {
+      "phenotype": "Salmonella group A (O:2), H not determined",
+      "requires": [
+        "tyr_A"
+      ],
+      "requires_any": [],
+      "excludes": [],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "outranks": {
+        "tyr_A": [
+          "rfbE_D1"
+        ]
+      },
+      "control_exempt": false,
+      "notes": [
+        "formula 2,12:-:-",
+        "partial call (decision: most_specific)"
+      ]
+    },
+    {
+      "phenotype": "Salmonella group D1 (O:9), H not determined",
+      "requires": [
+        "rfbE_D1"
+      ],
+      "requires_any": [],
+      "excludes": [],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "outranks": {
+        "rfbE_D1": [
+          "tyr_A"
+        ]
+      },
+      "control_exempt": false,
+      "notes": [
+        "formula 9,12:-:-",
+        "partial call: group D1 O antigen detected, no panel H allele matched (decision: most_specific)"
       ]
     }
   ]

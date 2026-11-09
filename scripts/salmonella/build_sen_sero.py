@@ -153,6 +153,17 @@ def _write_fasta(path: Path, records: list[dict[str, str]]) -> None:
                 handle.write(sequence[offset : offset + 60] + "\n")
 
 
+def _outranks(spec: str) -> dict[str, list[str]]:
+    """``"a:x,y;b:z"`` -> ``{"a": ["x", "y"], "b": ["z"]}`` (rule ranking gates)."""
+    gates: dict[str, list[str]] = {}
+    for entry in spec.split(";"):
+        if not entry:
+            continue
+        gene, _, competitors = entry.partition(":")
+        gates[gene] = [name for name in competitors.split(",") if name]
+    return gates
+
+
 def _serotype_document(serovars: list[dict[str, str]], name: str) -> dict[str, object]:
     rules: list[dict[str, object]] = []
     for row in serovars:
@@ -167,6 +178,7 @@ def _serotype_document(serovars: list[dict[str, str]], name: str) -> dict[str, o
                 "max_alignment_start_pct": {},
                 "coverage_floor": RULE_COVERAGE_FLOOR,
                 "identity_floor": RULE_IDENTITY_FLOOR,
+                "outranks": _outranks(row.get("outranks", "")),
                 "control_exempt": False,
                 "notes": [
                     f"formula {row['formula']}",
@@ -183,6 +195,9 @@ def _serotype_document(serovars: list[dict[str, str]], name: str) -> dict[str, o
         "fallback": "Salmonella subsp. enterica (serovar not in panel)",
         "ambiguous": "No prediction (markers of several serovars)",
         "unresolved": "Salmonella subsp. enterica (no complete antigen set)",
+        # Full formula rules outrank the generic group rows beneath them; the
+        # generic rows still answer "O group known, H undetermined".
+        "decision": "most_specific",
         "rules": rules,
     }
 
@@ -323,14 +338,21 @@ def build(dest: Path, *, name: str = "sen_sero") -> None:
                     ],
                     "caveats": [
                         (
-                            "Gene panel only: O:2 (group A) and O:9 (group D1) are not"
-                            " separated by presence markers (rfc 98.5-99.9% and rfbS"
-                            " 98.5-99.3% identical across groups); the definitive O call"
-                            " needs an rfb-locus cluster stage."
+                            "Gene panel only: whole-rfb-cluster approaches add nothing"
+                            " here. The A and D1 clusters are ~99% identical and differ"
+                            " by copy number (A carries five duplicated"
+                            " glycosyltransferase ORFs between rfbE and rfbN), so cluster"
+                            " identity, k-mer sets and gene presence all fail the same"
+                            " way; allele ranking is the mechanism both reference tools"
+                            " use."
                         ),
                         (
-                            "Paratyphi A is provisional: its rule excludes the D1 rfbE"
-                            " allele, which that serovar may carry as a pseudogene."
+                            "O:2 (group A) vs O:9 (group D1) is decided by ranking, not"
+                            " presence: the two tyr alleles are 98.5-99.2% identical, so"
+                            " each rule declares outranks against the other and the"
+                            " higher-scoring allele wins (the SeqSero2 'tyr-O-2 vs"
+                            " tyr-O-9' comparison). A tie reports the unresolved string"
+                            " rather than defaulting to a group."
                         ),
                         (
                             "Vi antigen (tviB/tviC) is not screened, so Typhi reports"

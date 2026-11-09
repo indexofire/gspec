@@ -1,18 +1,30 @@
 # sen_sero serovar rules — one row per serovar, in rule order (most specific first).
 #
 # serovar    the phenotype name the rule prints
+#
+# Rows are grouped: full antigenic-formula rules first, then the generic
+# "O group only, H not determined" rows. The document is evaluated with
+# decision: most_specific, so a full rule outranks the generic one it implies
+# (without that policy both would match and the call would be ambiguous).
 # formula    antigenic formula (White-Kauffmann-Le Minor notation) for humans
 # requires   ';'-joined marker ids that must ALL be present
 # excludes   ';'-joined marker ids that must all be absent (empty = none)
+# outranks   ';'-joined gene:competitor,e.g. tyr_A:rfbE_D1 — the named allele must
+#            score strictly higher than each competitor (near-identical allele
+#            pairs: O:2 vs O:9 are 98.5-99.2% identical, so presence cannot
+#            separate them; this is SeqSero2's 'tyr-O-2 vs tyr-O-9' comparison)
 # notes      ';'-joined free-text caveats carried onto the call
 #
 # The panel deliberately keeps the O antigen coarse where the gene content
 # cannot decide it (see README: O:2 vs O:9 needs the rfb cluster stage), so a
 # serovar whose O group is only distinguishable by a pseudogene is marked
 # provisional here.
-serovar	formula	requires	excludes	notes
-Salmonella Typhimurium	4,5,12:i:1,2	rfbJ_B;fliC_i;fljB_12		gene panel: group B (rfbJ) + H:i + H:1,2
-Salmonella Enteritidis	9,12:g,m:-	rfbE_D1;fliC_gm	fljB_12	gene panel: group D1 (rfbE) + H:g,m; monophasic, so fljB must be absent (rule floor 98% keeps the 97%-identical Paratyphi A H2-region from counting)
-Salmonella Typhi	9,12,[Vi]:d:-	rfbE_D1;fliC_d	fljB_12	gene panel: group D1 + H:d; Vi antigen not screened, the formula's [Vi] is not asserted
-Salmonella Heidelberg	4,[5],12:r:1,2	rfbJ_B;fliC_r;fljB_12		gene panel: group B (rfbJ) + H:r + H:1,2 (the H2 marker is shared with Typhimurium: the two fljB 1,2 alleles are 99.9% identical)
-Salmonella Paratyphi A	2,12:a:-	rfbS_A;fliC_a	rfbE_D1	gene panel: provisional — excludes the D1 rfbE allele, which a Paratyphi A genome may still carry as a pseudogene; the definitive O:2 call needs the rfb cluster stage
+serovar	formula	requires	excludes	notes	outranks	
+Salmonella Typhimurium	4,5,12:i:1,2	rfbJ_B;fliC_i;fljB_12		gene panel: group B (rfbJ) + H:i + H:1,2	rfbJ_B:tyr_A,rfbE_D1
+Salmonella Enteritidis	9,12:g,m:-	rfbE_D1;fliC_gm	fljB_12	gene panel: group D1 (rfbE) + H:g,m; monophasic, so fljB must be absent (rule floor 98% keeps the 97%-identical Paratyphi A H2-region from counting)	rfbE_D1:tyr_A
+Salmonella Typhi	9,12,[Vi]:d:-	rfbE_D1;fliC_d	fljB_12	gene panel: group D1 + H:d; Vi antigen not screened, the formula's [Vi] is not asserted	rfbE_D1:tyr_A
+Salmonella Heidelberg	4,[5],12:r:1,2	rfbJ_B;fliC_r;fljB_12		gene panel: group B (rfbJ) + H:r + H:1,2 (the H2 marker is shared with Typhimurium: the two fljB 1,2 alleles are 99.9% identical)	rfbJ_B:tyr_A,rfbE_D1
+Salmonella Paratyphi A	2,12:a:-	tyr_A;fliC_a		gene panel: provisional — excludes the D1 rfbE allele, which a Paratyphi A genome may still carry as a pseudogene; the definitive O:2 call needs the rfb cluster stage	tyr_A:rfbE_D1
+Salmonella group B (O:4), H not determined	4,[5],12:-:-	rfbJ_B		partial call: group B O antigen detected, no panel H allele matched — the full serovar rules above outrank this one (decision: most_specific)	
+Salmonella group A (O:2), H not determined	2,12:-:-	tyr_A		partial call (decision: most_specific)	tyr_A:rfbE_D1
+Salmonella group D1 (O:9), H not determined	9,12:-:-	rfbE_D1		partial call: group D1 O antigen detected, no panel H allele matched (decision: most_specific)	rfbE_D1:tyr_A	

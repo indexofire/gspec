@@ -11,7 +11,6 @@ provisional Paratyphi A rule fires only when the D1 `rfbE` allele is absent —
 the README explains why that is a limitation of a presence panel, not a feature.
 """
 
-import json
 from pathlib import Path
 
 import pytest
@@ -21,6 +20,7 @@ from gspec.cli import app
 from gspec.db.bundled import find_bundled
 from gspec.dbcodec import decode_seqid
 from gspec.fasta import iter_fasta
+from gspec.typing.serotype_models import SerotypeDocument, read_serotype_document
 
 ASSET = Path(__file__).resolve().parents[1] / "src/gspec/data/dbs/sen_sero"
 TABLE = Path(__file__).resolve().parents[1] / "scripts/salmonella/sen_sero_markers.tsv"
@@ -87,19 +87,46 @@ def _designate(tmp_path: Path, datadir: Path, *markers: str) -> dict[str, str]:
     return dict(zip(header, lines[1].split("\t"), strict=True))
 
 
-def test_panel_markers_are_mutually_separable() -> None:
-    """Curation gate: every marker pair must be < 95% identical.
+def _serotype_document() -> SerotypeDocument:
+    return read_serotype_document(ASSET / "serotype.json")
+
+
+def _presence_gated_markers() -> set[str]:
+    """Markers separated by a presence floor — what the <95% gate governs.
+
+    Markers named by an ``outranks`` gate are excluded: near-identical alleles
+    (tyr_A vs rfbE_D1, 98.5-99.2%) are separated by ranking, so a floor is not
+    what tells them apart.
+    """
+    document = _serotype_document()
+    gated: set[str] = set((document.control_gene and {document.control_gene}) or set())
+    ranked: set[str] = set()
+    for rule in document.rules:
+        gated |= set(rule.requires) | set(rule.requires_any) | set(rule.excludes)
+        for gene, competitors in rule.outranks.items():
+            ranked.add(gene)
+            ranked |= set(competitors)
+    return gated - ranked
+
+
+def test_presence_gated_markers_are_mutually_separable() -> None:
+    """Curation gate: presence-gated marker pairs must stay < 95% identical.
 
     A marker that is ~99% identical to another cannot separate serovars at a
     98% rule floor; adding one would quietly turn calls ambiguous. The measured
-    closest pair is fliC_r vs fliC_i at ~88%, so the margin is real. Pairs that
-    only differ by a few residues (fliC_gm vs fliC_gp: 3 nt in 1518) are the
-    documented reason serovars such as Dublin stay out of this panel.
+    closest gated pair is fliC_r vs fliC_i at ~88%, so the margin is real.
+    Pairs that differ by a few residues only (fliC_gm vs fliC_gp: 3 nt in 1518)
+    are the documented reason serovars such as Dublin stay out of this panel.
+
+    Markers that are deliberately near-identical — the `tyr_O2`/`tyr_O9` allele
+    pair, 98.5-99.2% — are exempt because they are separated by `best_hit`
+    ranking, not by a floor (see test_tyr_alleles_are_ranked_not_gated).
     """
     import difflib
 
     sequences = _marker_sequences()
-    names = list(sequences)
+    gated = _presence_gated_markers()
+    names = [name for name in sequences if name in gated]
     worst = (0.0, "", "")
     for index, left in enumerate(names):
         for right in names[index + 1 :]:
@@ -110,6 +137,36 @@ def test_panel_markers_are_mutually_separable() -> None:
             if identity > worst[0]:
                 worst = (identity, left, right)
     assert worst[0] < 95.0, f"{worst[1]} and {worst[2]} are {worst[0]:.1f}% identical"
+
+
+def test_the_o2_o9_pair_is_decided_by_ranking() -> None:
+    """O:2/O:9 alleles are ~99% identical, so no presence floor separates them.
+
+    Both reference tools rank them instead (SeqSero2 compares the `tyr-O-2` and
+    `tyr-O-9` hit scores; SISTR takes the top wzx/wzy allele). The panel does
+    the same through the rule-level `outranks` gate, declared in both
+    directions so the lower-scoring allele is blocked by its own rule.
+    """
+    import difflib
+
+    sequences = _marker_sequences()
+    squeezed = (
+        100.0
+        * difflib.SequenceMatcher(
+            None, sequences["tyr_A"], sequences["rfbE_D1"], autojunk=False
+        ).ratio()
+    )
+    assert 95.0 <= squeezed < 100.0, squeezed
+    assert not {"tyr_A", "rfbE_D1"} & _presence_gated_markers()
+
+    rules = {rule.phenotype: rule for rule in _serotype_document().rules}
+    assert rules["Salmonella Paratyphi A"].outranks == {"tyr_A": ("rfbE_D1",)}
+    assert rules["Salmonella Enteritidis"].outranks == {"rfbE_D1": ("tyr_A",)}
+    assert rules["Salmonella Typhi"].outranks == {"rfbE_D1": ("tyr_A",)}
+    assert rules["Salmonella Typhi"].requires == ("rfbE_D1", "fliC_d")
+    # The generic group rows carry the same gate, so a tie cannot favour D1.
+    assert rules["Salmonella group A (O:2), H not determined"].outranks == {"tyr_A": ("rfbE_D1",)}
+    assert rules["Salmonella group D1 (O:9), H not determined"].outranks == {"rfbE_D1": ("tyr_A",)}
 
 
 def test_bundle_is_discoverable_and_complete() -> None:
@@ -123,20 +180,26 @@ def test_bundle_is_discoverable_and_complete() -> None:
 
 
 def test_serotype_rules_only_name_panel_markers() -> None:
-    document = json.loads((ASSET / "serotype.json").read_text(encoding="utf-8"))
+    document = _serotype_document()
     known = set(_marker_sequences())
-    assert document["control_gene"] in known
-    assert [rule["phenotype"] for rule in document["rules"]] == [
+    assert document.control_gene in known
+    assert [rule.phenotype for rule in document.rules] == [
         "Salmonella Typhimurium",
         "Salmonella Enteritidis",
         "Salmonella Typhi",
         "Salmonella Heidelberg",
         "Salmonella Paratyphi A",
+        "Salmonella group B (O:4), H not determined",
+        "Salmonella group A (O:2), H not determined",
+        "Salmonella group D1 (O:9), H not determined",
     ]
-    for rule in document["rules"]:
-        referenced = set(rule["requires"]) | set(rule["requires_any"]) | set(rule["excludes"])
-        assert referenced <= known, (rule["phenotype"], sorted(referenced - known))
-        assert not set(rule["requires"]) & set(rule["excludes"])
+    # The generic group rows only make sense with the specificity policy.
+    assert document.decision == "most_specific"
+    for rule in document.rules:
+        referenced = set(rule.requires) | set(rule.requires_any) | set(rule.excludes)
+        referenced |= set(rule.outranks) | {c for v in rule.outranks.values() for c in v}
+        assert referenced <= known, (rule.phenotype, sorted(referenced - known))
+        assert not set(rule.requires) & set(rule.excludes)
 
 
 def test_committed_markers_match_the_curated_table() -> None:
@@ -174,7 +237,8 @@ def test_diphasic_marker_breaks_the_monophasic_call(tmp_path: Path, datadir: Pat
     serovar, and this panel says so instead of guessing)."""
     row = _designate(tmp_path, datadir, "invA", "rfbE_D1", "fliC_gm", "fljB_12")
     assert row["PHENOTYPE"] != "Salmonella Enteritidis"
-    assert "not in panel" in row["PHENOTYPE"] or "no complete" in row["PHENOTYPE"]
+    # The specificity policy turns the near miss into an honest partial answer.
+    assert row["PHENOTYPE"] == "Salmonella group D1 (O:9), H not determined"
 
 
 def test_heidelberg_markers_designate_heidelberg(tmp_path: Path, datadir: Path) -> None:
@@ -189,11 +253,25 @@ def test_heidelberg_without_phase_two_is_not_heidelberg(tmp_path: Path, datadir:
     assert row["PHENOTYPE"] != "Salmonella Heidelberg"
 
 
-def test_paratyphi_a_is_provisional_and_says_so(tmp_path: Path, datadir: Path) -> None:
-    """The O:2 rule fires only without the D1 rfbE allele, and carries the caveat."""
-    row = _designate(tmp_path, datadir, "invA", "rfbS_A", "fliC_a")
+def test_group_b_o_antigen_alone_gives_a_partial_call(tmp_path: Path, datadir: Path) -> None:
+    """Given only the group-B O marker, Then the panel reports the O group and
+    says the H phase is undetermined instead of guessing a serovar."""
+    row = _designate(tmp_path, datadir, "invA", "rfbJ_B")
+    assert row["PHENOTYPE"] == "Salmonella group B (O:4), H not determined"
+
+
+def test_paratyphi_a_is_named_from_the_ranked_group_a_allele(tmp_path: Path, datadir: Path) -> None:
+    """Given the group-A tyr allele and H:a, Then Paratyphi A is called."""
+    row = _designate(tmp_path, datadir, "invA", "tyr_A", "fliC_a")
     assert row["PHENOTYPE"] == "Salmonella Paratyphi A"
-    assert "rfb cluster stage" in row["NOTES"]
+    assert "2,12:a:-" in row["NOTES"]
+
+
+def test_both_tyr_alleles_tied_leave_the_group_undecided(tmp_path: Path, datadir: Path) -> None:
+    """A synthetic genome carrying both tyr alleles at 100% is a tie: the
+    ranking gate is "strictly greater", so neither group is guessed."""
+    row = _designate(tmp_path, datadir, "invA", "tyr_A", "rfbE_D1", "fliC_a")
+    assert row["PHENOTYPE"] == "Salmonella subsp. enterica (no complete antigen set)"
 
 
 def test_missing_control_gene_suppresses_every_call(tmp_path: Path, datadir: Path) -> None:

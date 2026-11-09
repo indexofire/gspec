@@ -305,6 +305,19 @@ marker-set 解析规则，不是 ShigaTyper 的逐字节移植。`ipaH_c` 对照
 互不重叠的存在性片段（1-640 与 641-780），以覆盖发生分化的 ipaH 等位基因。回归测试锁定了七个内置库的
 头部不出现任何 `VF*` / `VFDB` / `ARO:` 标签。
 
+`gspec.serotype/1` 用 `decision` 这一个策略开关来消解有序 marker-set 规则。默认
+`ambiguous`：把所有命中规则的表型作为歧义上报——同时命中两个血清型时，绝不靠声明
+顺序决定。`most_specific` 则丢弃"其阳性标记是另一条命中规则的严格子集"的命中，
+于是完整的抗原式规则（`O + H1 + H2` → 血清型）可以压在它所蕴含的通用
+"已知 O 群、H 未定" 行之上；彼此不构成子集关系的命中仍然判为歧义。`sen_sero` 是
+第一个启用它的库，`shi_sero` 保持默认，因此其已提交输出不变。
+
+规则还可以用**排序**而非存在性做门控：`outranks` 为每个阳性标记列出一组竞争者，
+只有当该标记的得分（`identity × coverage`，即 `best_hit` 的度量）**严格高于**每个
+竞争者时规则才命。近乎相同的等位基因就靠它区分——O:2 与 O:9 的 `tyr` 只差 1–2%，
+存在性阈值无法决断，因此 `sen_sero` 双向声明该门控。平局时两条规则都不命中，
+profile 返回 `unresolved` 字符串，而不是默认归到某个 O 群。
+
 `vch_vf` 是仅筛查的基因面板：CTX 核心（`ctxA`、`ctxB`、`zot`、`ace`、`cep`、
 `orfU`）、RS2（`rstR`、`rstA`、`rstB`）、`ctxB_classical` / `ctxB_eltor`
 等位标记，以及 `tcpA_classical` / `tcpA_eltor` / `tcpA_o139`。O139 使用 El Tor

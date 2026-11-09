@@ -13,6 +13,39 @@ def _present(call: GeneCall | None, coverage: float, identity: float) -> bool:
     return call is not None and call.coverage_pct >= coverage and call.identity_pct >= identity
 
 
+def _evidence(call: GeneCall) -> float:
+    """The ranking score: identity x coverage, in [0, 1].
+
+    The same metric the `best_hit` typing rule ranks by, so a serotype profile
+    and a typing scheme order competing alleles identically.
+    """
+    return (call.identity_pct / 100.0) * (call.coverage_pct / 100.0)
+
+
+def _outranks(
+    rule: SerotypeRule, calls: Mapping[str, GeneCall], *, coverage: float, identity: float
+) -> bool:
+    """Every ranked allele must beat each of its competitors outright.
+
+    A tie fails the gate (strictly greater), so the tie-break belongs to rule
+    order: the group the reference tools default to (SeqSero2 keeps O:9 on a
+    tie) simply declares no competitor, and its rule wins the ordered pass.
+    """
+    for gene, competitors in rule.outranks.items():
+        own = calls.get(gene)
+        if not _present(own, coverage, identity):
+            return False
+        assert own is not None  # _present proved it
+        own_score = _evidence(own)
+        for competitor in competitors:
+            other = calls.get(competitor)
+            if _present(other, coverage, identity):
+                assert other is not None
+                if own_score <= _evidence(other):
+                    return False
+    return True
+
+
 def _rule_matches(rule: SerotypeRule, calls: Mapping[str, GeneCall]) -> tuple[str, ...] | None:
     """The ordered positive markers when the rule matches, else None."""
     positives: list[str] = []
@@ -35,6 +68,10 @@ def _rule_matches(rule: SerotypeRule, calls: Mapping[str, GeneCall]) -> tuple[st
     for gene in rule.excludes:
         if _present(calls.get(gene), rule.coverage_floor, rule.identity_floor):
             return None
+    if rule.outranks and not _outranks(
+        rule, calls, coverage=rule.coverage_floor, identity=rule.identity_floor
+    ):
+        return None
     for gene, ceiling in rule.max_coverage.items():
         call = calls.get(gene)
         if call is not None and call.coverage_pct >= ceiling:
@@ -64,6 +101,26 @@ def _control_present(calls: Mapping[str, GeneCall], document: SerotypeDocument) 
     )
 
 
+def _most_specific(
+    matched: list[tuple[SerotypeRule, tuple[str, ...]]],
+) -> list[tuple[SerotypeRule, tuple[str, ...]]]:
+    """Drop matches whose positive markers are a strict subset of another match.
+
+    A serovar rule (O + H1 + H2) therefore outranks the generic group rule
+    (O only) that must sit beneath it for partial formulas; matches that are
+    not comparable — different markers, neither a subset — are kept, so real
+    ambiguity is still reported.
+    """
+    positives = {id(rule): set(genes) for rule, genes in matched}
+    kept: list[tuple[SerotypeRule, tuple[str, ...]]] = []
+    for rule, genes in matched:
+        own = positives[id(rule)]
+        if any(own < other and other != own for key, other in positives.items() if key != id(rule)):
+            continue
+        kept.append((rule, genes))
+    return kept
+
+
 def evaluate_serotype(calls: Mapping[str, GeneCall], document: SerotypeDocument) -> SchemeCall:
     """One ordered marker-set decision, surfacing every matching rule.
 
@@ -79,6 +136,8 @@ def evaluate_serotype(calls: Mapping[str, GeneCall], document: SerotypeDocument)
         positive = _rule_matches(rule, calls)
         if positive is not None:
             matched.append((rule, positive))
+    if matched and document.decision == "most_specific":
+        matched = _most_specific(matched)
     if matched:
         phenotypes = {rule.phenotype for rule, _ in matched}
         positives = sorted({gene for _, genes in matched for gene in genes})

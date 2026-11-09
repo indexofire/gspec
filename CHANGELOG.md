@@ -27,6 +27,33 @@
   identity matrix and the regeneration commands live in
   `scripts/salmonella/README.md`.
 
+- **`gspec.serotype/1` gains an `outranks` gate, and `sen_sero` uses it to
+  resolve O:2 vs O:9.** Research on both reference tools settled the mechanism:
+  SeqSero2 compares the best-hit scores of two near-identical `tyr` references
+  (`tyr-O-2` vs `tyr-O-9`, strict `>`, O:9 on a tie) and SISTR takes the top
+  `wzx`/`wzy` allele hit before a WHO-2007 formula lookup — neither uses gene
+  presence. Measured here, the pair is 98.5–99.2 % identical and the whole `rfb`
+  cluster is ~99 % identical (group A differs by five duplicated
+  glycosyltransferase ORFs, i.e. copy number, not sequence), so gene presence,
+  k-mer sets and cluster identity all fail for the same reason. A rule's
+  `outranks` gate now demands that its allele score strictly higher (identity ×
+  coverage) than each named competitor; `sen_sero` declares it in both
+  directions for the group A/D1 rows, and a tie reports the unresolved string
+  instead of inheriting SeqSero2's tie-break. Paratyphi A is therefore no longer
+  a provisional presence call. The panel's separability gate now governs only
+  presence-gated markers, since a ranked pair is exempt by construction.
+- **`gspec.serotype/1` gains a `decision` policy.** `ambiguous` (the default)
+  keeps reporting every matching rule's phenotype as an ambiguity, so `shi_sero`
+  is byte-identical. `most_specific` drops matches whose positive markers are a
+  strict subset of another match, which lets a full antigenic formula outrank
+  the generic "O group known, H undetermined" rule beneath it — the mechanism
+  `sen_sero` now uses for its two partial rows (group B / group D1 with an
+  undetermined H phase). Incomparable matches stay ambiguous either way.
+- `sen_sero` reports those partials instead of a bare fallback: an assembly with
+  only the group-B O marker now answers `Salmonella group B (O:4), H not
+  determined`, and a monophasic D1 strain whose H2 allele is present answers the
+  group-D1 partial rather than "serovar not in panel".
+
 ## [0.10.2] - 2026-11-09
 
 ### Added

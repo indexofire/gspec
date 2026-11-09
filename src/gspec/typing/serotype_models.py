@@ -39,6 +39,16 @@ class SerotypeRule(BaseModel, frozen=True):
         default_factory=dict,
         description="Per-marker coverage ceiling; the rule fails at or above this percentage.",
     )
+    outranks: dict[str, tuple[str, ...]] = Field(
+        default_factory=dict,
+        description=(
+            "Ranked allele gate: each named marker must be present AND score"
+            " strictly higher (identity x coverage) than every listed"
+            " competitor. This is how near-identical alleles are separated"
+            " (O:2 vs O:9: the two tyr copies are 98.5-99.2% identical, so a"
+            " presence floor cannot decide them)."
+        ),
+    )
     min_alignment_start_pct: dict[str, float] = Field(
         default_factory=dict,
         description=(
@@ -79,6 +89,13 @@ class SerotypeRule(BaseModel, frozen=True):
                     raise ValueError(f"{name} gene {gene!r} is not a positive marker")
                 if not 0.0 <= value <= 100.0:
                     raise ValueError(f"{name}[{gene!r}] must be a percentage, got {value}")
+        for gene, competitors in self.outranks.items():
+            if gene not in positives:
+                raise ValueError(f"outranks gene {gene!r} is not a positive marker")
+            if gene in competitors:
+                raise ValueError(f"outranks[{gene!r}] names itself as a competitor")
+            if len(set(competitors)) != len(competitors):
+                raise ValueError(f"outranks[{gene!r}] lists a competitor twice")
         return self
 
 
@@ -95,6 +112,13 @@ class SerotypeDocument(BaseModel, frozen=True):
     fallback: str = "Not Shigella/EIEC"
     ambiguous: str = "No prediction (multiple marker sets)"
     unresolved: str = "Shigella spp. (unresolved)"
+    #: How several matching rules are resolved. ``ambiguous`` (the default)
+    #: reports the ambiguity — a marker set that matches two phenotypes is never
+    #: decided by declaration order. ``most_specific`` drops any match whose
+    #: positive markers are a strict subset of another match, so a full
+    #: antigenic-formula rule beats the generic "O group only, H undetermined"
+    #: rule beneath it; incomparable matches stay ambiguous.
+    decision: Literal["ambiguous", "most_specific"] = "ambiguous"
     rules: tuple[SerotypeRule, ...]
 
 

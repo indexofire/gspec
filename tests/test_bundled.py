@@ -221,7 +221,7 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "lpn_vf": 275,
         "pau_sero": 14,
         "sag_sero": 14,
-        "sen_sero": 10,
+        "sen_sero": 11,
         "shi_sero": 96,
         "str_lancefield": 29,
         "vch_oagc": 191,
