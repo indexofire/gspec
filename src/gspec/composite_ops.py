@@ -55,13 +55,13 @@ def _load_primers(stage: CompositeStage, document: CompositeDocument) -> tuple[A
         import gseek
     except ImportError as exc:  # pragma: no cover - dependency gate
         raise DependencyError(
-            "pcr stages need the gseek package with ispcr support (install gseek>=0.11)",
+            "pcr stages need the gseek package with ispcr support (install gseek>=0.10.5)",
             code="MISSING_DEPENDENCY",
             context={"stage": stage.name},
         ) from exc
     if not hasattr(gseek, "read_primers"):
         raise DependencyError(
-            "the installed gseek has no in-silico PCR support (need gseek>=0.11)",
+            "the installed gseek has no in-silico PCR support (need gseek>=0.10.5)",
             code="MISSING_DEPENDENCY",
             context={"stage": stage.name, "gseek": getattr(gseek, "__version__", "?")},
         )

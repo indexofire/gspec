@@ -50,6 +50,12 @@
 - Sidecar failures share one reader, so the wording is now uniform
   (`<noun> not found or unreadable`, `could not read <noun>`, `malformed
   <noun>`); error codes and the `file` context are unchanged.
+- **In-silico PCR runs on a released gseek.** The `gspec[gseek]` extra and the
+  pixi `gseek` environment now require `gseek>=0.10.5`, the first release that
+  ships `gseek.ispcr` (`read_primers`), so composite `pcr` stages work from
+  PyPI rather than an unreleased build. The runtime gate is a capability probe:
+  an older gseek still fails with a typed `MISSING_DEPENDENCY` naming 0.10.5,
+  not with a broken install.
 
 ### Fixed
 

@@ -88,7 +88,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/58/50/6c0d534c5f134586a8e1ba4e330569e32f057e33372ae556463212fb4cd3/click-8.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/f1/b474e930c4d910328780e3940da76f5aa5cbc48ce1fc14e44d239d9ea9db/cryptography-50.0.2-cp311-abi3-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/32/91/30151a39f7570f448ed84529390628a651d7f27c87d73c9b887f8189695e/docutils-0.23-py3-none-any.whl
-      - pypi: git+https://github.com/indexofire/gseek?rev=67940dbf0836200eae2b322b5cfadd4f591056db#67940dbf0836200eae2b322b5cfadd4f591056db
+      - pypi: https://files.pythonhosted.org/packages/ad/8e/4bbfa12429ea0145e4bf069b2423abdb8579838ab6d1e76d80a044dfd0ca/gseek-0.10.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/77/de194443bf38daed9452139e960c632b0ef9f9a5dd9ce605fdf18ca9f1b1/id-1.6.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
@@ -1099,22 +1099,23 @@ packages:
   license_family: LGPL
   size: 102835
   timestamp: 1786118485753
-- pypi: git+https://github.com/indexofire/gseek?rev=67940dbf0836200eae2b322b5cfadd4f591056db#67940dbf0836200eae2b322b5cfadd4f591056db
+- pypi: https://files.pythonhosted.org/packages/ad/8e/4bbfa12429ea0145e4bf069b2423abdb8579838ab6d1e76d80a044dfd0ca/gseek-0.10.5-py3-none-any.whl
   name: gseek
-  version: 0.10.4
+  version: 0.10.5
+  sha256: 7a9c96bd9389cdfd8061196c0fee6180dba118d2998d9dc08c6ea1c742e5ac5b
   requires_dist:
-  - pytest>=8.0 ; extra == 'dev'
-  - pytest-cov>=5.0 ; extra == 'dev'
-  - ruff>=0.6 ; extra == 'dev'
-  - pyright>=1.1 ; extra == 'dev'
   - hypothesis>=6.100 ; extra == 'dev'
-  - pre-commit>=3.7 ; extra == 'dev'
-  - mkdocs>=1.6 ; extra == 'dev'
   - mkdocs-material>=9.5 ; extra == 'dev'
   - mkdocs-static-i18n>=1.2 ; extra == 'dev'
-  - mkdocs>=1.6 ; extra == 'docs'
+  - mkdocs>=1.6 ; extra == 'dev'
+  - pre-commit>=3.7 ; extra == 'dev'
+  - pyright>=1.1 ; extra == 'dev'
+  - pytest-cov>=5.0 ; extra == 'dev'
+  - pytest>=8.0 ; extra == 'dev'
+  - ruff>=0.6 ; extra == 'dev'
   - mkdocs-material>=9.5 ; extra == 'docs'
   - mkdocs-static-i18n>=1.2 ; extra == 'docs'
+  - mkdocs>=1.6 ; extra == 'docs'
   requires_python: '>=3.12'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/gsl-2.7-he838d99_0.tar.bz2
   sha256: 132a918b676dd1f533d7c6f95e567abf7081a6ea3251c3280de35ef600e0da87
@@ -1130,12 +1131,12 @@ packages:
 - pypi: ./
   name: gspec
   version: 0.10.1
-  sha256: 4e4e7fbebcd8aec86e021074ae4d942e81222cdb9095eb4f0cbfb025d981f5d2
+  sha256: 02ad8b3e1289aa1882c784fd708dab4df384c4d36ea9dc03e3ed5f537b89427d
   requires_dist:
   - click>=8.2
   - pydantic>=2.7
   - rich>=13
-  - gseek>=0.10.4 ; extra == 'gseek'
+  - gseek>=0.10.5 ; extra == 'gseek'
   requires_python: '>=3.12,<3.13'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/gzip-1.14-hb9d3cd8_0.conda
   sha256: 7f0a85e34c384216448b468ac3af2b3b02b609b488f2ba079ca8443db83c2b22

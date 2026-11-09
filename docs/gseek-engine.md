@@ -45,7 +45,7 @@ gseek:
 pip install "gspec[gseek]"
 ```
 
-The pixi `default` environment (with the `py312` feature) uses Python 3.12 and includes `gseek>=0.10.4`. Without gseek, `GSPEC_ENGINE=gseek` raises a
+The pixi `default` environment (with the `py312` feature) uses Python 3.12 and includes `gseek>=0.10.5`. Without gseek, `GSPEC_ENGINE=gseek` raises a
 typed `MISSING_DEPENDENCY` error; `legacy` and all existing commands are
 unaffected.
 
