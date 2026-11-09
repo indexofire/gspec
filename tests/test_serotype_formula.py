@@ -395,3 +395,56 @@ def test_importer_parses_both_upstream_layouts(tmp_path: Path) -> None:
     assert families["h2"] == ["1,2"]
     assert families["o"] == ["2", "9,46"]
     assert document2["formulas"][0]["serovar"] == "Typhimurium"
+
+
+def test_a_disagreeing_hit_set_is_not_a_perfect_call() -> None:
+    """SISTR's rule: a family is perfect only when a 100 %-id/100 %-cov hit
+    exists AND every hit names the same antigen. A cross-labelled reference
+    (`1,2` vs `1,2,7`) makes the names disagree, so the call is downgraded."""
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "B", "genes": ["o_B"]}]},
+            {
+                "key": "h1",
+                "entries": [
+                    {"name": "i", "genes": ["h1_i"]},
+                    {"name": "r,[i]", "genes": ["h1_r_i"]},
+                ],
+            },
+            {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+        ],
+        formulas=[{"o": "B", "h1": "i", "h2": "1,2", "serovar": "Typhimurium"}],
+    )
+    # Both H1 alleles hit at 100 %/100 %: the names disagree.
+    calls = {
+        "invA": _call("invA"),
+        "o_B": _call("o_B"),
+        "h1_i": _call("h1_i"),
+        "h1_r_i": _call("h1_r_i"),
+        "h2_12": _call("h2_12"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Typhimurium"
+    assert call.confidence == "low"  # not perfect, but still named
+    assert any("not a perfect match" in note for note in call.notes)
+
+
+def test_a_single_perfect_allele_keeps_high_confidence() -> None:
+    calls = {
+        "invA": _call("invA"),
+        "o_B": _call("o_B"),
+        "h1_i": _call("h1_i"),
+        "h2_12": _call("h2_12"),
+    }
+    call = evaluate_serotype(
+        calls,
+        _document(
+            antigens=[
+                {"key": "o", "entries": [{"name": "B", "genes": ["o_B"]}]},
+                {"key": "h1", "entries": [{"name": "i", "genes": ["h1_i"]}]},
+                {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+            ],
+            formulas=[{"o": "B", "h1": "i", "h2": "1,2", "serovar": "Typhimurium"}],
+        ),
+    )
+    assert call.confidence == "high"

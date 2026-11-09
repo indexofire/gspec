@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Literal
 
 from gspec.cluster.core import GeneCall
@@ -128,9 +129,27 @@ def _most_specific(
     return kept
 
 
+@dataclass(frozen=True)
+class _FamilyCall:
+    """One family's decision — the mirror of SISTR's prediction record.
+
+    ``perfect`` reproduces ``BlastReader.top_result()``: the call is perfect only
+    when a 100 %-identity/100 %-coverage hit exists **and every hit for that gene
+    names the same antigen**. ``ambiguous`` records the other half of that rule —
+    hits disagreeing on the antigen name — which is what a cross-labelled
+    reference looks like (`1,2` vs `1,2,7` are 99.54 % identical in the panel).
+    """
+
+    name: str | None
+    score: float
+    genes: tuple[str, ...]
+    perfect: bool
+    ambiguous: bool
+
+
 def _family_call(
     family: AntigenFamily, calls: Mapping[str, GeneCall], document: SerotypeDocumentV2
-) -> tuple[str | None, float, tuple[str, ...]]:
+) -> _FamilyCall:
     """The winning antigen of one family: (name|None, score, winning gene ids).
 
     Every reference allele is scored by identity x coverage (the `best_hit`
@@ -155,12 +174,17 @@ def _family_call(
         if best > 0.0:
             scored.append((best, entry.name, winners))
     if not scored:
-        return None, 0.0, ()
+        return _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
     scored.sort(key=lambda item: item[0], reverse=True)
     best_score, name, winners = scored[0]
-    if len(scored) > 1 and best_score - scored[1][0] <= document.margin:
-        return None, best_score, winners
-    return name, best_score, winners
+    names = {entry_name for _, entry_name, _ in scored}
+    return _FamilyCall(
+        name=name,
+        score=best_score,
+        genes=winners,
+        perfect=best_score >= 1.0 and len(names) == 1,
+        ambiguous=len(names) > 1,
+    )
 
 
 def _formula_keys(o: str, h1: str | None, h2: str | None) -> list[tuple[str, str, str]]:
@@ -238,24 +262,28 @@ def _lookup_formula(
 def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:
     """Ranked antigen families, then the formula table."""
     control = _control_present(calls, document)
-    resolved: dict[str, tuple[str | None, float, tuple[str, ...]]] = {
+    empty = _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
+    resolved: dict[str, _FamilyCall] = {
         family.key: _family_call(family, calls, document) for family in document.antigens
     }
-    o, o_score, _o_genes = resolved.get("o", (None, 0.0, ()))
-    h1 = resolved.get("h1", (None, 0.0, ()))
-    h2 = resolved.get("h2", (None, 0.0, ()))
+    o = resolved.get("o", empty)
+    h1 = resolved.get("h1", empty)
+    h2 = resolved.get("h2", empty)
     components = tuple(
-        ScoreComponent(name=f"antigen:{gene}", score=score)
-        for _, score, genes in resolved.values()
-        for gene in genes
+        ScoreComponent(name=f"antigen:{gene}", score=call.score)
+        for _, call in sorted(resolved.items())
+        for gene in call.genes
     )
     notes = [
-        f"formula {o or '-'}:{h1[0] or '-'}:{h2[0] or '-'}",
+        f"formula {o.name or '-'}:{h1.name or '-'}:{h2.name or '-'}",
         *(
-            f"{family_key.upper()}: {'/'.join(sorted(genes)) or '-'}"
-            for family_key, (_, _, genes) in sorted(resolved.items())
+            f"{family_key.upper()}: {call.name or '-'}"
+            + ("" if call.perfect else " (not a perfect match)")
+            for family_key, call in sorted(resolved.items())
         ),
     ]
+    # A family whose hits disagreed on the antigen name cannot be a perfect call.
+    exact = o.perfect and h1.perfect and h2.perfect
     if not control:
         return SchemeCall(
             phenotype=document.fallback,
@@ -266,13 +294,15 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
     o_names = tuple(
         entry.name for family in document.antigens if family.key == "o" for entry in family.entries
     )
-    serovars = _lookup_formula(document, o, h1[0], h2[0], o_names=o_names) if control else ()
-    score = max(o_score, h1[1], h2[1])
+    serovars = (
+        _lookup_formula(document, o.name, h1.name, h2.name, o_names=o_names) if control else ()
+    )
+    score = max(o.score, h1.score, h2.score)
     if len(serovars) == 1:
         return SchemeCall(
             phenotype=serovars[0],
             score=round(score, 4),
-            confidence="high",
+            confidence="high" if exact else "low",
             components=components,
             notes=tuple(notes),
         )
@@ -287,7 +317,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             ),
             notes=(*notes, "formula matched several serovars after widening"),
         )
-    if o is None:
+    if o.name is None:
         return SchemeCall(
             phenotype=document.unresolved,
             score=0.0,
@@ -295,10 +325,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             components=components,
             notes=tuple(notes),
         )
-    formula = f"{o}:{h1[0] or '-'}:{h2[0] or '-'}"
+    formula = f"{o.name}:{h1.name or '-'}:{h2.name or '-'}"
     return SchemeCall(
         phenotype=document.partial.format(formula=formula),
-        score=round(max(o_score, h1[1], h2[1]), 4),
+        score=round(max(o.score, h1.score, h2.score), 4),
         confidence="low",
         components=components,
         notes=tuple(notes),
