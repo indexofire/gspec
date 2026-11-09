@@ -330,7 +330,12 @@ def _write_bundle_metadata(
     (dest / "screen.json").write_text(
         json.dumps(
             {
-                "schema": "gspec.screen/1",
+                # screen/2 is required for the evidence-model knobs: under the
+                # /1 schema `dedup`/`coverage` are not part of the document and
+                # were silently ignored, so the panel still deduped per query and
+                # dropped sibling antigen references (measured: H2 vanished on
+                # real genomes and group-B calls landed on monophasic rows).
+                "schema": "gspec.screen/2",
                 # An antigen panel is a set of near-identical references: the
                 # default per-query dedup would keep only the best-matching
                 # sibling and hide the rest, so the family candidates collapse to

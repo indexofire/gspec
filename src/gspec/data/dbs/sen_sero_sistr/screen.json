@@ -1,5 +1,5 @@
 {
-  "schema": "gspec.screen/1",
+  "schema": "gspec.screen/2",
   "contigs": {
     "minid": 80.0,
     "mincov": 60.0,

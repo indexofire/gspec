@@ -138,13 +138,36 @@ The failures are informative, not random:
   (`g,m` vs `g,q`);
 - Paratyphi B and Newport return no call.
 
-Diagnosis so far: the antigen representative is chosen by *length*, so a sibling
-allele's sequence can out-rank the antigen's own copy, and the lookup commits to
-the top-ranked name instead of the candidate set (the engine change that would fix
-it — ordered candidates with "several serovars ⇒ ambiguous" — was prototyped and
-reverted: it produced confident calls from an ambiguous family). Both fixes are
-the next work item; the k-mer path is unaffected (it scores whole antigen sets,
-not single representatives). `tests/test_salmonella_regression.py` proves the
+Diagnosis, now precise:
+
+1. **Upstream cross-labels H2 alleles.** SISTR's `fljB.fasta` holds the same
+   sequence under `1,2` and `1,2,7` (max identity between the two antigens in the
+   shipped panel: 99.54 %), and real LT2 fljB matches the `1,2,7` reference at
+   100 % — so the H2 family resolves to the wrong antenna name and the monophasic
+   row wins.
+2. **The lookup commits to one name per family.** SISTR's robustness comes from
+   doing the opposite twice: it accepts *several* predicted antigens per family
+   (`isin`), and it replaces an **unknown** family with the table's whole column
+   (`sg = list(df['Serogroup'].unique())`). On these assemblies the O group is
+   frequently absent — SISTR's own answers are `-:i:1,2`, `-:r:l,w` — which gspec
+   currently turns into a partial call.
+3. `screen.json` had to be `gspec.screen/2`: under `/1` the `dedup`/`coverage`
+   keys are not part of the document and were silently ignored, so the panel still
+   deduped per query and dropped sibling references.
+
+A prototype implementing (2) — widen an undecided family to every declared name,
+and report several serovars as an ambiguous call — was written and reverted: it
+resolved 4 of the 6 failing cases but also turned a *tie* into a confident call
+and needed test rework that was not finished. It is the next work item, together
+with choosing an antigen's representative by identity to that antigen's own
+alleles rather than by length. The k-mer path is unaffected (it scores whole
+antigen sets, not single representatives).
+
+Cross-check against `sistr_cmd` 1.1.3 on eight assemblies from `~/data`
+(`--no-cgmlst`): SISTR returns `Typhimurium|Lagos`, `Goldcoast|Brikama`,
+`Schwarzengrund`, `Ohio`, `Braenderup`, `D1:l,v`, `-:-:-`; gspec agrees on the two
+unambiguous ones (25 %), calls the two monophasic formulas where SISTR lists the
+diphasic serovar, and returns partials where SISTR has no O group either. `tests/test_salmonella_regression.py` proves the
 harness on assemblies generated from the panel (100 % when the truth matches,
 a reported `Dublin -> Typhimurium` confusion when it does not). The truth table
 ships with SISTR but the genome FASTAs do not, so the real accuracy run needs

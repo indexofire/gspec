@@ -179,3 +179,71 @@ def test_cli_reads_route_through_the_kmer_substrate(tmp_path: Path) -> None:
     )
     assert typed.exit_code == 0, typed.stderr
     assert typed.stdout.splitlines()[1].split("\t")[2] == "Typhimurium"
+
+
+def test_min_identity_gates_the_kmer_path_on_an_ani_floor(tmp_path: Path) -> None:
+    """`--min-identity` is an ANI floor on the k-mer path (mash-style
+    `containment**(1/k)`), not an alignment filter.
+
+    Reads from a 1 %-diverged reference break roughly a quarter of its 27-mers
+    (`0.73**(1/27) ~ 98.8 % ANI`), so a 99 % ANI floor rejects them while a
+    looser floor keeps them.
+    """
+    from click.testing import CliRunner
+
+    from gspec.cli import app
+    from gspec.db.bundled import materialize_bundled
+
+    datadir = tmp_path / "dd"
+    datadir.mkdir()
+    materialize_bundled("sen_sero_sistr", datadir, quiet=True)
+
+    genes = _genes()
+    sequence = list(genes[_antigen_gene("h1", "i")])
+    for position in range(0, len(sequence), 100):
+        sequence[position] = "A" if sequence[position] != "A" else "C"
+    reads: list[str] = []
+    body = "".join(sequence)
+    offset = 0
+    while offset + 150 <= len(body):
+        reads.append(body[offset : offset + 150])
+        offset += 25
+    fastq = tmp_path / "diverged.fq"
+    fastq.write_text(
+        "".join(f"@r{n}\n{read}\n+\n{'I' * len(read)}\n" for n, read in enumerate(reads)),
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+
+    def present(min_identity: float) -> str:
+        table = tmp_path / f"screen-{min_identity}.tsv"
+        result = runner.invoke(
+            app,
+            [
+                "screen",
+                "-d",
+                "sen_sero_sistr",
+                "--r1",
+                str(fastq),
+                "--read-type",
+                "map-ont",
+                "--min-identity",
+                str(min_identity),
+                "-D",
+                str(datadir),
+                "-o",
+                str(table),
+                "--quiet",
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = {
+            line.split("\t")[1]: line.split("\t")[5] for line in table.read_text().splitlines()[1:]
+        }
+        return rows.get(_antigen_gene("h1", "i"), "absent")
+
+    assert present(0.0) == "yes"  # breadth alone keeps it
+    # The ANI floor drops it from the reads table (absent genes are not listed).
+    assert present(99.5) == "absent"

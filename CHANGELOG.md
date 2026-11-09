@@ -57,6 +57,20 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **The k-mer reads path gates on ANI.** `--min-identity` now means an ANI floor
+  on that path (`containment**(1/k)`, mash-style), not an alignment filter: reads
+  from a 1 %-diverged reference (~98.8 % ANI at k=27) stay in the table at
+  `--min-identity 0` and drop out at `--min-identity 99.5`. `--min-breadth` stays
+  the raw containment percentage, and both must pass for `PRESENT`.
+- **`sen_sero_sistr`'s `screen.json` is `gspec.screen/2`.** Under the `/1` schema
+  the `dedup`/`coverage` keys are not part of the document, so the panel's
+  `dedup: subject` was silently ignored and sibling antigen references were
+  dropped per query — the cause of the H2 losses on real genomes.
+- The real-genome diagnosis and the SISTR cross-check are recorded in
+  `scripts/salmonella/README.md` (upstream cross-labels `1,2`/`1,2,7` at 99.54 %;
+  SISTR widens an unknown family to the whole column and accepts several
+  predicted antigens; both behaviours are the next work item).
+
 - **Salmonella accuracy harness now resolves the database's evidence model, and
   a real-data run is recorded.** `regress_serovar.py` reads the database's own
   `screen.json` (minid/mincov/dedup/coverage) instead of passing the CLI defaults,

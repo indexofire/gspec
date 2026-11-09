@@ -226,6 +226,7 @@ def screen_reads_kmer(
     lanes: list[Path],
     database: str,
     min_breadth: float,
+    min_identity: float = 0.0,
     datadir: Path | None = None,
     *,
     quiet: bool = True,
@@ -237,6 +238,10 @@ def screen_reads_kmer(
     set by containment avoids the alignment path's weakness (near-identical
     references split the reads), and the reported row is the set's representative
     gene, so the typing engine ranks it exactly as it ranks a mapped hit.
+
+    ``min_identity`` is an **ANI floor** here, not an alignment filter: the ANI
+    estimate is ``containment**(1/k)`` (mash-style), so 95 % ANI at k=27 is a
+    containment of ~0.25. ``min_breadth`` remains the raw containment percentage.
     """
     from gspec.cluster.kmerdb import (
         containment_to_identity,
@@ -260,6 +265,7 @@ def screen_reads_kmer(
         fraction = set_hit_fraction(query, load_kmer_set(db.path, name))
         if fraction <= 0.0:
             continue
+        ani = containment_to_identity(fraction, document.k)
         gene = decode_seqid(spec.of, database).gene
         genes.append(
             GeneCoverage(
@@ -272,8 +278,8 @@ def screen_reads_kmer(
                 breadth_pct=round(100.0 * fraction, 2),
                 mean_depth=0.0,
                 reads_mapped=0,
-                present=100.0 * fraction >= min_breadth,
-                mean_identity_pct=round(containment_to_identity(fraction, document.k), 2),
+                present=100.0 * fraction >= min_breadth and ani >= min_identity,
+                mean_identity_pct=round(ani, 2),
             )
         )
     genes.sort(key=lambda coverage: coverage.gene)
@@ -327,6 +333,7 @@ def run_screen_reads(
             [path for lane in lanes for path in lane if path is not None],
             db_name,
             min_breadth,
+            min_identity,
             datadir,
             quiet=quiet,
         )
