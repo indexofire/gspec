@@ -57,6 +57,17 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **Salmonella accuracy harness now resolves the database's evidence model, and
+  a real-data run is recorded.** `regress_serovar.py` reads the database's own
+  `screen.json` (minid/mincov/dedup/coverage) instead of passing the CLI defaults,
+  which had silently overridden the panel's `dedup: subject` and hidden sibling
+  references. Measured on eight RefSeq complete genomes the ported panel scores
+  2/8 (25 %): group-B genomes land on monophasic rows (H2 not detected on real
+  data), Enteritidis/Dublin are H1 near-allele confusions (g,m vs g,q), Paratyphi B
+  and Newport return no call. The diagnosis and the intended fix (identity-based
+  antigen representatives plus ordered-candidate lookup with "several serovars ⇒
+  ambiguous") are recorded in `scripts/salmonella/README.md`.
+
 - **Salmonella data cleaning and a k-mer reads path.** The ported panel is now
   internally consistent: 621 records / 621 unique ids / 621 referenced, and every
   shipped formula row is reachable (1,536 rows; the 41 upstream serovars no

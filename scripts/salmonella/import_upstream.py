@@ -331,7 +331,18 @@ def _write_bundle_metadata(
         json.dumps(
             {
                 "schema": "gspec.screen/1",
-                "contigs": {"minid": 80.0, "mincov": 60.0, "merge_fragments": True},
+                # An antigen panel is a set of near-identical references: the
+                # default per-query dedup would keep only the best-matching
+                # sibling and hide the rest, so the family candidates collapse to
+                # one name (measured on real genomes: H2 vanished and group-B
+                # calls landed on monophasic rows). Subject dedup keeps every
+                # reference's own HSPs, which is what the ranking step needs.
+                "contigs": {
+                    "minid": 80.0,
+                    "mincov": 60.0,
+                    "merge_fragments": True,
+                    "dedup": "subject",
+                },
                 "reads": {"min_breadth": 60.0, "min_identity": 80.0},
             },
             indent=2,

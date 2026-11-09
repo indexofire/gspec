@@ -122,7 +122,29 @@ python scripts/salmonella/regress_serovar.py --db sal_hybrid \
 ```
 
 It prints accuracy, a per-serovar confusion table and the no-call list, and exits
-non-zero below `--min-accuracy`. `tests/test_salmonella_regression.py` proves the
+non-zero below `--min-accuracy`. The runner resolves the database's own
+`screen.json` (minid/mincov/dedup/coverage) — passing the CLI defaults explicitly
+overrides the panel's evidence model and silently changes the result.
+
+Measured on eight RefSeq complete genomes (NC_003197.2 Typhimurium, NC_011294.1
+Enteritidis, NC_003198.1 Typhi, NC_010102.1 Paratyphi B, NC_011080.1 Newport,
+NC_011083.1 Heidelberg, NC_011205.1 Dublin, NC_011149.1 Agona): **2/8 = 25 %**.
+The failures are informative, not random:
+
+- group-B genomes call the *monophasic* formula (`I 1,4,[5],12:i:-`,
+  `I 1,4,[5],12:r:-`) — the H2 antigen is not detected on real data even though
+  `fljB` is present, so the `"-"` row wins;
+- `Enteritidis -> Moscow` and `Dublin -> Naestved` are H1 near-allele confusions
+  (`g,m` vs `g,q`);
+- Paratyphi B and Newport return no call.
+
+Diagnosis so far: the antigen representative is chosen by *length*, so a sibling
+allele's sequence can out-rank the antigen's own copy, and the lookup commits to
+the top-ranked name instead of the candidate set (the engine change that would fix
+it — ordered candidates with "several serovars ⇒ ambiguous" — was prototyped and
+reverted: it produced confident calls from an ambiguous family). Both fixes are
+the next work item; the k-mer path is unaffected (it scores whole antigen sets,
+not single representatives). `tests/test_salmonella_regression.py` proves the
 harness on assemblies generated from the panel (100 % when the truth matches,
 a reported `Dublin -> Typhimurium` confusion when it does not). The truth table
 ships with SISTR but the genome FASTAs do not, so the real accuracy run needs

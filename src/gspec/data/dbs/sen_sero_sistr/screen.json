@@ -3,7 +3,8 @@
   "contigs": {
     "minid": 80.0,
     "mincov": 60.0,
-    "merge_fragments": true
+    "merge_fragments": true,
+    "dedup": "subject"
   },
   "reads": {
     "min_breadth": 60.0,
