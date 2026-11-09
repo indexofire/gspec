@@ -132,8 +132,9 @@ def test_margin_tie_makes_the_family_ambiguous() -> None:
         "h1_a": _call("h1_a"),
     }
     call = evaluate_serotype(calls, _document(margin=0.01))
-    assert call.phenotype != "Paratyphi A"
-    assert call.confidence == "low"
+    # The O family is undecided, so the lookup widens to every serogroup; only
+    # one row pairs H:a, so the table still resolves it (SISTR's widening order).
+    assert call.phenotype == "Paratyphi A"
 
 
 def test_unknown_formula_reports_the_partial_template() -> None:

@@ -202,24 +202,34 @@ def _widen(
 
 
 def _lookup_formula(
-    document: SerotypeDocumentV2, o: str | None, h1: str | None, h2: str | None
+    document: SerotypeDocumentV2,
+    o: str | None,
+    h1: str | None,
+    h2: str | None,
+    *,
+    o_names: tuple[str, ...] = (),
 ) -> tuple[str, ...]:
     """The serovar(s) for a formula: exact first, then similarity widening.
 
     A single serovar is a call; several are genuine ambiguity (the upstream tools
     pipe-join them, gspec reports candidates); none is a partial formula.
     """
-    if o is None:
-        return ()
     index: dict[tuple[str, str, str], list[str]] = {}
     for row in document.formulas:
         index.setdefault((row.o, row.h1, row.h2), []).append(row.serovar)
-    for key in _formula_keys(o, h1, h2):
-        found = index.get(key)
-        if found:
-            # Several serovars can share one formula; report them all.
-            return tuple(sorted(set(found)))
-    if document.similarity_groups:
+    # An undecided O group widens to every serogroup the panel declares, which is
+    # the upstream behaviour (SISTR replaces an unknown serogroup with the table's
+    # whole column and reads the result as a pipe-joined candidate list). Without
+    # it a genome whose O group is absent from the assembly cannot be named at all
+    # — which is the common case on real data (`-:i:1,2` in SISTR's own output).
+    # The H phases are NOT widened: their absence is a real monophasic signal and
+    # the `"-"` alias rows already encode it.
+    for o_token in [o] if o is not None else list(o_names) or [None]:
+        for key in _formula_keys(o_token or "-", h1, h2):
+            found = index.get(key)
+            if found:
+                return tuple(sorted(set(found)))
+    if document.similarity_groups and o is not None:
         widened = {serovar for key in _widen(document, o, h1, h2) for serovar in index.get(key, ())}
         return tuple(sorted(widened))
     return ()
@@ -253,7 +263,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             confidence="low",
             notes=("control gene absent",),
         )
-    serovars = _lookup_formula(document, o, h1[0], h2[0]) if control else ()
+    o_names = tuple(
+        entry.name for family in document.antigens if family.key == "o" for entry in family.entries
+    )
+    serovars = _lookup_formula(document, o, h1[0], h2[0], o_names=o_names) if control else ()
     score = max(o_score, h1[1], h2[1])
     if len(serovars) == 1:
         return SchemeCall(

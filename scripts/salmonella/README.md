@@ -155,13 +155,22 @@ Diagnosis, now precise:
    keys are not part of the document and were silently ignored, so the panel still
    deduped per query and dropped sibling references.
 
-A prototype implementing (2) — widen an undecided family to every declared name,
-and report several serovars as an ambiguous call — was written and reverted: it
-resolved 4 of the 6 failing cases but also turned a *tie* into a confident call
-and needed test rework that was not finished. It is the next work item, together
-with choosing an antigen's representative by identity to that antigen's own
-alleles rather than by length. The k-mer path is unaffected (it scores whole
-antigen sets, not single representatives).
+**Landed:** the O group now widens when it is undecided — an unknown serogroup
+looks up against every serogroup the panel declares, which is SISTR's
+`sg = list(df['Serogroup'].unique())`. A genome without an O call that carries
+H:i + H:1,2 therefore designates Typhimurium instead of a partial formula. The H
+phases are deliberately **not** widened: their absence is a real monophasic
+signal and the `"-"` alias rows already encode it (Paratyphi B var. Java stays a
+group-B partial).
+
+**Still open:** several predicted antigens per family (`isin`) — SISTR's other
+half. Measured need: the panel's `1,2` and `1,2,7` H2 antigens share a sequence
+(99.54 %), real LT2 fljB matches the `1,2,7` copy at 100 %, and the lookup commits
+to that one name, producing the monophasic row. The fix is to keep the family's
+candidate set, look each up, and report several serovars as an ambiguous call —
+prototyped but reverted once (it turned a tie into a confident call); it needs
+the ambiguity to stay visible. Also open: choose an antigen's representative by
+identity to that antigen's own alleles rather than by length.
 
 Cross-check against `sistr_cmd` 1.1.3 on eight assemblies from `~/data`
 (`--no-cgmlst`): SISTR returns `Typhimurium|Lagos`, `Goldcoast|Brikama`,

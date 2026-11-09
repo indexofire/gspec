@@ -15,7 +15,6 @@ below pins the measured percentage so a future regression cannot hide.
 
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 
 from gspec.cli import app
@@ -181,45 +180,50 @@ def test_phase_off_alias_resolves_the_monophasic_row(tmp_path: Path) -> None:
     assert typed.stdout.splitlines()[1].split("\t")[2] == "Paratyphi A"
 
 
-@pytest.mark.parametrize("missing", ["o_B", "h1_i"])
-def test_missing_antigen_reports_a_partial_formula(tmp_path: Path, missing: str) -> None:
-    """Without the O group nothing is looked up; without the H1 allele the
-    formula is printed with '-' and no serovar name is claimed."""
+def _designate(tmp_path: Path, *antigens: tuple[str, str]) -> str:
+    """Screen a genome built from the named antigens, then designate it."""
     genes = _genes()
-    picked = {
-        "o_B": _gene("o", "B"),
-        "h1_i": _gene("h1", "i"),
-        "h2_1_2": _gene("h2", "1,2"),
-    }
-    body = "".join(genes[gene] for key, gene in picked.items() if key != missing)
+    body = "".join(genes[_gene(family, antigen)] for family, antigen in antigens)
     genome = tmp_path / "m.fna"
     genome.write_text(f">ctg1\n{body}\n", encoding="utf-8")
     datadir = tmp_path / "dd"
     table = tmp_path / "screen.tsv"
-    assert (
-        runner.invoke(
-            app,
-            [
-                "screen",
-                "-d",
-                "sen_sero_sistr",
-                str(genome),
-                "-o",
-                str(table),
-                "--datadir",
-                str(datadir),
-                "--quiet",
-            ],
-            catch_exceptions=False,
-        ).exit_code
-        == 0
+    result = runner.invoke(
+        app,
+        [
+            "screen",
+            "-d",
+            "sen_sero_sistr",
+            str(genome),
+            "-o",
+            str(table),
+            "--datadir",
+            str(datadir),
+            "--quiet",
+        ],
+        catch_exceptions=False,
     )
+    assert result.exit_code == 0, result.stderr
     typed = runner.invoke(
         app,
         ["typing", str(table), "--datadir", str(datadir), "--format", "tsv", "--quiet"],
         catch_exceptions=False,
     )
     assert typed.exit_code == 0, typed.stderr
-    phenotype = typed.stdout.splitlines()[1].split("\t")[2]
+    return typed.stdout.splitlines()[1].split("\t")[2]
+
+
+def test_missing_o_group_widens_to_every_serogroup(tmp_path: Path) -> None:
+    """Without the O group the lookup widens to every serogroup the panel
+    declares, the upstream behaviour (SISTR replaces an unknown serogroup with
+    the table's whole column, which is how it answers ``-:i:1,2``). Only one row
+    pairs H:i with H:1,2, so the serovar still resolves."""
+    assert _designate(tmp_path, ("h1", "i"), ("h2", "1,2")) == "Typhimurium"
+
+
+def test_missing_h1_leaves_the_formula_partial(tmp_path: Path) -> None:
+    """The H phases are deliberately not widened: a missing phase is a real
+    monophasic signal, so the call stays a partial formula."""
+    phenotype = _designate(tmp_path, ("o", "B"), ("h2", "1,2"))
     assert phenotype != "Typhimurium"
     assert "Salmonella" in phenotype
