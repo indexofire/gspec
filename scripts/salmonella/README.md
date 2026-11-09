@@ -163,14 +163,23 @@ phases are deliberately **not** widened: their absence is a real monophasic
 signal and the `"-"` alias rows already encode it (Paratyphi B var. Java stays a
 group-B partial).
 
-**Still open:** several predicted antigens per family (`isin`) — SISTR's other
-half. Measured need: the panel's `1,2` and `1,2,7` H2 antigens share a sequence
-(99.54 %), real LT2 fljB matches the `1,2,7` copy at 100 %, and the lookup commits
-to that one name, producing the monophasic row. The fix is to keep the family's
-candidate set, look each up, and report several serovars as an ambiguous call —
-prototyped but reverted once (it turned a tie into a confident call); it needs
-the ambiguity to stay visible. Also open: choose an antigen's representative by
-identity to that antigen's own alleles rather than by length.
+**Still open, with the measurements that block a naive fix:**
+
+1. **Several predicted antigens per family (`isin`) — SISTR's other half.** The
+   panel's `1,2` and `1,2,7` H2 antigens share a sequence (99.54 %); real LT2
+   fljB matches the `1,2,7` copy at 100 %, so the H2 family commits to that name
+   and the monophasic row wins. Two prototypes were written and reverted: keeping
+   the top candidate only (confident call out of a tie) and keeping the whole
+   candidate set (six tests destabilised, because a margin that admits `1,2,7`
+   also admits unrelated siblings). The next attempt must decide the margin per
+   family from data, and must keep `ambiguous` visible.
+2. **Representative selection.** Choosing an antigen's k-mer representative by
+   identity to its own alleles (medoid over 15-mer containment) was implemented
+   and reverted: it exposed an upstream cross-labelling — the medoid of the H1
+   `i` antigen is ≥99 % identical to the `r,[i]` antigen's representative, so the
+   k-mer set for `i` then calls `r,[i]` on reads built from the `i` reference
+   itself. The data, not the selector, is the limitation; the H panels need an
+   allele-level audit before either fix can be trusted.
 
 Cross-check against `sistr_cmd` 1.1.3 on eight assemblies from `~/data`
 (`--no-cgmlst`): SISTR returns `Typhimurium|Lagos`, `Goldcoast|Brikama`,
