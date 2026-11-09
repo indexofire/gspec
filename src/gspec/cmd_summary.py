@@ -21,7 +21,7 @@ from gspec.dispatch import (
     stdin_table,
 )
 from gspec.formats.summary import format_summary_tsv, render_summary_json, render_summary_md
-from gspec.screening import OutputFormat
+from gspec.screening.contigs import OutputFormat
 from gspec.summary import SummaryParams, build_summary
 
 

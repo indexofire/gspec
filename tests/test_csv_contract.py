@@ -15,9 +15,8 @@ from gspec.formats.csvutil import delimited_line
 from gspec.formats.reads_tsv import format_reads_tsv
 from gspec.formats.summary import format_summary_tsv
 from gspec.formats.tsv import format_tsv
-from gspec.hits import Hit
-from gspec.reads import GeneCoverage, ReadsReport
-from gspec.report import Report
+from gspec.report import Hit, Report
+from gspec.screening.reads import GeneCoverage, ReadsReport
 from gspec.summary import SummaryMatrix, SummaryParams, SummaryRow
 
 
@@ -109,7 +108,7 @@ def test_summary_csv_quotes_a_comma_gene_in_the_header() -> None:
 def test_cluster_csv_keeps_file_and_row_widths_in_sync() -> None:
     """Given a file path containing a comma, When rendered as cluster CSV,
     Then the header and row parse to the same field count."""
-    from gspec.cluster import ClusterReport
+    from gspec.cluster.core import ClusterReport
 
     report = ClusterReport(file="/tmp/in,put.fa", best=None, loci=())
     rows = _rows(format_cluster_tsv([report], csv=True, noheader=False, nopath=False, typed=False))
@@ -148,7 +147,7 @@ def test_summary_reads_its_own_quoted_csv() -> None:
 def test_typing_input_reads_its_own_quoted_csv() -> None:
     """Given a quoted CSV screen table, When typing parses stdin, Then the
     quoted FILE/GENE cells are not split."""
-    from gspec.typing_input import read_typing_input
+    from gspec.typing.input import read_typing_input
 
     text = (
         "#FILE,SEQUENCE,START,END,STRAND,GENE,COVERAGE,COVERAGE_MAP,GAPS,"
@@ -170,7 +169,7 @@ def test_tsv_dialect_neutralizes_embedded_delimiters() -> None:
 def test_db_search_tsv_row_is_table_safe() -> None:
     """Given a legacy record whose product contains a tab, When the search
     row is rendered, Then PRODUCT stays one cell."""
-    from gspec.db_query_ops import search_tsv_row
+    from gspec.db.query_ops import search_tsv_row
     from gspec.records import Record
 
     record = Record(

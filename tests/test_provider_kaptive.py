@@ -75,7 +75,7 @@ def kaptive_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     empty datadir."""
     url = FIXTURE.as_uri()
     monkeypatch.setattr(
-        "gspec.db_ops.REGISTRY",
+        "gspec.db.ops.REGISTRY",
         {
             name: ClusterProvider(
                 name=name,
@@ -170,7 +170,7 @@ def test_fetched_kaptive_db_screens_as_cluster(
     datadir.mkdir()
     url = (DATA / "screening.gbk").as_uri()
     monkeypatch.setattr(
-        "gspec.db_ops.REGISTRY",
+        "gspec.db.ops.REGISTRY",
         {
             "ecoli_kps": ClusterProvider(
                 name="ecoli_kps",

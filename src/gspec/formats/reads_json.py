@@ -12,7 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from gspec.formats.json import ToolDocument, utc_timestamp
-from gspec.reads import GeneCoverage, ReadsParams, ReadsReport
+from gspec.screening.reads import GeneCoverage, ReadsParams, ReadsReport
 
 
 class GeneCoverageDocument(BaseModel, frozen=True):

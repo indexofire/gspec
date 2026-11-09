@@ -10,7 +10,7 @@ from click.testing import CliRunner
 from pydantic import TypeAdapter
 
 from gspec.cli import app
-from gspec.db import make_blast_db
+from gspec.db.core import make_blast_db
 from gspec.errors import ERROR_CODES, ErrorEnvelope, InputError, ensure_input_file, render_error
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"

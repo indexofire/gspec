@@ -10,7 +10,7 @@ from click.testing import CliRunner, Result
 from pydantic import TypeAdapter
 
 from gspec.cli import app
-from gspec.db import make_blast_db
+from gspec.db.core import make_blast_db
 from gspec.fasta import iter_fasta
 from gspec.formats.reads_json import ReadsDocument
 

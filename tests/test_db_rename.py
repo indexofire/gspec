@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from gspec.bundled import find_bundled, materialize_bundled
 from gspec.cli import app
+from gspec.db.bundled import find_bundled, materialize_bundled
 from gspec.dbcodec import decode_seqid
 from gspec.fasta import iter_fasta
 from gspec.records import read_manifest

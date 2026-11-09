@@ -14,8 +14,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from gspec import __version__
-from gspec.hits import Hit
-from gspec.report import Report, ScreeningParams
+from gspec.report import Hit, Report, ScreeningParams
 
 
 class FragmentDocument(BaseModel, frozen=True):

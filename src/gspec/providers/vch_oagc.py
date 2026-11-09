@@ -9,7 +9,7 @@ species schemes. OLU loci are not in this build yet.
 
 from pathlib import Path
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.providers.cluster_common import ClusterProvider
 
 _ASSETS = Path(__file__).parent / "assets" / "vch_oagc"

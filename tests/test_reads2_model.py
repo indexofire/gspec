@@ -8,13 +8,13 @@ from datetime import UTC, datetime
 
 from pydantic import TypeAdapter
 
+from gspec.align.paf import PafRecord
 from gspec.formats.reads_json import (
     Reads2Document,
     render_reads2_json,
     render_reads_json,
 )
-from gspec.paf import PafRecord
-from gspec.reads import GeneCoverage, ReadsParams, ReadsReport, aggregate_coverage
+from gspec.screening.reads import GeneCoverage, ReadsParams, ReadsReport, aggregate_coverage
 
 PINNED_NOW = datetime(2026, 9, 20, 12, 0, 0, tzinfo=UTC)
 GENE = "db~~~geneA~~~ACC~~~RES"

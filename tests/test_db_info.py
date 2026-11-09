@@ -14,10 +14,10 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from gspec.bundled import materialize_bundled
 from gspec.cli import app
-from gspec.db_info_manual import render_db_manual
-from gspec.db_info_ops import collect_db_info, render_db_info
+from gspec.db.bundled import materialize_bundled
+from gspec.db.info_manual import render_db_manual
+from gspec.db.info_ops import collect_db_info, render_db_info
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"
 GENE_FASTA = ">labcur1 cur1\nATGGCTAGCTAGGCTAAGGCTTAGCGGATCCGATTACAGGCATCAGGGCTTAACC\n"
@@ -285,7 +285,7 @@ def test_tsv_flag_forces_the_table_on_a_terminal(
 ) -> None:
     """Given a TTY stdout, When --tsv is passed, Then the stable FIELD/VALUE
     table is printed instead of the man page (agents and diffs need it)."""
-    monkeypatch.setattr("gspec.cmd_db_info._stdout_is_tty", lambda: True)
+    monkeypatch.setattr("gspec.db.cmd_info._stdout_is_tty", lambda: True)
 
     forced = runner.invoke(app, ["db", "info", "-d", "cje_cps", "--datadir", str(datadir), "--tsv"])
 
@@ -297,7 +297,7 @@ def test_tsv_flag_forces_the_table_on_a_terminal(
 def test_tty_stdout_gets_the_manual(datadir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Given a TTY stdout and no --tsv, When `db info` runs, Then the manual is
     printed (the terminal default)."""
-    monkeypatch.setattr("gspec.cmd_db_info._stdout_is_tty", lambda: True)
+    monkeypatch.setattr("gspec.db.cmd_info._stdout_is_tty", lambda: True)
 
     result = runner.invoke(app, ["db", "info", "-d", "cje_cps", "--datadir", str(datadir)])
 
@@ -312,7 +312,7 @@ def test_every_catalog_and_bundled_database_carries_guidance(datadir: Path) -> N
     literature reference and one interpretation caveat, and a synthesized
     usage recipe — the completeness gate that stops a database shipping
     without documentation."""
-    from gspec.bundled import bundled_names
+    from gspec.db.bundled import bundled_names
     from gspec.providers import REGISTRY
 
     missing: list[str] = []
@@ -331,7 +331,7 @@ def test_every_database_has_at_least_one_resolvable_reference(datadir: Path) -> 
     Then at least one carries a DOI or URL an agent can follow. Individual
     entries may be bare citations (a national standard, an older paper without
     a pinned DOI), but a page never points nowhere."""
-    from gspec.bundled import bundled_names
+    from gspec.db.bundled import bundled_names
     from gspec.providers import REGISTRY
 
     unresolved: list[str] = []

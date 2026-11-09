@@ -9,17 +9,17 @@ import random
 import tempfile
 from pathlib import Path
 
-from gspec.cluster import LocusCall
-from gspec.gbfeatures import FeaturesDocument, LocusFeatures
-from gspec.kmerdb import (
+from gspec.cluster.core import LocusCall
+from gspec.cluster.gbfeatures import FeaturesDocument, LocusFeatures
+from gspec.cluster.kmerdb import (
     KmerDbDocument,
     KmerSetSpec,
     count_fastq_kmers,
     count_sequence_kmers,
     materialize_kmer_sets,
 )
-from gspec.screening_kmer import best_phenotype, locus_calls_from_kmers
-from gspec.typing_models import TypingDocument, read_typing_document
+from gspec.screening.kmer import best_phenotype, locus_calls_from_kmers
+from gspec.typing.models import TypingDocument, read_typing_document
 
 _K = 31
 

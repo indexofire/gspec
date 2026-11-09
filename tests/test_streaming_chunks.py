@@ -19,20 +19,20 @@ from typing import Literal
 import pytest
 from click.testing import CliRunner
 
-from gspec import screening, screening_cluster
-from gspec.blast import BlastRow
+from gspec.align.blast import BlastRow
 from gspec.cli import app
-from gspec.cluster import ClusterParams, ClusterReport, load_features, screen_cluster_file
-from gspec.db import Database, make_blast_db
+from gspec.cluster.core import ClusterParams, ClusterReport, load_features, screen_cluster_file
+from gspec.cluster.gbfeatures import FeaturesDocument
+from gspec.db.core import Database, make_blast_db
 from gspec.fasta import iter_fasta
 from gspec.formats.cluster_md import cluster_md_file_chunk, cluster_md_head, render_cluster_md
 from gspec.formats.md import md_report_chunk, md_report_preamble, render_markdown
 from gspec.formats.tsv import format_tsv, tsv_file_chunk, tsv_preamble
-from gspec.gbfeatures import FeaturesDocument
-from gspec.hits import process_rows
-from gspec.report import Report, ScreeningParams
-from gspec.screening import OutputFormat, find_database, run_screen
-from gspec.screening_cluster import run_cluster_screen
+from gspec.report import Report, ScreeningParams, process_rows
+from gspec.screening import cluster as screening_cluster
+from gspec.screening import contigs as screening
+from gspec.screening.cluster import run_cluster_screen
+from gspec.screening.contigs import OutputFormat, find_database, run_screen
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"
 CONTIGS = Path(__file__).parent / "data" / "contigs"

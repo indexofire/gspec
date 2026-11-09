@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from gspec.composite_models import read_composite
+from gspec.composite.models import read_composite
 from gspec.errors import DatabaseError, InputError
 
 

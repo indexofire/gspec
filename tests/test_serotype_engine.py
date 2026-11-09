@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from gspec.cluster import GeneCall
-from gspec.serotype_engine import evaluate_serotype
-from gspec.serotype_models import SerotypeDocument, SerotypeRule
+from gspec.cluster.core import GeneCall
+from gspec.typing.serotype_engine import evaluate_serotype
+from gspec.typing.serotype_models import SerotypeDocument, SerotypeRule
 
 
 def _call(

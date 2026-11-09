@@ -1,9 +1,8 @@
 """Unit tests for the abricate-byte-compatible TSV/CSV formatter (SPEC.md §5)."""
 
-from gspec.blast import BlastRow
+from gspec.align.blast import BlastRow
 from gspec.formats.tsv import HEADER, format_tsv
-from gspec.hits import process_rows
-from gspec.report import Report
+from gspec.report import Report, process_rows
 
 TET_ID = "tinyamr~~~tetA~~~NC_000913.3:100-900~~~TETRACYCLINE"
 

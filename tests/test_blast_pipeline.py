@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from gspec.blast import run_blastn
-from gspec.db import Database
+from gspec.align.blast import run_blastn
+from gspec.db.core import Database
 from gspec.errors import DependencyError, GspecError
 from gspec.report import ScreeningParams
 

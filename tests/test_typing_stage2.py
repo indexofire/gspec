@@ -10,14 +10,14 @@ test_typing_models.py; the end-to-end fixture in test_gene_typing2.py.
 
 from typing import ClassVar, Literal
 
-from gspec.cluster import GeneCall
-from gspec.cluster_math import Verdict
-from gspec.typing_decide import decide_scheme, decide_typing
-from gspec.typing_engine import score_exact_set, score_weighted_genes
-from gspec.typing_gene import compose_call
-from gspec.typing_models import TypingScheme
-from gspec.typing_results import PhenotypeDetail, PhenotypeScore, SchemeCall, ScoredRule
-from gspec.typing_rules import ExactSetRule, WeightedGenesRule
+from gspec.cluster.core import GeneCall
+from gspec.cluster.math import Verdict
+from gspec.typing.decide import decide_scheme, decide_typing
+from gspec.typing.engine import score_exact_set, score_weighted_genes
+from gspec.typing.gene import compose_call
+from gspec.typing.models import TypingScheme
+from gspec.typing.results import PhenotypeDetail, PhenotypeScore, SchemeCall, ScoredRule
+from gspec.typing.rules import ExactSetRule, WeightedGenesRule
 
 
 def gene(

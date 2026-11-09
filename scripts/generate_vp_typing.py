@@ -56,10 +56,10 @@ from vp_typing_support import (
     write_splits,
 )
 
-from gspec.clusterbuild import parse_cluster_input, resolve_gene_ids
-from gspec.gbfeatures import LocusSequence
-from gspec.typing_models import TypingDocument, TypingScheme
-from gspec.typing_rules import (
+from gspec.cluster.build import parse_cluster_input, resolve_gene_ids
+from gspec.cluster.gbfeatures import LocusSequence
+from gspec.typing.models import TypingDocument, TypingScheme
+from gspec.typing.rules import (
     ClusterMatchRule,
     CoverageComponent,
     IdentityComponent,

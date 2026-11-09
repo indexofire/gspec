@@ -26,12 +26,12 @@ from typing import Any
 import pytest
 from click.testing import CliRunner
 
-from gspec.blast import ensure_blast, screen_file
+from gspec.align.blast import ensure_blast, screen_file
 from gspec.cli import app
-from gspec.db import discover_databases
+from gspec.db.core import discover_databases
 from gspec.formats.json import render_json
 from gspec.formats.md import render_markdown
-from gspec.mcp import serve
+from gspec.mcp.server import serve
 from gspec.report import ScreeningParams
 
 DATA = Path(__file__).parent / "data" / "typing"

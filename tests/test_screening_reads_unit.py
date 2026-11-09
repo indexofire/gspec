@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from gspec import screening_reads
 from gspec.engines import OutputFormat
-from gspec.screening_reads import run_screen_reads
+from gspec.screening import reads_run as screening_reads
+from gspec.screening.reads_run import run_screen_reads
 
 READS_DB_DIR = Path(__file__).parent / "data" / "reads_db"
 READS = Path(__file__).parent / "data" / "reads"

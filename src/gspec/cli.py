@@ -7,15 +7,15 @@ from typing import Any
 import click
 
 from gspec import __version__
-from gspec.cmd_db import register_db_command
-from gspec.cmd_screen import register_screen_command
 from gspec.cmd_summary import register_summary_command
 from gspec.cmd_typing import register_typing_command
+from gspec.db.cmd import register_db_command
 from gspec.dispatch import dispatch
 from gspec.errors import UsageError, render_error, usage_fail
 from gspec.formats.json import VersionDocument
 from gspec.formats.schemas import SCHEMA_MODELS
-from gspec.mcp import register_mcp_command
+from gspec.mcp.server import register_mcp_command
+from gspec.screening.cmd import register_screen_command
 
 
 class GspecGroup(click.Group):

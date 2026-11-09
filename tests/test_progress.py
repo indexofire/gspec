@@ -27,14 +27,14 @@ from rich.progress import (
 )
 
 import gspec.progress
-from gspec.db import make_blast_db
-from gspec.db_ops import ProviderReceipt, perform_fetch
+from gspec.db.core import make_blast_db
+from gspec.db.ops import ProviderReceipt, perform_fetch
 from gspec.fasta import iter_fasta
 from gspec.progress import IdleBatch, make_progress, screen_progress
 from gspec.providers.common import Provider
 from gspec.records import Record
-from gspec.screening import OutputFormat, run_screen
-from gspec.screening_reads_positional import run_screen_reads_positional
+from gspec.screening.contigs import OutputFormat, run_screen
+from gspec.screening.reads_glob import run_screen_reads_positional
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"
 CONTIGS = Path(__file__).parent / "data" / "contigs"
@@ -275,8 +275,8 @@ def test_fetch_bar_advances_per_db_and_keeps_receipts(
     (db, records, dbtype) and the captured bar advances 2/2."""
     first = synthetic_provider(tmp_path, "synone")
     second = synthetic_provider(tmp_path, "syntwo")
-    monkeypatch.setattr("gspec.db_ops.REGISTRY", {first.name: first, second.name: second})
-    monkeypatch.setattr("gspec.db_ops.DEFAULT_DBS", (first.name, second.name))
+    monkeypatch.setattr("gspec.db.ops.REGISTRY", {first.name: first, second.name: second})
+    monkeypatch.setattr("gspec.db.ops.DEFAULT_DBS", (first.name, second.name))
 
     quiet_dd = tmp_path / "quiet-dd"
     quiet_dd.mkdir()
@@ -348,8 +348,8 @@ def test_fetch_emit_callback_runs_inside_the_bar(
     same receipts are yielded and the callback sees every database."""
     first = synthetic_provider(tmp_path, "synone")
     second = synthetic_provider(tmp_path, "syntwo")
-    monkeypatch.setattr("gspec.db_ops.REGISTRY", {first.name: first, second.name: second})
-    monkeypatch.setattr("gspec.db_ops.DEFAULT_DBS", (first.name, second.name))
+    monkeypatch.setattr("gspec.db.ops.REGISTRY", {first.name: first, second.name: second})
+    monkeypatch.setattr("gspec.db.ops.DEFAULT_DBS", (first.name, second.name))
     datadir = tmp_path / "dd"
     datadir.mkdir()
     emitted: list[ProviderReceipt] = []

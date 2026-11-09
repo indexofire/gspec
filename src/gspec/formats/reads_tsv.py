@@ -9,7 +9,7 @@ single document. Chunk concatenation is byte-identical to the buffered
 from collections.abc import Iterable
 
 from gspec.formats.csvutil import delimited_line
-from gspec.reads import GeneCoverage, ReadsReport
+from gspec.screening.reads import GeneCoverage, ReadsReport
 
 _READS_HEADER = "#SAMPLE\tGENE\tBREADTH%\tDEPTH\tREADS\tPRESENT\tDATABASE\tACCESSION\tPRODUCT"
 _READS2_HEADER = f"{_READS_HEADER}\tIDENTITY%"

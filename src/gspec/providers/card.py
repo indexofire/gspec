@@ -28,7 +28,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.errors import DatabaseError
 from gspec.providers.common import Dbtype, Provider
 from gspec.records import Record

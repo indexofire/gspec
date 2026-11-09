@@ -9,10 +9,11 @@ public surface (``gspec schema`` unknown-name message iterates it).
 
 from pydantic import BaseModel
 
-from gspec.db_info_ops import DbInfoDocument
-from gspec.db_ops import DatadirDocument, DbListDocument
-from gspec.db_query_ops import DbOutdatedDocument
-from gspec.db_setup_ops import DbSetupDocument
+from gspec.cluster.gbfeatures import FeaturesDocument
+from gspec.db.info_ops import DbInfoDocument
+from gspec.db.ops import DatadirDocument, DbListDocument
+from gspec.db.query_ops import DbOutdatedDocument
+from gspec.db.setup_ops import DbSetupDocument
 from gspec.errors import ErrorEnvelope
 from gspec.formats.cluster import ClusterDocument
 from gspec.formats.cluster2 import Cluster2Document
@@ -21,11 +22,10 @@ from gspec.formats.locus_map import LocusMapDocument
 from gspec.formats.reads_json import Reads2Document, ReadsDocument
 from gspec.formats.summary import SummaryDocument
 from gspec.formats.typing_result import TypingResultDocument
-from gspec.gbfeatures import FeaturesDocument
-from gspec.gene_floors import GeneFloors
-from gspec.screen_defaults import ScreenDefaults
-from gspec.serotype_models import SerotypeDocument
-from gspec.typing_models import TypingDocument
+from gspec.screening.defaults import ScreenDefaults
+from gspec.screening.floors import GeneFloors
+from gspec.typing.models import TypingDocument
+from gspec.typing.serotype_models import SerotypeDocument
 
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "report": ReportDocument,

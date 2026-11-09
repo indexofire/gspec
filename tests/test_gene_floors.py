@@ -12,18 +12,18 @@ from pathlib import Path
 
 import pytest
 
-from gspec.db import Database
+from gspec.align.paf import PafRecord, filter_alignments
+from gspec.db.core import Database
 from gspec.errors import DatabaseError, InputError
-from gspec.gene_floors import (
+from gspec.report import Hit
+from gspec.screening.floors import (
     GeneFloors,
     apply_gene_floors,
     gene_floors,
     read_floors,
     validate_floors,
 )
-from gspec.hits import Hit
-from gspec.paf import PafRecord, filter_alignments
-from gspec.reads import aggregate_coverage
+from gspec.screening.reads import aggregate_coverage
 
 GENE_A = "db~~~geneA~~~ACC~~~RES"
 GENE_B = "db~~~geneB~~~ACC~~~RES"
@@ -273,7 +273,7 @@ def test_hit_floors_apply_to_contig_mode() -> None:
     """Given default 90 and lpxA floor 80, When contig hits arrive at 89 and
     84, Then the 89% gene drops while lpxA survives — the BLAST global minid
     is only the search floor, the per-gene floor is the verdict."""
-    from gspec.gene_floors import apply_hit_floors
+    from gspec.screening.floors import apply_hit_floors
 
     floors = GeneFloors(default=90.0, genes={"lpxA": 80.0})
     kept = apply_hit_floors([hit("HS45", 89.0), hit("lpxA", 84.0)], floors)
@@ -281,7 +281,7 @@ def test_hit_floors_apply_to_contig_mode() -> None:
 
 
 def test_hit_floors_keep_row_at_the_floor() -> None:
-    from gspec.gene_floors import apply_hit_floors
+    from gspec.screening.floors import apply_hit_floors
 
     kept = apply_hit_floors([hit("HS45", 90.0)], GeneFloors(genes={"HS45": 90.0}))
     assert len(kept) == 1

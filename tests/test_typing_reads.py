@@ -15,7 +15,7 @@ from click.testing import CliRunner
 
 from gspec.cli import app
 from gspec.fasta import iter_fasta
-from gspec.typing_input import read_typing_input
+from gspec.typing.input import read_typing_input
 
 DATA = Path(__file__).parent / "data" / "typing"
 DB = "markers"

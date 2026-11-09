@@ -19,12 +19,12 @@ import pytest
 from click.testing import CliRunner
 
 from gspec.cli import app
-from gspec.cluster import ClusterParams, load_features, load_typing, screen_cluster_file
-from gspec.db import discover_databases
+from gspec.cluster.core import ClusterParams, load_features, load_typing, screen_cluster_file
+from gspec.db.core import discover_databases
 from gspec.fasta import iter_fasta
 from gspec.formats.cluster import format_cluster_tsv, render_cluster_json
 from gspec.formats.cluster_md import render_cluster_md
-from gspec.typing_engine import evaluate_typing
+from gspec.typing.engine import evaluate_typing
 
 DATA = Path(__file__).parent / "data" / "cluster"
 GOLDEN = Path(__file__).parent / "golden"
@@ -182,7 +182,7 @@ class TestOutputWiring:
         same JSON as the CLI)."""
         from io import StringIO
 
-        from gspec.mcp import serve
+        from gspec.mcp.server import serve
 
         raw = (
             json.dumps(

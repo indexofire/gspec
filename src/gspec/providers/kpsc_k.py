@@ -18,7 +18,7 @@ kind-cluster database (locus calls; no typing model — phenotype stays null
 until a typing.json is authored). Cite Kaptive when you use the results.
 """
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.providers.cluster_common import ClusterProvider
 
 NAME = "kpsc_k"

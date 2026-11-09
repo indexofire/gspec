@@ -11,8 +11,8 @@ import pytest
 from click.testing import CliRunner
 
 from gspec.cli import app
-from gspec.db import make_blast_db
-from gspec.mcp import serve
+from gspec.db.core import make_blast_db
+from gspec.mcp.server import serve
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"
 CONTIGS = Path(__file__).parent / "data" / "contigs"

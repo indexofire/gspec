@@ -14,11 +14,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from gspec.db_txn import TXN_PREFIX
+from gspec.db.txn import TXN_PREFIX
 from gspec.errors import InputError
 from gspec.formats.json import ToolDocument
 from gspec.jsonio import validation_reason, write_json
-from gspec.layout import manifest_path
+from gspec.paths import manifest_path
 
 _SHA256_SHAPE = re.compile(r"[0-9a-fA-F]{64}")
 
@@ -123,7 +123,7 @@ class Manifest(BaseModel, frozen=True):
     license: str | None = None
     note: str | None = None
     # "bundled" marks a database materialized from the wheel's own content
-    # (gspec.bundled — public-domain panels); None is omitted at
+    # (gspec.db.bundled — public-domain panels); None is omitted at
     # serialization so every other manifest stays byte-identical.
     source: Literal["bundled"] | None = None
     tool: ToolDocument = ToolDocument()

@@ -60,7 +60,7 @@ def test_bare_invocation_prints_help(argv: list[str], monkeypatch: pytest.Monkey
     all, Then the full help prints with the no-args-is-help exit code and no
     gspec.error envelope (REGISTRY emptied so a bare `db fetch` that leaked
     past help could never start a real download)."""
-    monkeypatch.setattr("gspec.db_ops.REGISTRY", {})
+    monkeypatch.setattr("gspec.db.ops.REGISTRY", {})
     result = runner.invoke(app, argv)
     combined = _normalized(result)
     assert result.exit_code == BARE_HELP_EXIT
@@ -85,7 +85,7 @@ def test_db_fetch_flag_without_select_is_usage_error(
     """Given `db fetch --datadir D` without -s/NAME, When run, Then exit 2
     with a USAGE_ERROR envelope asking for -d/--db NAME... — flags
     present means help does not fire, and no download is implied."""
-    monkeypatch.setattr("gspec.db_ops.REGISTRY", {})
+    monkeypatch.setattr("gspec.db.ops.REGISTRY", {})
     result = runner.invoke(app, ["db", "fetch", "--datadir", str(tmp_path)])
     assert result.exit_code == 2
     assert "gspec.error" in result.stderr

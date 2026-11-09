@@ -6,9 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from gspec.errors import DatabaseError
-from gspec.gbfeatures import FeaturesDocument, GeneFeature, LocusFeatures
-from gspec.gene_families import (
+from gspec.cluster.gbfeatures import FeaturesDocument, GeneFeature, LocusFeatures
+from gspec.cluster.gene_families import (
     GeneFamilyDocument,
     HomologyHit,
     build_family_document,
@@ -17,6 +16,7 @@ from gspec.gene_families import (
     read_gene_families,
     write_gene_families,
 )
+from gspec.errors import DatabaseError
 
 FEATURES = FeaturesDocument(
     loci=(

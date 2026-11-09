@@ -14,15 +14,15 @@ from pathlib import Path
 
 import pytest
 
-from gspec.composite_build import (
+from gspec.composite.build import (
     BUNDLE_DIRNAME,
     build_composite,
     composite_document_path,
     composite_names,
     composite_summary,
 )
-from gspec.composite_models import DOCUMENT_FILENAME, read_composite
-from gspec.db import discover_databases
+from gspec.composite.models import DOCUMENT_FILENAME, read_composite
+from gspec.db.core import discover_databases
 from gspec.errors import DatabaseError, InputError
 
 

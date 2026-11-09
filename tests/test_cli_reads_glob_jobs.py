@@ -21,15 +21,15 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner, Result
 
-from gspec import screening_reads_positional
+from gspec.align.paf import ReadType
 from gspec.cli import app
-from gspec.db import Database
+from gspec.db.core import Database
 from gspec.engines import Emit, OutputFormat
 from gspec.errors import InputError
 from gspec.formats.md import reads_md_chunk, reads_md_preamble
 from gspec.formats.reads_tsv import format_reads_tsv, reads_tsv_chunk, reads_tsv_preamble
-from gspec.paf import ReadType
-from gspec.reads import GeneCoverage, ReadsParams, ReadsReport
+from gspec.screening import reads_glob as screening_reads_positional
+from gspec.screening.reads import GeneCoverage, ReadsParams, ReadsReport
 
 READS_DB_DIR = Path(__file__).parent / "data" / "reads_db"
 READS = Path(__file__).parent / "data" / "reads"

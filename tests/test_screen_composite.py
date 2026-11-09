@@ -15,8 +15,8 @@ import pytest
 from click.testing import CliRunner
 
 from gspec.cli import app
-from gspec.composite_build import build_composite
-from gspec.dbbuild import build_database
+from gspec.composite.build import build_composite
+from gspec.db.build import build_database
 from gspec.records import Record, write_records
 
 DB = "scheme_gene"

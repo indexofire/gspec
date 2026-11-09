@@ -17,10 +17,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from gspec.cluster import BestCall, ClusterParams, ClusterReport, GeneCall, LocusCall
+from gspec.cluster.core import BestCall, ClusterParams, ClusterReport, GeneCall, LocusCall
 from gspec.formats.csvutil import delimited_line
 from gspec.formats.json import ToolDocument, utc_timestamp
-from gspec.typing_results import PhenotypeDetail
+from gspec.typing.results import PhenotypeDetail
 
 CLUSTER_TSV_HEADER = "FILE\tBEST_LOCUS\tTYPE\tCOVERAGE\tIDENTITY\tPRESENT\tPARTIAL\tMISSING_IDS"
 CLUSTER_TSV_HEADER_TYPED = (

@@ -12,9 +12,9 @@ from typing import Literal
 
 import pytest
 
-from gspec.blast import run_blastn
-from gspec.db import Database, make_blast_db
-from gspec.minimap2_run import run_minimap2
+from gspec.align.blast import run_blastn
+from gspec.align.minimap2_run import run_minimap2
+from gspec.db.core import Database, make_blast_db
 from gspec.report import ScreeningParams
 
 pytest.importorskip("gseek")

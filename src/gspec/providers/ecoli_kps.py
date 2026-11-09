@@ -19,7 +19,7 @@ reports best-locus (group 2+3 K…) calls, phenotype null. Cite Kaptive when
 you use the results.
 """
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.providers.cluster_common import ClusterProvider
 
 NAME = "ecoli_kps"

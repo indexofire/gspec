@@ -27,12 +27,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from gspec import config
-from gspec.cluster import ClusterParams, load_features, load_typing, screen_cluster_file
-from gspec.screening import find_database
-from gspec.typing_decide import decide_typing
-from gspec.typing_engine import score_rules
-from gspec.typing_models import uses_cluster_v2
+from gspec import paths
+from gspec.cluster.core import ClusterParams, load_features, load_typing, screen_cluster_file
+from gspec.screening.contigs import find_database
+from gspec.typing.decide import decide_typing
+from gspec.typing.engine import score_rules
+from gspec.typing.models import uses_cluster_v2
 
 NO_CALL = "(no call)"
 AMBIGUOUS = "-"
@@ -55,7 +55,7 @@ def calibrate(
 ) -> list[SampleResult]:
     """Screen every labeled sample against the typed cluster db and reduce
     each to a calibration row (the importable seam the self-test drives)."""
-    database = find_database(config.resolve_datadir(datadir), db_name)
+    database = find_database(paths.resolve_datadir(datadir), db_name)
     typing_document = load_typing(database)
     if typing_document is None:
         raise SystemExit(

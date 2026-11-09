@@ -19,12 +19,12 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from gspec.bundled import find_bundled
 from gspec.cli import app
+from gspec.db.bundled import find_bundled
 from gspec.fasta import iter_fasta
 from gspec.records import read_manifest
-from gspec.typing_models import read_typing_document
-from gspec.typing_rules import ExactSetRule
+from gspec.typing.models import read_typing_document
+from gspec.typing.rules import ExactSetRule
 
 SCHEMES = Path(__file__).parent / "data" / "typing" / "schemes"
 GOLDEN = Path(__file__).parent / "golden"

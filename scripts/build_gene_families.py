@@ -25,9 +25,8 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 
-from gspec.fasta import iter_fasta
-from gspec.gbfeatures import FeaturesDocument
-from gspec.gene_families import (
+from gspec.cluster.gbfeatures import FeaturesDocument
+from gspec.cluster.gene_families import (
     GENE_FAMILY_FILENAME,
     HomologyHit,
     build_family_document,
@@ -35,6 +34,7 @@ from gspec.gene_families import (
     filter_homology_hits,
     write_gene_families,
 )
+from gspec.fasta import iter_fasta
 from gspec.proctools import run_tool
 
 # Standard genetic code (bacterial table 11 uses the same internal codons;

@@ -1,10 +1,10 @@
 """gspec.cluster/2 renderers: multi-scheme cluster-screening output.
 
 A cluster database whose typing document holds more than one scheme
-(:func:`gspec.typing_models.uses_cluster_v2`) renders this VARIANT of the
+(:func:`gspec.typing.models.uses_cluster_v2`) renders this VARIANT of the
 cluster document: same body as /1, but each file's ``best`` drops its
 phenotype fields and a ``phenotypes`` map keyed by scheme name (document
-order) carries one :class:`~gspec.typing_results.SchemeCall` per scheme —
+order) carries one :class:`~gspec.typing.results.SchemeCall` per scheme —
 compose schemes included, rendered from their sibling calls, each
 rule-based call carrying its winning locus's evidence (the additive
 ``winner_*`` fields).
@@ -33,7 +33,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from gspec.cluster import BestCall, ClusterParams, ClusterReport
+from gspec.cluster.core import BestCall, ClusterParams, ClusterReport
 from gspec.formats.cluster import (
     ClusterLocusDocument,
     ClusterParamsDocument,
@@ -42,8 +42,8 @@ from gspec.formats.cluster import (
 )
 from gspec.formats.csvutil import delimited_line
 from gspec.formats.json import ToolDocument, utc_timestamp
-from gspec.typing_models import TypingDocument
-from gspec.typing_results import SchemeCall
+from gspec.typing.models import TypingDocument
+from gspec.typing.results import SchemeCall
 
 _EVIDENCE_COLUMNS = ("LOCUS", "COVERAGE", "IDENTITY", "PRESENT", "PARTIAL", "MISSING")
 _GROUP_SUFFIX = "_GROUP"

@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from gspec.blast import screen_file
-from gspec.db import Database, discover_databases, make_blast_db
+from gspec.align.blast import screen_file
+from gspec.db.core import Database, discover_databases, make_blast_db
 from gspec.errors import InputError
 from gspec.report import ScreeningParams
 

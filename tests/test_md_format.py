@@ -7,12 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from gspec.blast import screen_file
-from gspec.db import Database, make_blast_db
+from gspec.align.blast import screen_file
+from gspec.db.core import Database, make_blast_db
 from gspec.formats.md import render_markdown, render_reads_markdown
-from gspec.hits import Hit
-from gspec.reads import GeneCoverage, ReadsParams, ReadsReport
-from gspec.report import Report, ScreeningParams
+from gspec.report import Hit, Report, ScreeningParams
+from gspec.screening.reads import GeneCoverage, ReadsParams, ReadsReport
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"
 CONTIGS = Path(__file__).parent / "data" / "contigs"

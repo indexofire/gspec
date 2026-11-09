@@ -6,7 +6,7 @@ columns — the call's seven, then ``GENES``: the FILE's present gene names
 (sorted, ``;``-joined), repeated on each of the FILE's scheme rows so every
 call is auditable against the hits that drove it. Ambiguous calls render
 ``-`` and carry the candidate pair in NOTES; JSON keeps the full
-:class:`gspec.typing_results.SchemeCall` objects plus the additive
+:class:`gspec.typing.results.SchemeCall` objects plus the additive
 ``genes`` list, the additive shape the inline engine produced before
 designation moved to the command.
 """
@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from gspec.formats.csvutil import delimited_line
 from gspec.formats.json import ToolDocument, utc_timestamp
 from gspec.formats.md import frontmatter, md_row, md_table_head, yaml_scalar
-from gspec.typing_results import PhenotypeScore, SchemeCall
+from gspec.typing.results import PhenotypeScore, SchemeCall
 
 COLUMNS = ("FILE", "SCHEME", "PHENOTYPE", "GENES", "CONFIDENCE", "SCORE", "RUNNER_UP", "NOTES")
 

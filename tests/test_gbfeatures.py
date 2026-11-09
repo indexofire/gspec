@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from gspec.cluster.gbfeatures import parse_genbank_features
 from gspec.errors import InputError
-from gspec.gbfeatures import parse_genbank_features
 
 DATA = Path(__file__).parent / "data" / "cluster"
 REAL_CPS = Path("/tmp/opencode/vpautils/src/vpautils/database/serotype/CPSgc.gbk")

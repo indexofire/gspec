@@ -14,8 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from gspec.composite_models import read_composite
-from gspec.kmerdb import KmerDbDocument, KmerSetSpec, materialize_kmer_sets
+from gspec.cluster.kmerdb import KmerDbDocument, KmerSetSpec, materialize_kmer_sets
+from gspec.composite.cluster import cluster_cache_key
+from gspec.composite.models import read_composite
 
 SEQUENCE_A = "ACGT" * 60 + "TTGG" * 30
 SEQUENCE_B = "GGCC" * 60 + "AATT" * 30
@@ -98,7 +99,7 @@ def _pipeline(tmp_path: Path, *, min_fraction: float = 0.5, sets: list[dict] | N
 
 
 def test_kmer_stage_calls_from_the_matching_set(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     datadir = _kmer_db(tmp_path)
     document = read_composite(_pipeline(tmp_path))
@@ -109,7 +110,7 @@ def test_kmer_stage_calls_from_the_matching_set(tmp_path: Path) -> None:
 
 
 def test_kmer_stage_separates_two_references(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     datadir = _kmer_db(tmp_path)
     document = read_composite(_pipeline(tmp_path))
@@ -122,7 +123,7 @@ def test_kmer_stage_separates_two_references(tmp_path: Path) -> None:
 
 
 def test_min_fraction_rejects_a_weak_match(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     datadir = _kmer_db(tmp_path)
     document = read_composite(_pipeline(tmp_path, min_fraction=0.99))
@@ -132,7 +133,7 @@ def test_min_fraction_rejects_a_weak_match(tmp_path: Path) -> None:
 
 
 def test_unknown_set_is_rejected_at_load(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     datadir = _kmer_db(tmp_path)
     document = read_composite(_pipeline(tmp_path, sets=[{"set": "nope.diff", "phenotype": "X"}]))
@@ -142,7 +143,7 @@ def test_unknown_set_is_rejected_at_load(tmp_path: Path) -> None:
 
 
 def test_database_without_a_kmer_sidecar_is_a_typed_error(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     datadir = _kmer_db(tmp_path)
     (datadir / "kmer_db" / "kmer.json").unlink()
@@ -153,7 +154,7 @@ def test_database_without_a_kmer_sidecar_is_a_typed_error(tmp_path: Path) -> Non
 
 
 def test_kmer_stage_needs_sets(tmp_path: Path) -> None:
-    from gspec.composite_models import CompositeDocument
+    from gspec.composite.models import CompositeDocument
 
     with pytest.raises(ValueError):
         CompositeDocument.model_validate(
@@ -167,8 +168,7 @@ def test_kmer_stage_needs_sets(tmp_path: Path) -> None:
 
 def test_cluster_stage_cache_key_covers_each_gate(tmp_path: Path) -> None:
     """A cluster stage's cache key must change with its gates, not only its db."""
-    from gspec.composite_models import CompositeStage
-    from gspec.composite_ops import _cluster_cache_key
+    from gspec.composite.models import CompositeStage
 
     genomes = [tmp_path / "a.fna"]
     genomes[0].write_text(">c\nACGT\n", encoding="utf-8")
@@ -180,9 +180,9 @@ def test_cluster_stage_cache_key_covers_each_gate(tmp_path: Path) -> None:
         {"name": "c", "db": "locus_db", "min_cluster_cov": 60.0, "min_gene_cov": 78.0}
     )
     keys = {
-        _cluster_cache_key("locus_db", stage, genomes),
-        _cluster_cache_key("locus_db", strict, genomes),
-        _cluster_cache_key("locus_db", lenient, genomes),
-        _cluster_cache_key("other_db", stage, genomes),
+        cluster_cache_key("locus_db", stage, genomes),
+        cluster_cache_key("locus_db", strict, genomes),
+        cluster_cache_key("locus_db", lenient, genomes),
+        cluster_cache_key("other_db", stage, genomes),
     }
     assert len(keys) == 4

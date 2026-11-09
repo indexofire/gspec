@@ -23,14 +23,14 @@ from typing import Any
 import pytest
 from click.testing import CliRunner
 
-from gspec.blast import ensure_blast, screen_file
+from gspec.align.blast import ensure_blast, screen_file
 from gspec.cli import app
-from gspec.db import discover_databases
+from gspec.db.core import discover_databases
 from gspec.fasta import iter_fasta
 from gspec.formats.json import render_json
 from gspec.formats.md import render_markdown
 from gspec.report import ScreeningParams
-from gspec.typing_models import read_typing_document, template_placeholders
+from gspec.typing.models import read_typing_document, template_placeholders
 
 SCHEMES = Path(__file__).parent / "data" / "typing" / "schemes"
 TYPING = Path(__file__).parent / "data" / "typing"

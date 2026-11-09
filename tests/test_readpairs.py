@@ -8,7 +8,7 @@ conventions (rightsholder request: sample_1/2.fastq.gz, R1/R2 styles).
 from collections.abc import Callable
 from pathlib import Path
 
-from gspec.readpairs import SampleLanes, pair_samples
+from gspec.screening.readpairs import SampleLanes, pair_samples
 
 
 def collect_warnings() -> tuple[list[str], Callable[[str], None]]:

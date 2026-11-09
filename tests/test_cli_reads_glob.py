@@ -16,8 +16,8 @@ from click.testing import CliRunner, Result
 from pydantic import TypeAdapter
 
 from gspec.cli import app
-from gspec.cmd_screen_reads_args import reads_positional
 from gspec.formats.reads_json import Reads2Document, ReadsDocument
+from gspec.screening.cmd_reads_args import reads_positional
 
 READS_DB_DIR = Path(__file__).parent / "data" / "reads_db"
 READS = Path(__file__).parent / "data" / "reads"
@@ -241,7 +241,7 @@ def test_explicit_aligner_blastn_keeps_contig_pipeline(
     """Given an explicit --aligner blastn over FASTQ positionals, When run,
     Then the blastn contig pipeline keeps them (explicit engine beats the
     auto-detect; today's normalization path unchanged)."""
-    from gspec.db import make_blast_db
+    from gspec.db.core import make_blast_db
 
     make_blast_db(datadir / "tinyreads" / "sequences", "tinyreads")
     monkeypatch.chdir(READS)

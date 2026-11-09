@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from gspec.cluster.gffparse import parse_gff3_features
 from gspec.errors import InputError
-from gspec.gffparse import parse_gff3_features
 
 DATA = Path(__file__).parent / "data" / "cluster"
 

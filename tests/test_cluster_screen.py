@@ -21,12 +21,12 @@ import pytest
 from click.testing import CliRunner, Result
 
 from gspec.cli import app
-from gspec.cluster import ClusterParams, load_features, screen_cluster_file
-from gspec.db import discover_databases
+from gspec.cluster.core import ClusterParams, load_features, screen_cluster_file
+from gspec.db.core import discover_databases
 from gspec.fasta import iter_fasta
 from gspec.formats.cluster import format_cluster_tsv, render_cluster_json
 from gspec.formats.cluster_md import render_cluster_md
-from gspec.mcp import serve
+from gspec.mcp.server import serve
 
 DATA = Path(__file__).parent / "data" / "cluster"
 GENE_DB = Path(__file__).parent / "data" / "db"

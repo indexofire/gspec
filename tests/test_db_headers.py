@@ -1,6 +1,6 @@
 """Unit tests for ~~~ database header parsing (SPEC.md §4 step 5)."""
 
-from gspec.db import parse_db_header
+from gspec.db.core import parse_db_header
 
 
 def test_canonical_four_fields() -> None:

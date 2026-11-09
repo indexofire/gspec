@@ -25,7 +25,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.errors import DatabaseError
 from gspec.fasta import iter_fasta
 from gspec.providers.common import Provider, safe_extractall

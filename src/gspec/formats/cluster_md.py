@@ -13,7 +13,7 @@ totals.
 from collections.abc import Iterable
 from datetime import datetime
 
-from gspec.cluster import ClusterParams, ClusterReport, LocusCall
+from gspec.cluster.core import ClusterParams, ClusterReport, LocusCall
 from gspec.formats.cluster2 import (
     cluster2_columns,
     cluster2_row_cells,
@@ -21,8 +21,8 @@ from gspec.formats.cluster2 import (
     pct_or_dash,
 )
 from gspec.formats.md import frontmatter, md_row, md_table_head, yaml_scalar
-from gspec.typing_models import TypingDocument
-from gspec.typing_results import SchemeCall
+from gspec.typing.models import TypingDocument
+from gspec.typing.results import SchemeCall
 
 _SUMMARY_COLUMNS = (
     "File",

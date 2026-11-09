@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from gspec import db as db_module
-from gspec import db_build_ops
-from gspec.db import discover_databases, make_blast_db
-from gspec.db_build_ops import perform_build
-from gspec.db_txn import staged_database
+from gspec.db import build_ops as db_build_ops
+from gspec.db import core as db_module
+from gspec.db.build_ops import perform_build
+from gspec.db.core import discover_databases, make_blast_db
+from gspec.db.txn import staged_database
 from gspec.errors import DatabaseError, DependencyError
 
 SEQ = "ACGT" * 20

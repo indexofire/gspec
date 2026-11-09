@@ -7,11 +7,10 @@ from pathlib import Path
 import pytest
 from pydantic import TypeAdapter
 
-from gspec.blast import BlastRow, screen_file
-from gspec.db import make_blast_db
+from gspec.align.blast import BlastRow, screen_file
+from gspec.db.core import make_blast_db
 from gspec.formats.json import HitDocument, ReportDocument, render_json
-from gspec.hits import process_rows
-from gspec.report import Report, ScreeningParams
+from gspec.report import Report, ScreeningParams, process_rows
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"
 CONTIGS = Path(__file__).parent / "data" / "contigs"
@@ -35,7 +34,7 @@ def reports(datadir: Path, monkeypatch: pytest.MonkeyPatch) -> list[Report]:
     """Real-pipeline reports for the four fixture files, run from CONTIGS so
     Report.file is a stable bare filename."""
     monkeypatch.chdir(CONTIGS)
-    from gspec.db import Database
+    from gspec.db.core import Database
 
     database = Database(
         name="tinyamr", path=datadir / "tinyamr", sequences_path=datadir / "tinyamr" / "sequences"

@@ -1,12 +1,12 @@
-"""Unit tests for datadir resolution precedence (gspec.config)."""
+"""Unit tests for datadir resolution precedence (gspec.paths)."""
 
 import stat
 from pathlib import Path
 
 import pytest
 
-from gspec.config import datadir_path, datadir_source, ensure_datadir, resolve_datadir
 from gspec.errors import DatabaseError
+from gspec.paths import datadir_path, datadir_source, ensure_datadir, resolve_datadir
 
 
 def make_datadir(path: Path) -> Path:

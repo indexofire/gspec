@@ -22,7 +22,7 @@ import pytest
 from click.testing import CliRunner, Result
 
 from gspec.cli import app
-from gspec.db import make_blast_db
+from gspec.db.core import make_blast_db
 from gspec.records import Manifest, Record, write_manifest, write_records
 
 DATA = Path(__file__).parent / "data"

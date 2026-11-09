@@ -65,22 +65,44 @@ gspec/
 ├── pixi.toml, pyproject.toml, recipe/meta.yaml
 ├── .github/workflows/ci.yml   # gates + scheduled clean-gates + parity job
 ├── src/gspec/
-│   ├── cli.py, cmd_*.py       # click entrypoints: screen / summary / typing / db / schema / mcp
-│   ├── config.py, dispatch.py, errors.py, proctools.py
-│   ├── db.py, dbcodec.py, db_txn.py, records.py, dbbuild.py
-│   ├── db_*_ops.py, bundled*.py, providers/   # fetch/build/rename/info/query + bundles
-│   ├── blast.py, hits.py, screening*.py, fragments.py, minimap*.py, reads.py, readpairs.py
-│   ├── cluster*.py, gbfeatures.py, gffparse.py, locus_map*.py
-│   ├── gene_families.py, serotype_*.py, typing_*.py, gene_floors.py
+│   ├── cli.py, cmd_summary.py, cmd_typing.py   # top-level click entrypoints (schema lives in cli.py)
+│   ├── errors.py, dispatch.py, engines.py, paths.py, proctools.py, progress.py
+│   ├── jsonio.py, tables.py   # shared sidecar I/O and abricate-table plumbing
+│   ├── fasta.py, records.py, dbcodec.py, seqconvert.py
+│   ├── report.py, summary.py   # hit/report model, summary matrix
+│   ├── align/                 # aligner invocation + row parsing: blast, minimap2_run, gseek;
+│   │                          # fragments, paf  (COVERAGE_MAP arithmetic lives in report.py)
+│   ├── screening/             # use-cases: contigs (gene path+dispatcher), batch, cluster, kmer,
+│   │                          # reads (engine), reads_run, reads_glob, readpairs;
+│   │                          # defaults, floors; cmd, cmd_positionals, cmd_reads_args
+│   ├── cluster/               # core (models), alignment, math, profile, build, locus_map,
+│   │                          # locus_map_models, kmerdb, gbfeatures, gffparse, gene_families
+│   ├── typing/                # engine, gene, decide, models, rules, results, table, ops, input,
+│   │                          # cluster2, cluster_input; serotype_engine, serotype_models
+│   ├── db/                    # core (Database model), ops, build, build_ops, build_meta, txn,
+│   │                          # info_ops/info_models/info_manual, query_ops, rename_ops,
+│   │                          # setup_ops, bundled, bundled_cluster, cmd_* (the `db` group)
+│   ├── composite/             # models, calls, stages, pcr, gene, cluster, kmer, run, render
+│   ├── mcp/                   # server (stdio JSON-RPC), tools, schemas
 │   ├── formats/               # tsv/csv/json/md/summary/cluster/typing_result/schemas/locus_map
-│   ├── mcp*.py, gseek_engine.py
+│   ├── providers/             # fetch-time upstream adapters (+ their data/assets)
 │   └── data/dbs/              # curated bundled databases (see §6)
 ├── scripts/                   # reproducible asset builders (shigella/, vibrio/) + calibration
 └── tests/                     # data/, golden/, parity/, test_*.py
 ```
 
-One file, one responsibility. New modules stay small (~250 LOC); the established CLI and
-orchestration modules (`cmd_screen.py`, `db_ops.py`, `gseek_engine.py`) are deliberately larger.
+A module's directory carries its domain, so filenames inside a subpackage stay short
+(`typing/cluster2.py`, not `typing_cluster2.py`). Schema identifiers (`gspec.cluster/1`,
+`gspec.reads/2`, …) are frozen strings and are unrelated to module paths: module paths are
+internal and may move, the CLI / JSON schemas / MCP tool names / exit codes are the public
+contract.
+
+One module, one responsibility. Size is measured in **logical lines** (comments, docstrings
+and blank lines excluded): aim for ≤ 250, allow up to ~400 for data/model-dense modules or
+where splitting would force the parts to call back and forth. Above 400 either split by
+responsibility or register the reason here: `align/gseek.py` (one version-bridge surface over
+the optional gseek API) and `screening/cmd.py` (one click command whose option set is the
+interface) are the current registered exceptions.
 
 ## 4. Coding conventions
 
@@ -218,7 +240,8 @@ Growth tiers past the budget — split rather than inflate the ceiling:
 
 ## 10. For agents working in this repo
 
-1. Read `SPEC.md` before touching `blast.py`, `hits.py`, or `minimap.py`; read the linked doc
+1. Read `SPEC.md` before touching `align/blast.py`, `report.py`, or `align/minimap2_run.py`;
+   read the linked doc
    before changing any other public surface.
 2. Public contract changes (JSON schema, exit codes, CLI flags) require a schema version bump and
    a `CHANGELOG.md` entry (plus `PLAN.md` when scope changes).

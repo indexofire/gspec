@@ -8,7 +8,7 @@ real binary).
 
 import pytest
 
-from gspec.cluster_math import (
+from gspec.cluster.math import (
     PARTIAL_MIN_COV,
     gene_verdict,
     intersect_coverage,

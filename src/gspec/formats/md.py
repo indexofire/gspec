@@ -11,8 +11,8 @@ from datetime import datetime
 
 from gspec import __version__
 from gspec.formats.json import utc_timestamp
-from gspec.reads import ReadsParams, ReadsReport
 from gspec.report import Report, ScreeningParams
+from gspec.screening.reads import ReadsParams, ReadsReport
 
 _COLUMNS = (
     "Sequence",

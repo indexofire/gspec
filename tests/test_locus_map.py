@@ -8,20 +8,20 @@ from pathlib import Path
 
 import pytest
 
-from gspec.cluster import (
+from gspec.align.paf import PafRecord
+from gspec.cluster.alignment import QuerySpan, build_locus_alignment
+from gspec.cluster.core import (
     ClusterParams,
     ClusterReport,
     GeneCall,
     LocusCall,
     screen_cluster_file,
 )
-from gspec.cluster_alignment import QuerySpan, build_locus_alignment
-from gspec.db import Database
+from gspec.cluster.gbfeatures import FeaturesDocument, GeneFeature, LocusFeatures
+from gspec.cluster.gene_families import GeneFamily, GeneFamilyDocument, LocusFamilySet
+from gspec.cluster.locus_map import build_locus_map
+from gspec.db.core import Database
 from gspec.formats.locus_map import render_locus_map_json
-from gspec.gbfeatures import FeaturesDocument, GeneFeature, LocusFeatures
-from gspec.gene_families import GeneFamily, GeneFamilyDocument, LocusFamilySet
-from gspec.locus_map import build_locus_map
-from gspec.paf import PafRecord
 
 LOCUS = LocusFeatures(
     id="OL1",
@@ -240,7 +240,7 @@ def test_screen_cluster_file_detail_attaches_locus_map(
     def _fake_rows(*args: object, **kwargs: object) -> Iterator[PafRecord]:
         return iter([row])
 
-    monkeypatch.setattr("gspec.cluster.iter_minimap2", _fake_rows)
+    monkeypatch.setattr("gspec.cluster.core.iter_minimap2", _fake_rows)
     params = ClusterParams(db="test")
     detailed = screen_cluster_file(tmp_path / "sample.fna", database, FEATURES, params, detail=True)
     assert "OL1" in detailed.locus_maps

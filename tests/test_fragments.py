@@ -9,14 +9,13 @@ from typing import Literal
 
 import pytest
 
-from gspec.fragments import (
+from gspec.align.fragments import (
     merge_fragment_hits,
     union_coverage_map,
     union_coverage_pct,
     union_spans,
 )
-from gspec.hits import Hit
-from gspec.minimap import minimap
+from gspec.report import Hit, minimap
 
 
 def frag(

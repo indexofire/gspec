@@ -14,11 +14,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from gspec.cluster import BestCall, ClusterParams, ClusterReport
+from gspec.cluster.core import BestCall, ClusterParams, ClusterReport
+from gspec.cluster.locus_map_models import LocusMap
 from gspec.formats.cluster import ClusterParamsDocument
 from gspec.formats.json import ToolDocument, utc_timestamp
-from gspec.locus_map_models import LocusMap
-from gspec.typing_results import SchemeCall
+from gspec.typing.results import SchemeCall
 
 
 class LocusMapFileDocument(BaseModel, frozen=True):

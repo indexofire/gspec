@@ -8,9 +8,9 @@ from pathlib import Path
 
 from click.testing import CliRunner, Result
 
-from gspec.blast import screen_file
+from gspec.align.blast import screen_file
 from gspec.cli import app
-from gspec.db import Database, make_blast_db
+from gspec.db.core import Database, make_blast_db
 from gspec.formats.json import render_json
 from gspec.formats.md import render_markdown
 from gspec.report import Report, ScreeningParams

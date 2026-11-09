@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from gspec.db import Database
+from gspec.db.core import Database
 from gspec.errors import DatabaseError, InputError
-from gspec.screen_defaults import (
+from gspec.screening.defaults import (
     SCREEN_FILENAME,
     ScreenDefaults,
     read_screen_defaults,
@@ -119,7 +119,7 @@ def test_bundled_cje_cps_ships_its_defaults(tmp_path: Path) -> None:
 def test_db_build_copies_screen_sidecar(tmp_path: Path) -> None:
     """Given a gene build with --screen, When it completes, Then the sidecar
     travels into the database directory and loads as gspec.screen/1."""
-    from gspec.db_build_ops import perform_build
+    from gspec.db.build_ops import perform_build
 
     fasta = tmp_path / "genes.fa"
     fasta.write_text(">geneA\nACGTACGTACGT\n>lpxA\nACGTACGTACGT\n", encoding="utf-8")
@@ -150,7 +150,7 @@ def test_db_build_copies_screen_sidecar(tmp_path: Path) -> None:
 
 
 def test_unknown_relative_control_is_a_build_error(tmp_path: Path) -> None:
-    from gspec.screen_defaults import validate_screen_defaults
+    from gspec.screening.defaults import validate_screen_defaults
 
     document = ScreenDefaults.model_validate_json(VALID)
     with pytest.raises(DatabaseError) as exc_info:

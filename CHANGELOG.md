@@ -56,6 +56,26 @@
   PyPI rather than an unreleased build. The runtime gate is a capability probe:
   an older gseek still fails with a typed `MISSING_DEPENDENCY` naming 0.10.5,
   not with a broken install.
+- **The package is organized by domain.** The flat `src/gspec` module set is now
+  grouped into `align/` (aligner invocation + row parsing), `screening/`
+  (use-cases and their CLI guards), `cluster/`, `typing/`, `db/`, `composite/`
+  and `mcp/`, with the shared leaf modules (`errors`, `jsonio`, `tables`,
+  `layout`, `config`, `proctools`, `progress`, `fasta`, `records`) staying at the
+  top level. The directory carries the domain, so the filenames inside a
+  subpackage dropped their prefix (`typing_cluster2.py` → `typing/cluster2.py`).
+  Nothing was merged and no behavior changed: module paths are internal, while
+  the CLI, JSON schemas, MCP tool names and exit codes are the public contract.
+  The `gspec-mcp` entry point moved to `gspec.mcp.server:main`.
+- **Three over-splits are folded back, and `composite/ops.py` is split by
+  responsibility.** `report.py` now owns the whole screening result model (its
+  parameters, `Report`, the `Hit`/`Fragment` records, the SPEC.md §4 row
+  processing and the COVERAGE_MAP arithmetic) — `align/hits.py` and
+  `align/minimap.py` are gone; `config.py` + `layout.py` merged into
+  `paths.py` (datadir resolution and database-directory layout); and the
+  656-logical-line `composite/ops.py` became `calls`, `stages`, `pcr`, `gene`,
+  `cluster`, `kmer`, `run` and `render` (largest now 179). Two helpers crossed a
+  module boundary and lost their private underscore: `hit_from_row`,
+  `swap_dedup`.
 
 ### Fixed
 

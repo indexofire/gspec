@@ -24,14 +24,14 @@ import pytest
 from click.testing import CliRunner
 
 from gspec.cli import app
-from gspec.cluster import ClusterParams, load_features, load_typing, screen_cluster_file
-from gspec.db import discover_databases
+from gspec.cluster.core import ClusterParams, load_features, load_typing, screen_cluster_file
+from gspec.db.core import discover_databases
 from gspec.fasta import iter_fasta
 from gspec.formats.cluster import format_cluster_tsv, render_cluster_json
 from gspec.formats.cluster2 import format_cluster2_tsv, render_cluster2_json
 from gspec.formats.cluster_md import render_cluster2_md, render_cluster_md
-from gspec.typing_cluster2 import evaluate_cluster2
-from gspec.typing_engine import evaluate_typing
+from gspec.typing.cluster2 import evaluate_cluster2
+from gspec.typing.engine import evaluate_typing
 
 SCHEMES = Path(__file__).parent / "data" / "typing" / "schemes"
 DATA_TYPING = Path(__file__).parent / "data" / "typing"

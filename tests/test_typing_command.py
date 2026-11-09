@@ -20,15 +20,15 @@ from click.testing import CliRunner
 
 from gspec import cmd_typing
 from gspec.cli import app
-from gspec.cluster import GeneCall, load_typing
-from gspec.db import discover_databases
+from gspec.cluster.core import GeneCall, load_typing
+from gspec.db.core import discover_databases
 from gspec.formats.typing_result import (
     TypingFileResult,
     render_typing_md,
     render_typing_result_json,
 )
-from gspec.typing_gene import evaluate_gene_calls
-from gspec.typing_input import read_typing_input
+from gspec.typing.gene import evaluate_gene_calls
+from gspec.typing.input import read_typing_input
 
 DATA = Path(__file__).parent / "data" / "typing"
 GOLDEN = Path(__file__).parent / "golden"

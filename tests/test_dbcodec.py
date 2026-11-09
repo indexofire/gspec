@@ -2,7 +2,7 @@
 
 import pytest
 
-from gspec.db import parse_db_header
+from gspec.db.core import parse_db_header
 from gspec.dbcodec import decode_seqid, encode_seqid, is_gspec_header
 from gspec.errors import DatabaseError
 

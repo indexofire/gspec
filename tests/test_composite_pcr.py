@@ -20,7 +20,10 @@ import pytest
 
 gseek = pytest.importorskip("gseek")
 
-from gspec.composite_models import read_composite  # noqa: E402
+from gspec.composite.models import read_composite  # noqa: E402
+from gspec.composite.pcr import needed_products  # noqa: E402
+from gspec.composite.run import apply_conflicts  # noqa: E402
+from gspec.composite.stages import inputs_digest  # noqa: E402
 from gspec.errors import DatabaseError  # noqa: E402
 
 FWD = "ACGTACGTACGTACGTACGT"
@@ -73,16 +76,15 @@ def _pipeline_doc(tmp_path: Path, *, product_size: tuple[int, int] = (100, 400))
 
 def test_screen_cache_does_not_leak_between_input_sets(tmp_path: Path) -> None:
     """The cache key must cover the input list, not just its length."""
-    from gspec.composite_ops import _inputs_digest
 
     first = _write(tmp_path / "a.fna", ">a\nACGT\n")
     second = _write(tmp_path / "b.fna", ">b\nACGTACGT\n")
-    assert _inputs_digest([first]) != _inputs_digest([second])
-    assert _inputs_digest([first, second]) == _inputs_digest([second, first])
+    assert inputs_digest([first]) != inputs_digest([second])
+    assert inputs_digest([first, second]) == inputs_digest([second, first])
 
 
 def _conflict_document(**conflict: object) -> object:
-    from gspec.composite_models import CompositeDocument
+    from gspec.composite.models import CompositeDocument
 
     payload = {
         "schema": "gspec.composite/1",
@@ -99,15 +101,14 @@ def _conflict_document(**conflict: object) -> object:
 
 
 def _call(phenotype: str, score: float = 0.95, confidence: str = "high") -> object:
-    from gspec.composite_ops import Call
+    from gspec.composite.calls import Call
 
     return Call(phenotype=phenotype, score=score, confidence=confidence, scheme="only")
 
 
 def test_conflict_rule_swaps_a_marker_call_for_the_locus_call() -> None:
     """CJT's documented HS41/HS55 exception, expressed in configuration."""
-    from gspec.composite_models import CompositeStage
-    from gspec.composite_ops import _apply_conflicts
+    from gspec.composite.models import CompositeStage
 
     document = _conflict_document(
         when={"stage": "marker", "phenotype": "HS41"},
@@ -119,14 +120,13 @@ def test_conflict_rule_swaps_a_marker_call_for_the_locus_call() -> None:
     }
     winner = (stages["marker"], _call("HS41", 1.0))
     calls = {"marker": winner[1], "locus": _call("HS55", 0.93)}
-    stage, call = _apply_conflicts(document, winner, calls, stages)
+    stage, call = apply_conflicts(document, winner, calls, stages)
     assert (stage.name, call.phenotype, stage.tier) == ("locus", "HS55", "A")
 
 
 def test_conflict_override_may_name_any_stage() -> None:
     """``override.stage`` omitted = whichever database stage called it."""
-    from gspec.composite_models import CompositeStage
-    from gspec.composite_ops import _apply_conflicts
+    from gspec.composite.models import CompositeStage
 
     document = _conflict_document(
         when={"stage": "marker", "phenotype": "HS41"},
@@ -143,13 +143,12 @@ def test_conflict_override_may_name_any_stage() -> None:
         "locus_a": _call("HS2", 0.99),
         "locus_b": _call("HS55", 0.88),
     }
-    stage, call = _apply_conflicts(document, winner, calls, stages)
+    stage, call = apply_conflicts(document, winner, calls, stages)
     assert (stage.name, call.phenotype) == ("locus_b", "HS55")
 
 
 def test_conflict_does_not_fire_on_unrelated_or_gated_calls() -> None:
-    from gspec.composite_models import CompositeStage
-    from gspec.composite_ops import _apply_conflicts
+    from gspec.composite.models import CompositeStage
 
     stages = {
         "marker": CompositeStage(name="marker", db="db_marker", tier="B"),
@@ -164,20 +163,20 @@ def test_conflict_does_not_fire_on_unrelated_or_gated_calls() -> None:
     # 1) the override stage called something else
     unmatching = {"marker": marker_call, "locus": _call("HS53")}
     assert (
-        _apply_conflicts(document, (stages["marker"], marker_call), unmatching, stages)[1].phenotype
+        apply_conflicts(document, (stages["marker"], marker_call), unmatching, stages)[1].phenotype
         == "HS41"
     )
 
     # 2) the override call is the stage's own fallback (nothing designated)
     gated = {"marker": marker_call, "locus": _call("HS55", confidence="low")}
     assert (
-        _apply_conflicts(document, (stages["marker"], marker_call), gated, stages)[1].phenotype
+        apply_conflicts(document, (stages["marker"], marker_call), gated, stages)[1].phenotype
         == "HS41"
     )
 
     # 3) no declaration at all
     assert (
-        _apply_conflicts(
+        apply_conflicts(
             _conflict_document(), (stages["marker"], marker_call), {"marker": marker_call}, stages
         )[1].phenotype
         == "HS41"
@@ -186,7 +185,7 @@ def test_conflict_does_not_fire_on_unrelated_or_gated_calls() -> None:
 
 def test_parallel_pcr_matches_sequential(tmp_path: Path) -> None:
     """``jobs>1`` runs the PCR scan in worker processes; results must not move."""
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     genomes = [
         _write(tmp_path / f"asm{i}.fna", f">ctg1\n{FWD}{'A' * (140 + i * 10)}{_rc(REV)}\n")
@@ -202,8 +201,7 @@ def test_parallel_pcr_matches_sequential(tmp_path: Path) -> None:
 
 def test_only_the_pairs_the_current_call_needs_are_scanned() -> None:
     """A ``when``-gated rule's products are skipped for unrelated calls."""
-    from gspec.composite_models import CompositeStage
-    from gspec.composite_ops import _needed_products
+    from gspec.composite.models import CompositeStage
 
     stage = CompositeStage.model_validate(
         {
@@ -221,19 +219,19 @@ def test_only_the_pairs_the_current_call_needs_are_scanned() -> None:
             ],
         }
     )
-    assert _needed_products(stage, "HS2") == {"ALWAYS"}
-    assert _needed_products(stage, "HS4c (HS4/13/43/50/62/65 complex)") == {
+    assert needed_products(stage, "HS2") == {"ALWAYS"}
+    assert needed_products(stage, "HS4c (HS4/13/43/50/62/65 complex)") == {
         "ALWAYS",
         "HS4A",
         "HS4B",
     }
     # No call at all: only the unconditional override can still apply.
-    assert _needed_products(stage, None) == {"ALWAYS"}
+    assert needed_products(stage, None) == {"ALWAYS"}
 
 
 def test_indel_budget_is_configurable_on_the_stage(tmp_path: Path) -> None:
     """``max_edits`` enables the indel pass for a stage's primers."""
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     forward = "ACGTACGTACGTACGTACGTACGTACGTAC"
     reverse = "TTTTGGGGCCCCAAAATTTTGGGGCCCCAA"
@@ -294,7 +292,7 @@ def test_pcr_rule_needs_a_product(tmp_path: Path) -> None:
 
 def test_amplified_product_overrides_the_call(tmp_path: Path) -> None:
     """The full run: a primer pair that amplifies rewrites the database call."""
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     genome = _write(tmp_path / "asm.fna", f">ctg1\n{FWD}{'A' * 150}{_rc(REV)}\n")
     document = read_composite(_pipeline_doc(tmp_path))
@@ -305,7 +303,7 @@ def test_amplified_product_overrides_the_call(tmp_path: Path) -> None:
 
 
 def test_absent_product_leaves_the_call_alone(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     genome = _write(tmp_path / "asm.fna", ">ctg1\n" + "A" * 400 + "\n")
     result = run_composite([genome], read_composite(_pipeline_doc(tmp_path)), datadir=tmp_path)[0]
@@ -315,7 +313,7 @@ def test_absent_product_leaves_the_call_alone(tmp_path: Path) -> None:
 
 def test_when_condition_gates_the_refinement(tmp_path: Path) -> None:
     """``when`` restricts a rule to the calls it may bracket."""
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     document = json.loads(_pipeline_doc(tmp_path).read_text(encoding="utf-8"))
     rule = document["stages"][0]["rules"][0]
@@ -330,7 +328,7 @@ def test_when_condition_gates_the_refinement(tmp_path: Path) -> None:
 
 def test_primer_path_resolves_next_to_the_pipeline(tmp_path: Path) -> None:
     """A relative primer path is read from the pipeline document's directory."""
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     genome = _write(tmp_path / "asm.fna", f">ctg1\n{FWD}{'A' * 150}{_rc(REV)}\n")
     document_json = json.loads(_pipeline_doc(tmp_path).read_text(encoding="utf-8"))
@@ -341,7 +339,7 @@ def test_primer_path_resolves_next_to_the_pipeline(tmp_path: Path) -> None:
 
 
 def test_unknown_primer_file_is_a_typed_error(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     genome = _write(tmp_path / "asm.fna", ">ctg1\nACGT\n")
     document = json.loads(_pipeline_doc(tmp_path).read_text(encoding="utf-8"))
@@ -354,7 +352,7 @@ def test_unknown_primer_file_is_a_typed_error(tmp_path: Path) -> None:
 
 def test_missing_rule_product_is_a_typed_error(tmp_path: Path) -> None:
     """A rule naming a pair the primer set lacks fails loudly at load time."""
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     genome = _write(tmp_path / "asm.fna", ">ctg1\nACGT\n")
     document = json.loads(_pipeline_doc(tmp_path).read_text(encoding="utf-8"))
@@ -367,7 +365,7 @@ def test_missing_rule_product_is_a_typed_error(tmp_path: Path) -> None:
 
 def test_only_the_pairs_the_rules_name_are_scanned(tmp_path: Path) -> None:
     """Evidence by default lists the rule-winning product, not every pair."""
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     genome = _write(tmp_path / "asm.fna", f">ctg1\n{FWD}{'A' * 150}{_rc(REV)}\n")
     result = run_composite([genome], read_composite(_pipeline_doc(tmp_path)), datadir=tmp_path)[0]
@@ -377,7 +375,7 @@ def test_only_the_pairs_the_rules_name_are_scanned(tmp_path: Path) -> None:
 
 
 def test_primer_mismatch_budget_is_configurable(tmp_path: Path) -> None:
-    from gspec.composite_ops import run_composite
+    from gspec.composite.run import run_composite
 
     target = "T" + FWD[1:]
     genome = _write(tmp_path / "asm.fna", f">ctg1\n{target}{'A' * 150}{_rc(REV)}\n")

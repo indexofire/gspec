@@ -4,7 +4,7 @@ Native header format (Phase 7): ``gspec|db=<v>|gene=<v>|acc=<v>|func=<v>`` with
 fixed key order and lowercase-hex percent escapes inside values. Encode is
 total for any input; decode is strict (``DatabaseError HEADER_MALFORMED``).
 Seqids without the ``gspec|`` prefix delegate to the legacy ``~~~`` rules in
-``gspec.db`` (SPEC.md §4 step 5).
+``gspec.db.core`` (SPEC.md §4 step 5).
 
 The fourth slot is named ``func`` because gspec answers presence/absence — the
 values it carries are functional categories (AMR classes, virulence, O-antigen,
@@ -15,7 +15,7 @@ frozen ``RESISTANCE``/``resistance`` names).
 import re
 from collections.abc import Sequence
 
-from gspec.db import DbHeader, parse_db_header
+from gspec.db.core import DbHeader, parse_db_header
 from gspec.errors import DatabaseError
 
 PREFIX = "gspec|"
@@ -70,7 +70,7 @@ def decode_seqid(seqid: str, default_db: str) -> DbHeader:
     ``db`` value falls back to ``default_db`` (symmetric with legacy) and an
     empty ``acc`` value is allowed (unpublished sequences); the ``func`` key is
     intentionally optional and defaults to ``""``. Anything else delegates to
-    ``gspec.db.parse_db_header``.
+    ``gspec.db.core.parse_db_header``.
     """
     if not is_gspec_header(seqid):
         return parse_db_header(seqid, default_db)

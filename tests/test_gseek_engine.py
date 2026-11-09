@@ -9,10 +9,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from gspec import blast, minimap2_run
-from gspec.db import Database
-from gspec.errors import DependencyError
-from gspec.gseek_engine import (
+from gspec.align import blast, minimap2_run
+from gspec.align import gseek as gseek_engine
+from gspec.align.gseek import (
     blast_db_ready,
     cached_target_refs,
     engine_mode,
@@ -20,7 +19,9 @@ from gspec.gseek_engine import (
     run_blast_gseek,
     supports_api_refs,
 )
-from gspec.paf import PafRecord
+from gspec.align.paf import PafRecord
+from gspec.db.core import Database
+from gspec.errors import DependencyError
 from gspec.report import ScreeningParams
 
 
@@ -83,7 +84,7 @@ def test_blast_mapping_preserves_blast_coordinates(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake = _FakeGseek([_Record()])
-    monkeypatch.setattr("gspec.gseek_engine._gseek", lambda: fake)
+    monkeypatch.setattr("gspec.align.gseek._gseek", lambda: fake)
     rows = run_blast_gseek(
         ">contig1\nACGT\n",
         _database(tmp_path),
@@ -121,7 +122,7 @@ def test_gseek_session_reuses_resolver_across_files(
     gene path slower than legacy."""
     pytest.importorskip("gseek")
     fake = _FakeGseek([_Record()])
-    monkeypatch.setattr("gspec.gseek_engine._gseek", lambda: fake)
+    monkeypatch.setattr("gspec.align.gseek._gseek", lambda: fake)
     db = _database(tmp_path)
     run_blast_gseek(">contig1\nACGT\n", db, ScreeningParams(db="test"), dbtype="nucl")
     first = fake.kwargs["resolver"]
@@ -173,7 +174,7 @@ def test_blast_mapping_reverse_and_protein_params(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake = _FakeGseek([_Record(reverse=True)])
-    monkeypatch.setattr("gspec.gseek_engine._gseek", lambda: fake)
+    monkeypatch.setattr("gspec.align.gseek._gseek", lambda: fake)
     rows = run_blast_gseek(
         ">contig1\nACGT\n",
         _database(tmp_path),
@@ -202,7 +203,7 @@ def test_paf_mapping_and_paired_query(tmp_path: Path, monkeypatch: pytest.Monkey
         tags={"NM": "1", "cs": ":100"},
     )
     fake = _FakeGseek([record])
-    monkeypatch.setattr("gspec.gseek_engine._gseek", lambda: fake)
+    monkeypatch.setattr("gspec.align.gseek._gseek", lambda: fake)
     r1 = tmp_path / "r1.fq"
     r2 = tmp_path / "r2.fq"
     r1.write_text("@r1\nACGT\n+\nIIII\n")
@@ -483,7 +484,7 @@ def test_minimap2_long_target_names_disable_index(
     long = Database(name="long", path=tmp_path, sequences_path=tmp_path / "long.fa")
     long.sequences_path.write_text(">" + "x" * 256 + "\nACGT\n")
     fake = _FakeGseek([])
-    monkeypatch.setattr("gspec.gseek_engine._gseek", lambda: fake)
+    monkeypatch.setattr("gspec.align.gseek._gseek", lambda: fake)
     rows = list(
         iter_paf_gseek(
             [(tmp_path / "r.fq", None)],
@@ -507,8 +508,8 @@ class Blocker:
         if fullname == "gseek" or fullname.startswith("gseek."):
             raise ImportError("gseek blocked")
 sys.meta_path.insert(0, Blocker())
-from gspec.blast import run_blastn
-from gspec.gseek_engine import engine
+from gspec.align.blast import run_blastn
+from gspec.align.gseek import engine
 assert engine().mode.value == "legacy"
 assert callable(run_blastn)
 """
@@ -526,7 +527,6 @@ def test_index_policy_cache_invalidates_when_target_changes(
 ) -> None:
     """Given a cached long-name policy, When the target is replaced with short
     names, Then the policy is recomputed instead of reusing the stale entry."""
-    from gspec import gseek_engine
 
     database = Database(name="changing", path=tmp_path, sequences_path=tmp_path / "changing.fa")
     database.sequences_path.write_text(">" + "x" * 256 + "\nACGT\n", encoding="utf-8")
@@ -551,7 +551,7 @@ def test_gseek_missing_minimap2_maps_to_dependency_error(
         def align(self, **kwargs: object) -> object:
             raise errors.ToolNotFoundError("minimap2: not found")
 
-    monkeypatch.setattr("gspec.gseek_engine._gseek", lambda: MissingTool())
+    monkeypatch.setattr("gspec.align.gseek._gseek", lambda: MissingTool())
     database = _database(tmp_path)
     with pytest.raises(DependencyError) as excinfo:
         list(iter_paf_gseek([(tmp_path / "r.fq", None)], database, read_type="sr", threads=1))

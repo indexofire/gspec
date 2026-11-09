@@ -1,8 +1,8 @@
 """Relative-depth presence gating and the DEPTH_RATIO table column."""
 
+from gspec.align.paf import PafRecord
 from gspec.formats.reads_tsv import reads_tsv_chunk, reads_tsv_preamble
-from gspec.paf import PafRecord
-from gspec.reads import GeneCoverage, ReadsReport, aggregate_coverage
+from gspec.screening.reads import GeneCoverage, ReadsReport, aggregate_coverage
 
 LPXA = "db~~~lpxA~~~ACC~~~CONTROL"
 GENE_A = "db~~~geneA~~~ACC~~~RES"
@@ -114,7 +114,7 @@ def test_reads2_json_carries_relative_depth_when_active() -> None:
     from datetime import UTC, datetime
 
     from gspec.formats.reads_json import render_reads2_json
-    from gspec.reads import ReadsParams
+    from gspec.screening.reads import ReadsParams
 
     report = ReadsReport(
         reads=("sample",),

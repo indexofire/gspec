@@ -14,7 +14,7 @@ import pytest
 from click.testing import CliRunner
 
 from gspec.cli import app
-from gspec.db import DatabaseInfo, list_databases
+from gspec.db.core import DatabaseInfo, list_databases
 from gspec.fasta import iter_fasta
 from gspec.providers.common import Provider
 from gspec.records import Record
@@ -50,10 +50,10 @@ def patch_synthetic_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     )
     registry = {name: provider}
     # perform_setup reads gspec.providers.REGISTRY for membership and
-    # perform_fetch reads gspec.db_ops.REGISTRY for the download; both must
+    # perform_fetch reads gspec.db.ops.REGISTRY for the download; both must
     # see the synthetic catalogue.
     monkeypatch.setattr("gspec.providers.REGISTRY", registry)
-    monkeypatch.setattr("gspec.db_ops.REGISTRY", registry)
+    monkeypatch.setattr("gspec.db.ops.REGISTRY", registry)
     datadir = tmp_path / "datadir"
     datadir.mkdir()
     return datadir, name
@@ -146,7 +146,7 @@ def test_setup_bootstraps_a_missing_datadir(
 ) -> None:
     """Given a datadir path that does not exist, When db setup runs, Then the
     root is created before the bundled/index work (fresh-machine bootstrap)."""
-    import gspec.db_setup_ops as setup_module
+    import gspec.db.setup_ops as setup_module
 
     # Keep this a bootstrap test: no bundle materialization or index build.
     def no_bundles() -> list[str]:

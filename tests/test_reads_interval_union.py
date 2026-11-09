@@ -12,9 +12,9 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Literal
 
+from gspec.align.paf import PafRecord, parse_paf_row, union_length
 from gspec.dbcodec import decode_seqid
-from gspec.paf import PafRecord, parse_paf_row, union_length
-from gspec.reads import GeneCoverage, aggregate_coverage
+from gspec.screening.reads import GeneCoverage, aggregate_coverage
 
 Interval = tuple[int, int]
 

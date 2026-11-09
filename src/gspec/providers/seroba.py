@@ -13,7 +13,7 @@ downloads and builds locally. Cite SeroBA when using results.
 import json
 from pathlib import Path
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.providers.cluster_common import ClusterProvider
 
 NAME = "spn_sero"
@@ -78,7 +78,7 @@ def preprocess(workdir: Path) -> Path:
 
 def finalize(workdir: Path, build_dir: Path) -> None:
     """Copy kmer.json, materialize .u64 sets, and write cluster.json."""
-    from gspec.kmerdb import KmerDbDocument, materialize_kmer_sets
+    from gspec.cluster.kmerdb import KmerDbDocument, materialize_kmer_sets
 
     if _KMERDB_PATH.is_file():
         kmer_doc = KmerDbDocument.model_validate_json(_KMERDB_PATH.read_text(encoding="utf-8"))

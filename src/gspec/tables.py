@@ -2,7 +2,7 @@
 
 Two surfaces read the same report tables — the summary matrix
 (:mod:`gspec.summary`) and the typing input boundary
-(:mod:`gspec.typing_table`) — and differ only in the error code and the
+(:mod:`gspec.typing.table`) — and differ only in the error code and the
 noun they attach to a malformed row. Separator detection, row iteration and
 the malformed-row envelope live here once; each consumer keeps a thin
 ``_malformed`` wrapper naming its own document.

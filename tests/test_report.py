@@ -3,9 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-from gspec.blast import BlastRow
-from gspec.hits import Hit, process_rows
-from gspec.report import Report, ScreeningParams
+from gspec.align.blast import BlastRow
+from gspec.report import Hit, Report, ScreeningParams, process_rows
 
 
 def test_default_params() -> None:

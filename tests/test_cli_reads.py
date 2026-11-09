@@ -15,7 +15,7 @@ from gspec.errors import ErrorEnvelope
 from gspec.fasta import iter_fasta
 from gspec.formats.md import render_reads_markdown
 from gspec.formats.reads_json import ReadsDocument, render_reads_json
-from gspec.reads import ReadsParams, screen_reads
+from gspec.screening.reads import ReadsParams, screen_reads
 
 READS_DB_DIR = Path(__file__).parent / "data" / "reads_db"
 READS = Path(__file__).parent / "data" / "reads"
@@ -360,7 +360,7 @@ def test_golden_reads_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     JSON is byte-identical to the committed golden."""
     target = tmp_path / "datadir"
     shutil.copytree(READS_DB_DIR, target)
-    from gspec.db import discover_databases
+    from gspec.db.core import discover_databases
 
     (database,) = discover_databases(target)
     monkeypatch.chdir(READS)
@@ -375,7 +375,7 @@ def test_golden_reads_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
 def test_golden_reads_md(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     target = tmp_path / "datadir"
     shutil.copytree(READS_DB_DIR, target)
-    from gspec.db import discover_databases
+    from gspec.db.core import discover_databases
 
     (database,) = discover_databases(target)
     monkeypatch.chdir(READS)

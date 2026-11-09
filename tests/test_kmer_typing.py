@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from gspec.kmerdb import (
+from gspec.cluster.kmerdb import (
     KmerDbDocument,
     KmerSetSpec,
     count_sequence_kmers,
@@ -119,7 +119,7 @@ class TestFastqKmerCounting:
         with fq.open("w") as fh:
             for j, read in enumerate(reads):
                 fh.write(f"@r{j}\n{read}\n+\n{'I' * len(read)}\n")
-        from gspec.kmerdb import count_fasta_kmers, count_fastq_kmers
+        from gspec.cluster.kmerdb import count_fasta_kmers, count_fastq_kmers
 
         fa_codes = count_fasta_kmers(fa, 31)
         fq_codes = count_fastq_kmers(fq, k=31)
@@ -134,7 +134,7 @@ class TestFastqKmerCounting:
         r2 = tmp_path / "r2.fastq"
         r1.write_text(f"@a\n{seq[:200]}\n+\n{'I' * 200}\n")
         r2.write_text(f"@b\n{seq[200:]}\n+\n{'I' * len(seq[200:])}\n")
-        from gspec.kmerdb import count_fastq_kmers, count_sequence_kmers
+        from gspec.cluster.kmerdb import count_fastq_kmers, count_sequence_kmers
 
         union = count_fastq_kmers(r1, r2, k=31)
         full = count_sequence_kmers(seq, 31)
@@ -143,12 +143,12 @@ class TestFastqKmerCounting:
 
 class TestContainmentIdentity:
     def test_perfect_match(self):
-        from gspec.kmerdb import containment_to_identity
+        from gspec.cluster.kmerdb import containment_to_identity
 
         assert containment_to_identity(1.0, 31) == 100.0
 
     def test_zero(self):
-        from gspec.kmerdb import containment_to_identity
+        from gspec.cluster.kmerdb import containment_to_identity
 
         assert containment_to_identity(0.0, 31) == 0.0
 
@@ -158,7 +158,7 @@ class TestContainmentIdentity:
         family-level floors while key_kmers delivers the SNP call."""
         import random
 
-        from gspec.kmerdb import containment_to_identity, count_sequence_kmers
+        from gspec.cluster.kmerdb import containment_to_identity, count_sequence_kmers
 
         rng = random.Random(3)
         base = "".join(rng.choice("ACGT") for _ in range(1200))

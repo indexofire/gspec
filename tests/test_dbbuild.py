@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from gspec import __version__, dbbuild
-from gspec.dbbuild import (
+from gspec import __version__
+from gspec.db import build as dbbuild
+from gspec.db.build import (
     build_database,
     drop_exact_duplicates,
     generate_sequences,

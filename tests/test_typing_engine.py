@@ -12,26 +12,26 @@ from pathlib import Path
 import pytest
 from pydantic import TypeAdapter
 
-from gspec.cluster import BestCall, ClusterReport, GeneCall, LocusCall, load_typing
-from gspec.cluster_math import Verdict
-from gspec.db import Database
+from gspec.cluster.core import BestCall, ClusterReport, GeneCall, LocusCall, load_typing
+from gspec.cluster.gbfeatures import FeaturesDocument, GeneFeature, LocusFeatures
+from gspec.cluster.math import Verdict
+from gspec.db.core import Database
 from gspec.errors import DatabaseError
-from gspec.gbfeatures import FeaturesDocument, GeneFeature, LocusFeatures
-from gspec.typing_decide import decide_typing
-from gspec.typing_engine import (
+from gspec.typing.decide import decide_typing
+from gspec.typing.engine import (
     evaluate_typing,
     score_cluster_match,
     score_learned_linear,
     score_weighted_genes,
 )
-from gspec.typing_models import (
+from gspec.typing.models import (
     TypingDocument,
     TypingDocumentV1,
     TypingScheme,
     validate_references,
 )
-from gspec.typing_results import ScoreComponent, ScoredRule
-from gspec.typing_rules import (
+from gspec.typing.results import ScoreComponent, ScoredRule
+from gspec.typing.rules import (
     ClusterMatchRule,
     CoverageComponent,
     IdentityComponent,

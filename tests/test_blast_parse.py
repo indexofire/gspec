@@ -2,7 +2,7 @@
 
 import pytest
 
-from gspec.blast import BLAST_FIELDS, BlastRow, ensure_blast, parse_blast_row
+from gspec.align.blast import BLAST_FIELDS, BlastRow, ensure_blast, parse_blast_row
 from gspec.errors import GspecError
 
 # Captured verbatim from the real pipeline (any2fasta | blastn, BLAST+ 2.17).

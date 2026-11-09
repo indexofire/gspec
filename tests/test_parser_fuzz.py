@@ -10,12 +10,12 @@ import random
 from collections.abc import Callable
 from pathlib import Path
 
-from gspec.blast import parse_blast_row
-from gspec.cluster_math import parse_cs
+from gspec.align.blast import parse_blast_row
+from gspec.align.paf import parse_paf_row
+from gspec.cluster.gbfeatures import parse_genbank_features
+from gspec.cluster.gffparse import parse_gff3_features
+from gspec.cluster.math import parse_cs
 from gspec.errors import GspecError
-from gspec.gbfeatures import parse_genbank_features
-from gspec.gffparse import parse_gff3_features
-from gspec.paf import parse_paf_row
 
 GBK = """LOCUS       TEST1                    60 bp    DNA     linear   BCT 01-JAN-2020
 FEATURES             Location/Qualifiers

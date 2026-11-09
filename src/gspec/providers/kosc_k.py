@@ -18,7 +18,7 @@ kind-cluster database. No typing model: `gspec screen --db kosc_k` reports
 best-locus (KL…) calls, phenotype null. Cite Kaptive when you use results.
 """
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.providers.cluster_common import ClusterProvider
 
 NAME = "kosc_k"

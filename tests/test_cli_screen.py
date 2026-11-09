@@ -13,12 +13,12 @@ import pytest
 from click.testing import CliRunner, Result
 from pydantic import TypeAdapter
 
-from gspec import screening as gspec_screening
 from gspec.cli import app
-from gspec.db import Database, make_blast_db
+from gspec.db.core import Database, make_blast_db
 from gspec.errors import ErrorEnvelope, InputError
 from gspec.report import Report, ScreeningParams
-from gspec.screening import OutputFormat, run_screen
+from gspec.screening import contigs as gspec_screening
+from gspec.screening.contigs import OutputFormat, run_screen
 
 FIXTURE_DB_DIR = Path(__file__).parent / "data" / "db"
 CONTIGS = Path(__file__).parent / "data" / "contigs"

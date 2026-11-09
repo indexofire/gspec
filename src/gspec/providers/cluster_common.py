@@ -21,12 +21,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Literal
 
-from gspec.clusterbuild import build_cluster_database, parse_cluster_input, resolve_gene_ids
-from gspec.db_info_models import DbGuidance
-from gspec.db_txn import staged_database
+from gspec.cluster.build import build_cluster_database, parse_cluster_input, resolve_gene_ids
+from gspec.cluster.gbfeatures import FeaturesDocument, LocusSequence
+from gspec.db.info_models import DbGuidance
+from gspec.db.txn import staged_database
 from gspec.errors import DatabaseError
-from gspec.gbfeatures import FeaturesDocument, LocusSequence
-from gspec.layout import manifest_path
+from gspec.paths import manifest_path
 from gspec.proctools import note
 from gspec.providers.common import (
     Dbtype,
@@ -36,7 +36,7 @@ from gspec.providers.common import (
     url_basename,
 )
 from gspec.records import Manifest
-from gspec.typing_models import (
+from gspec.typing.models import (
     read_typing_document,
     typing_schema_of,
     uses_cluster_v2,
@@ -159,7 +159,7 @@ def _merged_loci(provider: ClusterProvider, workdir: Path) -> list[LocusSequence
     """Parse every cluster-input file in the workdir (declaration order).
     Source-url basenames first (preserving provider declaration order),
     then any additional .gff3/.gbk files a preprocess hook created."""
-    from gspec.clusterbuild import is_cluster_input
+    from gspec.cluster.build import is_cluster_input
 
     loci: list[LocusSequence] = []
     parsed_names: set[str] = set()

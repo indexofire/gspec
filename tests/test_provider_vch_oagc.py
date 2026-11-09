@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from gspec.db_ops import db_list_entries
-from gspec.gbfeatures import parse_genbank_features
+from gspec.cluster.gbfeatures import parse_genbank_features
+from gspec.db.ops import db_list_entries
 from gspec.providers.vch_oagc import PROVIDER
-from gspec.typing_models import TypingDocument
+from gspec.typing.models import TypingDocument
 
 
 def test_provider_is_fetch_on_demand_cluster_with_ncbi_source() -> None:

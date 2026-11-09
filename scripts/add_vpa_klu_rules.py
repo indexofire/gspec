@@ -25,8 +25,8 @@ import argparse
 import json
 from pathlib import Path
 
-from gspec.gbfeatures import FeaturesDocument
-from gspec.typing_models import read_typing_document, validate_references
+from gspec.cluster.gbfeatures import FeaturesDocument
+from gspec.typing.models import read_typing_document, validate_references
 
 
 def _parser() -> argparse.ArgumentParser:

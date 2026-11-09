@@ -19,8 +19,8 @@ import pytest
 from click.testing import CliRunner
 
 import gspec
-from gspec.bundled import find_bundled
 from gspec.cli import app
+from gspec.db.bundled import find_bundled
 from gspec.fasta import iter_fasta
 
 TYPING_ASSET = Path(gspec.__file__).resolve().parent / "data" / "dbs" / "vpa_ok" / "typing.json"

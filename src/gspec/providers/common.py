@@ -7,7 +7,7 @@ the generic abricate-get_db flow around it: download each URL into a scratch
 workdir under ``db_dir``, transform, normalize sequences and function classes
 (upstream load_fasta semantics), dedupe by exact normalized sequence
 (first wins), sort by gene, persist ``records.jsonl``, then delegate to
-:func:`gspec.dbbuild.build_database` for the ``sequences`` FASTA, the BLAST
+:func:`gspec.db.build.build_database` for the ``sequences`` FASTA, the BLAST
 index, and the manifest (written last, certifying the build).
 
 Upstream's ``is_full_gene`` is deliberately NOT ported: its map result is
@@ -27,11 +27,11 @@ from typing import Literal
 from urllib.parse import urlparse
 
 from gspec import __version__
-from gspec.db_info_models import DbGuidance
-from gspec.db_txn import staged_database
-from gspec.dbbuild import build_database, validate_records
+from gspec.db.build import build_database, validate_records
+from gspec.db.info_models import DbGuidance
+from gspec.db.txn import staged_database
 from gspec.errors import DatabaseError
-from gspec.layout import manifest_path
+from gspec.paths import manifest_path
 from gspec.proctools import note
 from gspec.records import Manifest, Record, write_records
 

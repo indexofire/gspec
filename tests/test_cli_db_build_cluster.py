@@ -15,10 +15,10 @@ from click.testing import CliRunner, Result
 from pydantic import TypeAdapter
 
 from gspec.cli import app
+from gspec.cluster.gbfeatures import FeaturesDocument
 from gspec.errors import ErrorEnvelope
-from gspec.gbfeatures import FeaturesDocument
 from gspec.records import read_manifest
-from gspec.typing_models import read_typing_document
+from gspec.typing.models import read_typing_document
 
 DATA = Path(__file__).parent / "data" / "cluster"
 DB = "myclusters"

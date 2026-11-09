@@ -18,7 +18,7 @@ from click.testing import CliRunner
 from pydantic import TypeAdapter
 
 from gspec.cli import app
-from gspec.dbbuild import build_database
+from gspec.db.build import build_database
 from gspec.formats.json import ReportDocument
 from gspec.formats.reads_json import ReadsDocument
 from gspec.records import Record, write_records

@@ -12,7 +12,7 @@ import re
 from collections.abc import Iterator
 from pathlib import Path
 
-from gspec.db_info_models import DbGuidance, DbReference
+from gspec.db.info_models import DbGuidance, DbReference
 from gspec.fasta import iter_fasta
 from gspec.providers.common import Provider
 from gspec.records import Record

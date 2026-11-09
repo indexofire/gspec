@@ -1,10 +1,10 @@
-"""Unit tests for database discovery and blastdbcmd output parsing (gspec.db)."""
+"""Unit tests for database discovery and blastdbcmd output parsing (gspec.db.core)."""
 
 from pathlib import Path
 
 import pytest
 
-from gspec.db import (
+from gspec.db.core import (
     discover_databases,
     list_databases,
     minimap2_target_names_safe,

@@ -6,9 +6,9 @@ scores 1.0, so homologous references tie and declaration order decides.
 full-locus (or allele) reference set needs to rank its candidates.
 """
 
-from gspec.cluster import GeneCall
-from gspec.typing_gene import evaluate_gene_calls, score_gene_scheme
-from gspec.typing_models import TypingDocument
+from gspec.cluster.core import GeneCall
+from gspec.typing.gene import evaluate_gene_calls, score_gene_scheme
+from gspec.typing.models import TypingDocument
 
 
 def _call(gene: str, coverage: float, identity: float) -> GeneCall:
@@ -140,7 +140,7 @@ def test_unknown_gene_is_rejected_at_build_validation() -> None:
     """``best_hit`` references go through the same UNKNOWN_GENE guard."""
     import pytest
 
-    from gspec.typing_gene import validate_gene_typing
+    from gspec.typing.gene import validate_gene_typing
 
     document = _document(_rule("HS2", "nope"))
     with pytest.raises(Exception) as exc_info:

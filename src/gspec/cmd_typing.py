@@ -4,7 +4,7 @@ Lives outside cli.py to keep that module small; cli.py registers it via
 ``register_typing_command``. The second stage of the designation pipeline:
 ``gspec screen -o result.tsv --db NAME`` detects genes (contig or reads
 mode), then ``gspec typing result.tsv`` resolves NAME from the table's
-DATABASE column and designates (the use-case lives in gspec.typing_ops).
+DATABASE column and designates (the use-case lives in gspec.typing.ops).
 The table also arrives on stdin: ``gspec screen 1.fna --db NAME | gspec
 typing`` types the piped output, and the explicit ``-`` marker reads stdin
 even under a terminal (until EOF).
@@ -25,7 +25,7 @@ from gspec.dispatch import (
 )
 from gspec.engines import OutputFormat
 from gspec.errors import usage_fail
-from gspec.typing_ops import run_typing
+from gspec.typing.ops import run_typing
 
 
 def _stdin_is_tty() -> bool:

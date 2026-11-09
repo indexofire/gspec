@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from gspec.db_build_ops import perform_build
-from gspec.dbbuild import validate_records
+from gspec.db.build import validate_records
+from gspec.db.build_ops import perform_build
 from gspec.errors import DatabaseError
 from gspec.records import Record
 
