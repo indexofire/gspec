@@ -128,6 +128,31 @@ a reported `Dublin -> Typhimurium` confusion when it does not). The truth table
 ships with SISTR but the genome FASTAs do not, so the real accuracy run needs
 those assemblies.
 
+## Reads by k-mer (no alignment)
+
+`import_upstream.py … --kmerdb 27` writes `kmer.json` (`gspec.kmerdb/1`): one
+**differential k-mer set per antigen** — the antigen's representative reference
+minus one representative of every other antigen in the same family (133 sets for
+the SISTR panel). Reads are counted once and each set is scored by containment
+(`set_hit_fraction`), which sidesteps the alignment path's weakness: with several
+near-identical references per antigen, mapping splits the reads (`h1_i` 80 % next
+to its sibling's 75 %), while k-mers give the true antigen 1.00 against a 0.11
+runner-up on the same reads.
+
+```bash
+python scripts/salmonella/kmers_call_reads.py \
+    --db-dir src/gspec/data/dbs/sen_sero_sistr --fastq reads.fq
+#   o: B (1.00 … runner-up 0.00)   h1: i (1.00 … 0.11)   h2: 1,2 (1.00 … 0.07)
+```
+
+Caveats, measured: 128/133 antigens have a non-empty differential set — the five
+that do not (`f,g,[s]`, `f,g,s`, `g,m,s`, `g,q`, `z4,z23,z32`) are wholly
+contained in another antigen of their family, so k-mers cannot separate them
+either. The subtraction uses one representative per other antigen, so the sets
+are slightly permissive. `--r1/--r2` still routes gene databases through
+minimap2; wiring the k-mer sets into that CLI path (and shipping the
+materialized `kmers/` in the bundle) is the remaining engine step.
+
 ## How the panel is built
 
 ```

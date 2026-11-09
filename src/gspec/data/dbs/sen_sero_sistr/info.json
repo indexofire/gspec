@@ -1,7 +1,7 @@
 {
   "schema": "gspec.dbinfo/1",
   "name": "sen_sero_sistr",
-  "description": "SISTR antigen database: 621 antigen references for 133 antigens, 1577 serovar formulas",
+  "description": "SISTR antigen database: 621 antigen references for 133 antigens, 1536 serovar formulas",
   "vendor": "converted from SISTR antigen database",
   "note": "Converted by scripts/salmonella/import_upstream.py on 2026-11-09 from https://zenodo.org/records/15078586. Upstream licence: Apache-2.0. This is a converted copy, not gspec-curated content: verify the upstream terms before redistributing it. If any author or rights holder objects to the use or redistribution of this database, please contact indexofire@gmail.com and the content will be removed or adjusted promptly upon verification."
 }

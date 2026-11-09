@@ -57,6 +57,20 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **Salmonella data cleaning and a k-mer reads path.** The ported panel is now
+  internally consistent: 621 records / 621 unique ids / 621 referenced, and every
+  shipped formula row is reachable (1,536 rows; the 41 upstream serovars no
+  reference can reach are dropped at conversion and named in the bundle
+  caveats). Token whitespace is normalized (SISTR carries trailing spaces such as
+  `"R "`), gene ids are renumbered deterministically after reference collapsing,
+  and collision-proof (two antigen names can sanitise to one token).
+  `--kmerdb 27` additionally writes 133 differential k-mer sets
+  (`gspec.kmerdb/1`), one per antigen; `scripts/salmonella/kmers_call_reads.py`
+  calls the O/H1/H2 antigens from FASTQ by containment, and on synthetic reads the
+  true antigen scores 1.00 against a ≤0.11 runner-up — where mapping split the
+  same reads 80 %/75 % across near-identical references. Routing `--r1/--r2`
+  through these sets is the remaining engine step.
+
 - **Hybrid import and an accuracy harness for the Salmonella panel.** Two
   measured facts shaped the hybrid: SeqSero2 names O antigens by number while the
   WHO-2007 table keys on serogroup letters (0/35 overlap), but the H alleles use

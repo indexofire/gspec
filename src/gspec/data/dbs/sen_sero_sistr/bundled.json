@@ -22,7 +22,8 @@
     ],
     "caveats": [
       "Converted upstream data: see `attribution` for the upstream project, version and URL.",
-      "Antigen determination is a ranking step: a margin below the measured gap between near-identical alleles is required, so re-calibrate after an upstream refresh."
+      "Antigen determination is a ranking step: a margin below the measured gap between near-identical alleles is required, so re-calibrate after an upstream refresh.",
+      "41 upstream serovar rows were dropped at conversion because no reference allele can reach their formula: Aarhus, Aesch, Antarctica, Australia, Barry, Bilu, Borreze, Buckeye, Bulovka, California\u2026"
     ]
   }
 }

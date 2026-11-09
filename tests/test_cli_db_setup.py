@@ -98,7 +98,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "gspec: indexed pau_sero (14 sequences, nucl)",
         "gspec: indexed sag_sero (14 sequences, nucl)",
         "gspec: indexed sen_sero (13 sequences, nucl)",
-        "gspec: indexed sen_sero_sistr (617 sequences, nucl)",
+        "gspec: indexed sen_sero_sistr (621 sequences, nucl)",
         "gspec: indexed shi_sero (96 sequences, nucl)",
         "gspec: indexed str_lancefield (29 sequences, nucl)",
         "gspec: indexed tinyamr (3 sequences, nucl)",

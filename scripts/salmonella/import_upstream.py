@@ -122,8 +122,13 @@ def _gene_id(name: str) -> str:
     return cleaned.strip("_") or "unnamed"
 
 
+def _norm(text: str) -> str:
+    """Collapse whitespace (upstream tokens carry trailing/double spaces)."""
+    return " ".join(text.split())
+
+
 def _sistr_antigen(record_id: str) -> str:
-    return record_id.rsplit("|", 1)[-1].strip()
+    return _norm(record_id.rsplit("|", 1)[-1])
 
 
 def _seqsero2_antigen(record_id: str) -> tuple[str, str] | None:
@@ -236,6 +241,7 @@ def _write_bundle_metadata(
     licence: str,
     source_url: str,
     attribution: str,
+    dropped_serovars: set[str] | None = None,
     dbtype: str = "nucl",
 ) -> None:
     """``bundled.json`` + ``screen.json``: make ``dest`` a wheel-eligible bundle.
@@ -302,6 +308,17 @@ def _write_bundle_metadata(
                         "Antigen determination is a ranking step: a margin below the"
                         " measured gap between near-identical alleles is required, so"
                         " re-calibrate after an upstream refresh.",
+                        *(
+                            [
+                                f"{len(dropped_serovars)} upstream serovar rows were"
+                                " dropped at conversion because no reference allele"
+                                " can reach their formula: "
+                                + ", ".join(sorted(dropped_serovars)[:10])
+                                + ("…" if len(dropped_serovars) > 10 else "")
+                            ]
+                            if dropped_serovars
+                            else []
+                        ),
                     ],
                 },
             },
@@ -478,14 +495,67 @@ def _renumber(
     pairs: list[tuple[str, str, str]] = []
     for family, antigens in markers.items():
         markers_out[family] = {}
+        used: set[str] = set()
+        bases = {_gene_id(f"{family}_{antigen}"): antigen for antigen in antigens}
+        collisions = {
+            base: sorted(name for name, other in bases.items() if other == antigen)
+            for base, antigen in bases.items()
+            if sum(1 for other in bases.values() if other == antigen) > 1
+        }
         for antigen, genes in antigens.items():
             base = _gene_id(f"{family}_{antigen}")
+            if base in collisions:
+                position = collisions[base].index(antigen)
+                base = base if position == 0 else f"{base}__g{position + 1}"
             ids = [base] + [f"{base}__{n}" for n in range(2, len(genes) + 1)]
+            # Last line of defence: an antigen name can sanitise onto another
+            # name's id even after the collision tag above.
+            for position, gene_id in enumerate(ids):
+                unique = gene_id
+                suffix = 2
+                while unique in used:
+                    unique = f"{gene_id}__u{suffix}"
+                    suffix += 1
+                used.add(unique)
+                ids[position] = unique
             markers_out[family][antigen] = ids
             for gene, new in zip(genes, ids, strict=True):
                 sequences[new] = sequences[gene]
                 pairs.append((new, antigen, sequences[new]))
     return markers_out, pairs
+
+
+def _drop_unreachable(
+    families: dict[str, dict[str, list[str]]],
+    formulas: list[dict[str, str]],
+    *,
+    groups: dict[str, list[list[str]]] | None = None,
+) -> tuple[list[dict[str, str]], set[str]]:
+    """Keep only rows an antigen reference can actually reach.
+
+    A row whose token has no reference sequence (directly or through a
+    similarity class) can never fire, so shipping it is dead weight that also
+    inflates the apparent coverage. The dropped serovars are returned so the
+    bundle can record them instead of losing them silently.
+    """
+    known = {key: set(family) | {FALLBACK_PHASE} for key, family in families.items()}
+
+    def reachable(family: str, token: str) -> bool:
+        if token in known[family]:
+            return True
+        for group in (groups or {}).get(family, []):
+            if token in group and any(member in known[family] for member in group):
+                return True
+        return False
+
+    kept: list[dict[str, str]] = []
+    dropped: set[str] = set()
+    for row in formulas:
+        if reachable("o", row["o"]) and reachable("h1", row["h1"]) and reachable("h2", row["h2"]):
+            kept.append(row)
+        else:
+            dropped.add(row["serovar"])
+    return kept, dropped
 
 
 def _report_reachability(
@@ -540,6 +610,7 @@ def import_sistr(
     bundle: bool = False,
     subspecies: str | None = "enterica",
     extra_h_from: Path | None = None,
+    kmer_k: int = 0,
 ) -> None:
     antigen_dir = source / "antigens" if (source / "antigens").is_dir() else source
     files = sorted(antigen_dir.glob("*.fasta"))
@@ -602,7 +673,13 @@ def import_sistr(
     markers, pairs = _renumber(markers, kept)
     rows = _sistr_formulas(table, subspecies=subspecies)
     groups = json.loads(SIMILARITY_GROUPS.read_text(encoding="utf-8"))
+    rows, dropped_serovars = _drop_unreachable(markers, rows, groups=groups)
     _report_reachability(markers, rows, groups=groups)
+    if dropped_serovars:
+        print(
+            f"  dropped {len(dropped_serovars)} unreachable serovar row(s), e.g."
+            f" {sorted(dropped_serovars)[:5]}"
+        )
     _write_fasta(dest, name, pairs)
     _write_database(
         name=name,
@@ -614,6 +691,14 @@ def import_sistr(
         dest=dest,
         similarity_groups=groups,
     )
+    if kmer_k:
+        _write_kmerdb(
+            dest,
+            name=name,
+            markers=markers,
+            sequences={gene: sequence for gene, _, sequence in pairs},
+            k=kmer_k,
+        )
     if bundle:
         _write_bundle_metadata(
             dest,
@@ -621,6 +706,7 @@ def import_sistr(
             source_label="SISTR antigen database",
             licence="Apache-2.0",
             source_url="https://zenodo.org/records/15078586",
+            dropped_serovars=dropped_serovars,
             attribution=(
                 "SISTR (Salmonella In Silico Typing Resource), PHAC-NML"
                 " (https://github.com/phac-nml/sistr_cmd), database"
@@ -670,6 +756,49 @@ def import_seqsero2(
         )
 
 
+def _write_kmerdb(
+    dest: Path,
+    *,
+    name: str,
+    markers: dict[str, dict[str, list[str]]],
+    sequences: dict[str, str],
+    k: int = 27,
+) -> None:
+    """One differential k-mer set per antigen (`gspec.kmerdb/1`).
+
+    The set is the antigen's representative reference minus every other antigen of
+    the same family, which is what makes reads callable by containment: reads are
+    counted once and scored per antigen, so near-identical references of one
+    antigen no longer split the evidence the way alignment does.
+    """
+    sets: dict[str, dict[str, object]] = {}
+    for family, antigens in markers.items():
+        reps = {
+            antigen: max(genes, key=lambda gene: len(sequences[gene]))
+            for antigen, genes in antigens.items()
+        }
+        for antigen, gene in reps.items():
+            # One representative per other antigen keeps the sidecar small; the
+            # subtraction is therefore approximate (documented in the caveats).
+            against = [
+                encode_seqid(name, member, f"upstream:{other}", ("antigen",))
+                for other, member in reps.items()
+                if other != antigen
+            ]
+            # Set names carry the antigen verbatim (``h2_1,2``), so a caller can
+            # report the antigen as the table spells it; ids stay sanitized.
+            sets[f"{family}_{antigen}"] = {
+                "of": encode_seqid(name, gene, f"upstream:{antigen}", ("antigen",)),
+                "against": against,
+                "n": 0,
+            }
+    (dest / "kmer.json").write_text(
+        json.dumps({"schema": "gspec.kmerdb/1", "k": k, "sets": sets}, indent=1) + "\n",
+        encoding="utf-8",
+    )
+    print(f"  kmer.json: {len(sets)} differential sets (k={k})")
+
+
 def _write_fasta(dest: Path, name: str, pairs: list[tuple[str, str, str]]) -> None:
     """gspec/v1 FASTA: id carries db/gene/accession/function, description the antigen."""
     dest.mkdir(parents=True, exist_ok=True)
@@ -708,6 +837,16 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--kmerdb",
+        type=int,
+        default=0,
+        metavar="K",
+        help=(
+            "also write kmer.json with one differential k-mer set per antigen at"
+            " this k (<=31); the sets are materialized by `db build --kmerdb`"
+        ),
+    )
+    parser.add_argument(
         "--bundle",
         action="store_true",
         help=(
@@ -726,6 +865,7 @@ def main(argv: list[str] | None = None) -> int:
             bundle=args.bundle,
             subspecies=None if args.subspecies == "any" else args.subspecies,
             extra_h_from=args.extra_h_from,
+            kmer_k=args.kmerdb,
         )
     else:
         if args.formulas is None:

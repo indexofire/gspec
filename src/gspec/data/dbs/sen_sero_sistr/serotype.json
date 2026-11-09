@@ -535,13 +535,13 @@
         {
           "name": "f,g,[s]",
           "genes": [
-            "h1_f_g_s"
+            "h1_f_g_s__u2"
           ]
         },
         {
           "name": "f,g,[t]",
           "genes": [
-            "h1_f_g_t"
+            "h1_f_g_t__u2"
           ]
         },
         {
@@ -615,8 +615,8 @@
         {
           "name": "g,m,t",
           "genes": [
-            "h1_g_m_t",
-            "h1_g_m_t__2",
+            "h1_g_m_t__u2",
+            "h1_g_m_t__2__u2",
             "h1_g_m_t__3"
           ]
         },
@@ -647,7 +647,7 @@
         {
           "name": "g,s,t",
           "genes": [
-            "h1_g_s_t"
+            "h1_g_s_t__u2"
           ]
         },
         {
@@ -1642,12 +1642,6 @@
     {
       "o": "B",
       "h1": "g,m,t",
-      "h2": "z67",
-      "serovar": "California"
-    },
-    {
-      "o": "B",
-      "h1": "g,m,t",
       "h2": "-",
       "serovar": "California"
     },
@@ -2146,20 +2140,8 @@
     {
       "o": "B",
       "h1": "z41",
-      "h2": "1,(2),5",
-      "serovar": "Thayngen"
-    },
-    {
-      "o": "B",
-      "h1": "z41",
       "h2": "e,n,z15",
       "serovar": "Maska"
-    },
-    {
-      "o": "B",
-      "h1": "z91",
-      "h2": "-",
-      "serovar": "Mygdal"
     },
     {
       "o": "C1",
@@ -2421,12 +2403,6 @@
     },
     {
       "o": "C1",
-      "h1": "g,(t)",
-      "h2": "-",
-      "serovar": "Riggil"
-    },
-    {
-      "o": "C1",
       "h1": "g,m,[p],s",
       "h2": "1,2,7",
       "serovar": "Montevideo"
@@ -2679,12 +2655,6 @@
     },
     {
       "o": "C1",
-      "h1": "m,t",
-      "h2": "z64",
-      "serovar": "Oakey"
-    },
-    {
-      "o": "C1",
       "h1": "r",
       "h2": "1,2",
       "serovar": "Virchow"
@@ -2766,12 +2736,6 @@
       "h1": "z",
       "h2": "1,5",
       "serovar": "Poitiers"
-    },
-    {
-      "o": "C1",
-      "h1": "z",
-      "h2": "1,6,7",
-      "serovar": "Oakland"
     },
     {
       "o": "C1",
@@ -2928,12 +2892,6 @@
       "h1": "z41",
       "h2": "z35",
       "serovar": "Tamilnadu"
-    },
-    {
-      "o": "C1",
-      "h1": "z44",
-      "h2": "-",
-      "serovar": "Bulovka"
     },
     {
       "o": "C2-C3",
@@ -3818,12 +3776,6 @@
       "serovar": "Diogoye"
     },
     {
-      "o": "C2-C3",
-      "h1": "z60",
-      "h2": "1,2",
-      "serovar": "Aesch"
-    },
-    {
       "o": "D1",
       "h1": "-",
       "h2": "-",
@@ -4047,18 +3999,6 @@
     },
     {
       "o": "D1",
-      "h1": "g,z63",
-      "h2": "-",
-      "serovar": "Antarctica"
-    },
-    {
-      "o": "D1",
-      "h1": "g,z85",
-      "h2": "-",
-      "serovar": "Rosenberg"
-    },
-    {
-      "o": "D1",
       "h1": "i",
       "h2": "1,5",
       "serovar": "Seremban"
@@ -4278,12 +4218,6 @@
       "h1": "z41",
       "h2": "1,5",
       "serovar": "Ottawa"
-    },
-    {
-      "o": "D1",
-      "h1": "z6",
-      "h2": "z67",
-      "serovar": "Franken"
     },
     {
       "o": "D2",
@@ -5295,12 +5229,6 @@
     },
     {
       "o": "E1",
-      "h1": "z41",
-      "h2": "1,2,5",
-      "serovar": "Dortmund"
-    },
-    {
-      "o": "E1",
       "h1": "z69",
       "h2": "1,7",
       "serovar": "Pietersburg"
@@ -5460,12 +5388,6 @@
       "h1": "f,g",
       "h2": "-",
       "serovar": "Rideau"
-    },
-    {
-      "o": "E4",
-      "h1": "f,g,t",
-      "h2": "1,(2),7",
-      "serovar": "Bilu"
     },
     {
       "o": "E4",
@@ -6940,12 +6862,6 @@
     {
       "o": "I",
       "h1": "b",
-      "h2": "1,2,5",
-      "serovar": "Melaka"
-    },
-    {
-      "o": "I",
-      "h1": "b",
       "h2": "1,5",
       "serovar": "Wa"
     },
@@ -7815,21 +7731,9 @@
     },
     {
       "o": "K",
-      "h1": "z4,z23",
-      "h2": "z64",
-      "serovar": "Aarhus"
-    },
-    {
-      "o": "K",
       "h1": "z4,z24",
       "h2": "-",
       "serovar": "Blukwa"
-    },
-    {
-      "o": "K",
-      "h1": "z71",
-      "h2": "-",
-      "serovar": "Delmenhorst"
     },
     {
       "o": "L",
@@ -7896,12 +7800,6 @@
       "h1": "i",
       "h2": "1,2",
       "serovar": "Diourbel"
-    },
-    {
-      "o": "L",
-      "h1": "k",
-      "h2": "1,(2),5",
-      "serovar": "Surrey"
     },
     {
       "o": "L",
@@ -9110,90 +9008,6 @@
       "serovar": "Leda"
     },
     {
-      "o": "O:54",
-      "h1": "b",
-      "h2": "e,n,x",
-      "serovar": "Tonev"
-    },
-    {
-      "o": "O:54",
-      "h1": "e,h",
-      "h2": "1,5",
-      "serovar": "Winnipeg"
-    },
-    {
-      "o": "O:54",
-      "h1": "e,h",
-      "h2": "1,6",
-      "serovar": "Rossleben"
-    },
-    {
-      "o": "O:54",
-      "h1": "f,g,s",
-      "h2": "-",
-      "serovar": "Borreze"
-    },
-    {
-      "o": "O:54",
-      "h1": "g,s,t",
-      "h2": "-",
-      "serovar": "Uccle"
-    },
-    {
-      "o": "O:54",
-      "h1": "i",
-      "h2": "z6",
-      "serovar": "Poeseldorf"
-    },
-    {
-      "o": "O:54",
-      "h1": "k",
-      "h2": "1,5",
-      "serovar": "Ochsenwerder"
-    },
-    {
-      "o": "O:54",
-      "h1": "m,t",
-      "h2": "-",
-      "serovar": "Newholland"
-    },
-    {
-      "o": "O:54",
-      "h1": "r",
-      "h2": "1,5",
-      "serovar": "Czernyring"
-    },
-    {
-      "o": "O:54",
-      "h1": "y",
-      "h2": "1,5",
-      "serovar": "Steinwerder"
-    },
-    {
-      "o": "O:54",
-      "h1": "z10",
-      "h2": "e,n,x",
-      "serovar": "Canton"
-    },
-    {
-      "o": "O:54",
-      "h1": "z10",
-      "h2": "e,n,z15",
-      "serovar": "Barry"
-    },
-    {
-      "o": "O:54",
-      "h1": "z29",
-      "h2": "-",
-      "serovar": "Mundubbera"
-    },
-    {
-      "o": "O:54",
-      "h1": "z4,z23",
-      "h2": "-",
-      "serovar": "Yerba"
-    },
-    {
       "o": "O:57",
       "h1": "a",
       "h2": "z6",
@@ -10090,12 +9904,6 @@
     {
       "o": "U",
       "h1": "l,w",
-      "h2": "z44",
-      "serovar": "Epalinges"
-    },
-    {
-      "o": "U",
-      "h1": "l,w",
       "h2": "-",
       "serovar": "Epalinges"
     },
@@ -10686,60 +10494,6 @@
       "h1": "z4,z24",
       "h2": "-",
       "serovar": "Tamberma"
-    },
-    {
-      "o": "X",
-      "h1": "z44",
-      "h2": "-",
-      "serovar": "Quinhon"
-    },
-    {
-      "o": "Y1",
-      "h1": "a",
-      "h2": "1,5,7",
-      "serovar": "Hisingen"
-    },
-    {
-      "o": "Y1",
-      "h1": "d",
-      "h2": "-",
-      "serovar": "Buckeye"
-    },
-    {
-      "o": "Y1",
-      "h1": "e,h",
-      "h2": "1,5",
-      "serovar": "Fitzroy"
-    },
-    {
-      "o": "Y1",
-      "h1": "k",
-      "h2": "e,n,z15",
-      "serovar": "Dahlem"
-    },
-    {
-      "o": "Y1",
-      "h1": "l,v",
-      "h2": "1,5",
-      "serovar": "Australia"
-    },
-    {
-      "o": "Y1",
-      "h1": "z",
-      "h2": "1,5",
-      "serovar": "Toucra"
-    },
-    {
-      "o": "Y1",
-      "h1": "z10",
-      "h2": "e,n,x",
-      "serovar": "Isaszeg"
-    },
-    {
-      "o": "Y1",
-      "h1": "z4,z24",
-      "h2": "-",
-      "serovar": "Djakarta"
     },
     {
       "o": "Z",
