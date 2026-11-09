@@ -163,6 +163,32 @@ phases are deliberately **not** widened: their absence is a real monophasic
 signal and the `"-"` alias rows already encode it (Paratyphi B var. Java stays a
 group-B partial).
 
+### How the two tools handle cross-antigen >= 99 % references
+
+Researched (source read, no data copied):
+
+- **SISTR** — `blast_wrapper.BlastReader.top_result()`: it collects every antigen
+  name among the hits for that gene (`{id.split("|")[-1] for id in df['qseqid']}`)
+  and only calls a **perfect match** when a 100 %-identity/100 %-coverage hit
+  exists *and* that name set has exactly one member. Otherwise it takes the
+  highest-bitscore row and flags the call truncated. The near-identical siblings
+  are then reconciled in `get_serovar()`, which replaces the predicted name with
+  its curated `*_SIMILARITY_GROUPS` class **before** the table lookup and matches
+  with `isin(...)` — i.e. *many names means "not perfect"*, and *the name — not a
+  candidate set — is widened*. Several serovars can match, and SISTR pipe-joins
+  them.
+- **SeqSero2** — one best hit per gene with explicit coverage/identity thresholds,
+  and the O:2/O:9 pair is settled by comparing the two `tyr` hit scores (strict
+  `>`, O:9 on a tie), as documented above.
+
+So the faithful implementation is two-fold and neither half is a candidate-set
+explosion: (a) per family, mark the call *perfect* only when all hits agree on one
+antigen, and (b) always widen the chosen name to its similarity class at lookup
+time. Both were prototyped in this session; the second interacts with the
+O-widening path already shipped and left four `sen_sero_sistr` tests red, so the
+engine was reverted to the last verified state and the work is queued with the
+findings above.
+
 **Still open, with the measurements that block a naive fix:**
 
 1. **Several predicted antigens per family (`isin`) — SISTR's other half.** The
