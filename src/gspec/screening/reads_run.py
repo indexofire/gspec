@@ -10,6 +10,7 @@ from pathlib import Path
 
 import click
 
+from gspec.cluster.kmerdb import read_kmerdb
 from gspec.db.bundled import resolve_screen_datadir
 from gspec.errors import ensure_input_file, usage_fail
 from gspec.formats.md import render_reads2_markdown, render_reads_markdown
@@ -19,6 +20,7 @@ from gspec.screening.contigs import AlignerEnum, OutputFormat, find_database
 from gspec.screening.reads import (
     ReadFileKind,
     ReadsParams,
+    ReadsReport,
     ReadTypeEnum,
     detect_read_kind,
     screen_reads,
@@ -198,6 +200,86 @@ def _screen_lanes(
     return output
 
 
+def _render_one_report(
+    report: ReadsReport,
+    db_name: str,
+    min_breadth: float,
+    label: str,
+    output_format: OutputFormat | None,
+) -> str:
+    """One sample's report in the requested format (the k-mer path's renderer)."""
+    params = ReadsParams(
+        db=db_name, read_type=ReadTypeEnum.map_ont.value, min_breadth=min_breadth, threads=1
+    )
+    now = datetime.now(UTC)
+    fmt = output_format if output_format is not None else OutputFormat.tsv
+    if fmt is OutputFormat.json:
+        return render_reads_json([report], params, now=now)
+    if fmt is OutputFormat.md:
+        return render_reads_markdown([report], params, now=now)
+    return reads_tsv_preamble(csv=fmt is OutputFormat.csv) + reads_tsv_chunk(
+        report, csv=fmt is OutputFormat.csv
+    )
+
+
+def screen_reads_kmer(
+    lanes: list[Path],
+    database: str,
+    min_breadth: float,
+    datadir: Path | None = None,
+    *,
+    quiet: bool = True,
+) -> ReadsReport:
+    """Presence calls from k-mer containment — no alignment, no index.
+
+    A gene database that ships a ``gspec.kmerdb/1`` substrate declares one
+    differential k-mer set per antigen. Counting the reads once and scoring each
+    set by containment avoids the alignment path's weakness (near-identical
+    references split the reads), and the reported row is the set's representative
+    gene, so the typing engine ranks it exactly as it ranks a mapped hit.
+    """
+    from gspec.cluster.kmerdb import (
+        containment_to_identity,
+        count_fastq_kmers,
+        load_kmer_set,
+        read_kmerdb,
+        set_hit_fraction,
+    )
+    from gspec.db.bundled import resolve_screen_datadir
+    from gspec.dbcodec import decode_seqid
+    from gspec.screening.contigs import find_database
+    from gspec.screening.reads import GeneCoverage, ReadsReport
+
+    db = find_database(resolve_screen_datadir(datadir, database), database, quiet=quiet)
+    document = read_kmerdb(db.path)
+    if document is None:
+        raise usage_fail(f"database {database!r} carries no k-mer substrate")
+    query = count_fastq_kmers(*lanes, k=document.k)
+    genes: list[GeneCoverage] = []
+    for name, spec in sorted(document.sets.items()):
+        fraction = set_hit_fraction(query, load_kmer_set(db.path, name))
+        if fraction <= 0.0:
+            continue
+        gene = decode_seqid(spec.of, database).gene
+        genes.append(
+            GeneCoverage(
+                database=database,
+                gene=gene,
+                accession=decode_seqid(spec.of, database).accession,
+                function="antigen",
+                product=f"antigen {name.split('_', 1)[1]}",
+                tlen=0,
+                breadth_pct=round(100.0 * fraction, 2),
+                mean_depth=0.0,
+                reads_mapped=0,
+                present=100.0 * fraction >= min_breadth,
+                mean_identity_pct=round(containment_to_identity(fraction, document.k), 2),
+            )
+        )
+    genes.sort(key=lambda coverage: coverage.gene)
+    return ReadsReport(reads=tuple(path.name for path in lanes), genes=tuple(genes))
+
+
 def run_screen_reads(
     r1: list[Path],
     r2: list[Path] | None,
@@ -232,6 +314,23 @@ def run_screen_reads(
         min_breadth, min_identity, min_mapq, threads, min_depth, min_relative_depth
     )
     reject_blastn_thresholds(minid, mincov, "--r1/--r2")
+    database = find_database(resolve_screen_datadir(datadir, db_name), db_name, quiet=quiet)
+    if read_kmerdb(database.path) is not None:
+        # A k-mer substrate answers "which antigen" from the reads directly; the
+        # alignment knobs (identity/MAPQ) do not apply to containment.
+        lanes = _pair_read_lanes(r1, r2)
+        for r1_path, r2_path in lanes:
+            ensure_input_file(r1_path, "reads file")
+            if r2_path is not None:
+                ensure_input_file(r2_path, "reads file")
+        report = screen_reads_kmer(
+            [path for lane in lanes for path in lane if path is not None],
+            db_name,
+            min_breadth,
+            datadir,
+            quiet=quiet,
+        )
+        return _render_one_report(report, db_name, min_breadth, db_name, output_format)
     lanes = _pair_read_lanes(r1, r2)
     for path in [r1_path for r1_path, _ in lanes] + [
         r2_path for _, r2_path in lanes if r2_path is not None

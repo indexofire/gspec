@@ -130,3 +130,52 @@ def test_kmers_are_absent_from_a_wrong_serovar(tmp_path: Path) -> None:
     group_a = set_hit_fraction(query, load_kmer_set(database, "o_A"))
     assert group_b > 0.5
     assert group_a < 0.2
+
+
+def test_cli_reads_route_through_the_kmer_substrate(tmp_path: Path) -> None:
+    """`screen --r1` on a gene database that ships a k-mer substrate answers from
+    containment (no minimap2), and `typing` designates from those rows."""
+    from click.testing import CliRunner
+
+    from gspec.cli import app
+    from gspec.db.bundled import materialize_bundled
+
+    datadir = tmp_path / "dd"
+    datadir.mkdir()
+    materialize_bundled("sen_sero_sistr", datadir, quiet=True)
+    assert (datadir / "sen_sero_sistr" / "kmers").is_dir()
+
+    fastq = _reads(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
+    table = tmp_path / "screen.tsv"
+    runner = CliRunner()
+    screened = runner.invoke(
+        app,
+        [
+            "screen",
+            "-d",
+            "sen_sero_sistr",
+            "--r1",
+            str(fastq),
+            "--read-type",
+            "map-ont",
+            "-D",
+            str(datadir),
+            "-o",
+            str(table),
+            "--quiet",
+        ],
+        catch_exceptions=False,
+    )
+    assert screened.exit_code == 0, screened.stderr
+    rows = [line.split("\t") for line in table.read_text().splitlines()[1:]]
+    genes = {row[1]: row for row in rows}
+    assert {"o_B", "h1_i", "h2_1_2"} <= set(genes)
+    assert all(genes[gene][5] == "yes" for gene in ("o_B", "h1_i", "h2_1_2"))
+
+    typed = runner.invoke(
+        app,
+        ["typing", str(table), "--datadir", str(datadir), "--format", "tsv", "--quiet"],
+        catch_exceptions=False,
+    )
+    assert typed.exit_code == 0, typed.stderr
+    assert typed.stdout.splitlines()[1].split("\t")[2] == "Typhimurium"

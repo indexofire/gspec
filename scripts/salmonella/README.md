@@ -149,9 +149,16 @@ Caveats, measured: 128/133 antigens have a non-empty differential set — the fi
 that do not (`f,g,[s]`, `f,g,s`, `g,m,s`, `g,q`, `z4,z23,z32`) are wholly
 contained in another antigen of their family, so k-mers cannot separate them
 either. The subtraction uses one representative per other antigen, so the sets
-are slightly permissive. `--r1/--r2` still routes gene databases through
-minimap2; wiring the k-mer sets into that CLI path (and shipping the
-materialized `kmers/` in the bundle) is the remaining engine step.
+are slightly permissive.
+
+**The CLI uses it.** `bundled.py` now ships `kmer.json` inside the bundle and
+materializes the sets on first use, and `run_screen_reads` routes a database with
+a k-mer substrate away from minimap2: `gspec screen -d sen_sero_sistr --r1
+reads.fq` returns one row per representative antigen (`BREADTH%` = the set's
+containment fraction, `IDENTITY%` = the mash-style ANI estimate), which
+`gspec typing` designates exactly like a mapped table. On the synthetic reads that
+is `o_B`/`h1_i`/`h2_1_2` at 100.00 each → `Typhimurium`, where the alignment path
+was splitting H1 evidence 80 %/75 %.
 
 ## How the panel is built
 

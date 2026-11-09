@@ -68,8 +68,12 @@
   (`gspec.kmerdb/1`), one per antigen; `scripts/salmonella/kmers_call_reads.py`
   calls the O/H1/H2 antigens from FASTQ by containment, and on synthetic reads the
   true antigen scores 1.00 against a ≤0.11 runner-up — where mapping split the
-  same reads 80 %/75 % across near-identical references. Routing `--r1/--r2`
-  through these sets is the remaining engine step.
+  same reads 80 %/75 % across near-identical references. **The CLI now uses it**:
+  a bundle ships `kmer.json`, `db setup`/first use materializes the sets, and
+  `gspec screen --r1/--r2` against a database with a k-mer substrate answers from
+  containment (one row per representative antigen; `BREADTH%` is the containment
+  fraction, `IDENTITY%` the mash-style ANI estimate) instead of invoking
+  minimap2, so `gspec typing` designates from those rows unchanged.
 
 - **Hybrid import and an accuracy harness for the Salmonella panel.** Two
   measured facts shaped the hybrid: SeqSero2 names O antigens by number while the

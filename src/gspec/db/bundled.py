@@ -92,6 +92,12 @@ class BundledDatabase(BaseModel, frozen=True):
         return self.path / "sequences"
 
     @property
+    def kmer_path(self) -> Path | None:
+        """The bundled k-mer substrate (``kmer.json``), when the bundle ships one."""
+        kmer = self.path / "kmer.json"
+        return kmer if kmer.is_file() else None
+
+    @property
     def typing_path(self) -> Path | None:
         """The bundled typing spec, when the database ships one."""
         typing = self.path / "typing.json"
@@ -227,6 +233,15 @@ def materialize_bundled(name: str, datadir: Path, *, quiet: bool = True) -> None
         shutil.copyfile(bundled.markers_path, datadir / name / "markers.json")
     if bundled.serotype_path is not None:
         shutil.copyfile(bundled.serotype_path, datadir / name / "serotype.json")
+    if bundled.kmer_path is not None:
+        # The substrate ships as data + a JSON document; the sets themselves are
+        # computed here so the bundle does not carry the packed arrays.
+        from gspec.cluster.kmerdb import KmerDbDocument, materialize_kmer_sets
+
+        built = datadir / name
+        document = KmerDbDocument.model_validate_json(bundled.kmer_path.read_text(encoding="utf-8"))
+        # materialize_kmer_sets rewrites kmer.json with each set's n.
+        materialize_kmer_sets(built, document, built / "sequences")
 
 
 def resolve_screen_datadir(cli_value: Path | None, db_name: str) -> Path:
