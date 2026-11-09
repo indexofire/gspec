@@ -6,7 +6,13 @@ from collections.abc import Mapping
 
 from gspec.cluster.core import GeneCall
 from gspec.typing.results import PhenotypeScore, SchemeCall, ScoreComponent
-from gspec.typing.serotype_models import SerotypeDocument, SerotypeRule
+from gspec.typing.serotype_models import (
+    AntigenFamily,
+    AnySerotypeDocument,
+    SerotypeDocument,
+    SerotypeDocumentV2,
+    SerotypeRule,
+)
 
 
 def _present(call: GeneCall | None, coverage: float, identity: float) -> bool:
@@ -91,7 +97,7 @@ def _rule_matches(rule: SerotypeRule, calls: Mapping[str, GeneCall]) -> tuple[st
     return tuple(positives)
 
 
-def _control_present(calls: Mapping[str, GeneCall], document: SerotypeDocument) -> bool:
+def _control_present(calls: Mapping[str, GeneCall], document: AnySerotypeDocument) -> bool:
     if document.control_gene is None:
         return True
     return _present(
@@ -121,7 +127,124 @@ def _most_specific(
     return kept
 
 
-def evaluate_serotype(calls: Mapping[str, GeneCall], document: SerotypeDocument) -> SchemeCall:
+def _family_call(
+    family: AntigenFamily, calls: Mapping[str, GeneCall], document: SerotypeDocumentV2
+) -> tuple[str | None, float, tuple[str, ...]]:
+    """The winning antigen of one family: (name|None, score, winning gene ids).
+
+    Every reference allele is scored by identity x coverage (the `best_hit`
+    metric); alleles within the document's ``margin`` of the winner make the
+    family ambiguous (None), which is how near-identical alleles are pinned
+    down — SeqSero2 compares two such scores by hand, gspec by the margin.
+    """
+    scored: list[tuple[float, str, tuple[str, ...]]] = []
+    for entry in family.entries:
+        best = 0.0
+        winners: tuple[str, ...] = ()
+        for gene in entry.genes:
+            call = calls.get(gene)
+            if not _present(call, document.coverage_floor, document.identity_floor):
+                continue
+            assert call is not None
+            score = _evidence(call)
+            if score > best:
+                best, winners = score, (gene,)
+            elif score == best:
+                winners += (gene,)
+        if best > 0.0:
+            scored.append((best, entry.name, winners))
+    if not scored:
+        return None, 0.0, ()
+    scored.sort(key=lambda item: item[0], reverse=True)
+    best_score, name, winners = scored[0]
+    if len(scored) > 1 and best_score - scored[1][0] <= document.margin:
+        return None, best_score, winners
+    return name, best_score, winners
+
+
+def _lookup_formula(
+    document: SerotypeDocumentV2, o: str | None, h1: str | None, h2: str | None
+) -> str | None:
+    """The serovar for a formula, trying the phase combinations the table holds.
+
+    Monophasic serovars are tabulated with ``"-"``, so an unresolved phase is
+    looked up as ``"-"`` first and only then reported as a partial formula.
+    """
+    if o is None:
+        return None
+    index = {(row.o, row.h1, row.h2): row.serovar for row in document.formulas}
+    first, second = h1 or "-", h2 or "-"
+    for key in ((o, first, second), (o, first, "-"), (o, "-", second), (o, "-", "-")):
+        found = index.get(key)
+        if found is not None:
+            return found
+    return None
+
+
+def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:
+    """Ranked antigen families, then the formula table."""
+    control = _control_present(calls, document)
+    resolved: dict[str, tuple[str | None, float, tuple[str, ...]]] = {
+        family.key: _family_call(family, calls, document) for family in document.antigens
+    }
+    o, o_score, _o_genes = resolved.get("o", (None, 0.0, ()))
+    h1 = resolved.get("h1", (None, 0.0, ()))
+    h2 = resolved.get("h2", (None, 0.0, ()))
+    components = tuple(
+        ScoreComponent(name=f"antigen:{gene}", score=score)
+        for _, score, genes in resolved.values()
+        for gene in genes
+    )
+    notes = [
+        f"formula {o or '-'}:{h1[0] or '-'}:{h2[0] or '-'}",
+        *(
+            f"{family_key.upper()}: {'/'.join(sorted(genes)) or '-'}"
+            for family_key, (_, _, genes) in sorted(resolved.items())
+        ),
+    ]
+    if not control:
+        return SchemeCall(
+            phenotype=document.fallback,
+            score=0.0,
+            confidence="low",
+            notes=("control gene absent",),
+        )
+    serovar = _lookup_formula(document, o, h1[0], h2[0]) if control else None
+    if serovar is not None:
+        score = max(o_score, h1[1], h2[1])
+        return SchemeCall(
+            phenotype=serovar,
+            score=round(score, 4),
+            confidence="high",
+            components=components,
+            notes=tuple(notes),
+        )
+    if o is None:
+        return SchemeCall(
+            phenotype=document.unresolved,
+            score=0.0,
+            confidence="low",
+            components=components,
+            notes=tuple(notes),
+        )
+    formula = f"{o}:{h1[0] or '-'}:{h2[0] or '-'}"
+    return SchemeCall(
+        phenotype=document.partial.format(formula=formula),
+        score=round(max(o_score, h1[1], h2[1]), 4),
+        confidence="low",
+        components=components,
+        notes=tuple(notes),
+    )
+
+
+def evaluate_serotype(calls: Mapping[str, GeneCall], document: AnySerotypeDocument) -> SchemeCall:
+    """One serotype profile decision, for either document shape."""
+    if isinstance(document, SerotypeDocumentV2):
+        return _evaluate_v2(calls, document)
+    return _evaluate_v1(calls, document)
+
+
+def _evaluate_v1(calls: Mapping[str, GeneCall], document: SerotypeDocument) -> SchemeCall:
     """One ordered marker-set decision, surfacing every matching rule.
 
     A rule whose ``control_exempt`` is set can still fire when the scheme

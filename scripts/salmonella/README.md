@@ -11,6 +11,40 @@ same way, but *which* subspecies a genome belongs to cannot be decided from
 antigen genes — it needs biochemical tests. A panel that claimed to type them
 would be wrong about the subspecies it printed, so nothing here does.
 
+## Full port route: importing an upstream antigen database
+
+`import_upstream.py` converts a full upstream database into a gspec database with
+the `gspec.serotype/2` shape (ranked antigen families + the O:H1:H2 formula
+table). Two layouts are understood:
+
+| upstream | files | licence | may the wheel carry it? |
+|---|---|---|---|
+| SISTR | `data/antigens/{wzx,wzy,fliC,fljB}.fasta` + the WHO-2007 CSV | **Apache-2.0** | legally yes (with attribution); this repo's §6 gate still says no for third-party snapshots, so import it into a *datadir* |
+| SeqSero2 | `seqsero2_db/H_and_O_and_specific_genes.fasta` (+ its own formula logic) | **GPL-2.0** | **no** — importing it locally is the only permitted use |
+
+```bash
+python scripts/salmonella/import_upstream.py sistr \
+    --source /path/to/SISTR_V_1.1.3_db --dest ~/.local/share/gspec/db/sal_sistr \
+    --name sal_sistr            # reads the WHO-2007 CSV from the same directory
+
+python scripts/salmonella/import_upstream.py seqsero2 \
+    --source H_and_O_and_specific_genes.fasta --formulas who2007.csv \
+    --dest ~/.local/share/gspec/db/sal_seqsero --name sal_seqsero
+```
+
+What the conversion produces, and why the shape is `/2`:
+
+- each antigen family becomes a **ranked list** of allele references — the
+  "top hit wins" step SeqSero2 and SISTR both implement, expressed as data;
+- the formula table becomes `formulas[]` (`O:H1:H2 -> serovar`, `"-"` for a
+  phase the formula does not carry), which is the only viable representation for
+  thousands of rows (one rule per serovar would not scale);
+- `info.json` records the upstream licence, URL, conversion date and the
+  objection clause, so `gspec db info` shows what a user is actually running.
+
+The importer is a *conversion*, not curation: verify the upstream terms before
+redistributing anything it produces.
+
 ## How the panel is built
 
 ```

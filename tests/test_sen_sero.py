@@ -88,7 +88,9 @@ def _designate(tmp_path: Path, datadir: Path, *markers: str) -> dict[str, str]:
 
 
 def _serotype_document() -> SerotypeDocument:
-    return read_serotype_document(ASSET / "serotype.json")
+    document = read_serotype_document(ASSET / "serotype.json")
+    assert isinstance(document, SerotypeDocument)  # sen_sero ships the /1 profile
+    return document
 
 
 def _presence_gated_markers() -> set[str]:

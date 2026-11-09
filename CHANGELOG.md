@@ -50,6 +50,23 @@
   alleles sit at ≤77.6 % to every other panel allele, so the presence floor
   separates them; Paratyphi B var. Java (monophasic `b:-`) reports the group-B
   partial instead of a wrong diphasic name.
+- **`gspec.serotype/2` — ranked antigen families + an antigenic-formula table.**
+  A full Salmonella panel is not a rule list: ~46 O groups, ~300 H alleles and
+  thousands of `O:H1:H2 -> serovar` rows. `/2` models that directly: each antigen
+  family is a ranked list of allele references (the reference allele with the
+  highest identity x coverage wins, alleles inside the document's `margin` leave
+  the family undecided — the SeqSero2/SISTR top-hit step), and the resulting
+  formula is looked up in a table that treats a missing phase and `"-"` as the
+  same token, so monophasic serovars resolve. `read_serotype_document` dispatches
+  on the schema tag; `/1` profiles are untouched.
+- **`scripts/salmonella/import_upstream.py` converts an upstream antigen
+  database** (SISTR's `antigens/*.fasta` + WHO-2007 CSV, Apache-2.0; or
+  SeqSero2's `H_and_O_and_specific_genes.fasta`, GPL-2.0) into a `serotype/2`
+  database. The conversion is run by a curator and writes into a datadir — the
+  wheel still carries no third-party snapshot (§6), and SeqSero2's GPL-2.0
+  content must stay local. `info.json` records the upstream licence, URL and
+  conversion date.
+
 - **`gspec.serotype/1` gains a `decision` policy.** `ambiguous` (the default)
   keeps reporting every matching rule's phenotype as an ambiguity, so `shi_sero`
   is byte-identical. `most_specific` drops matches whose positive markers are a
