@@ -379,6 +379,8 @@ def test_db_list_non_tty_emits_exact_tsv(tmp_path: Path, monkeypatch: pytest.Mon
         "sen_sero\tSalmonella enterica subsp. enterica serotyping panel"
         " (gspec-curated INSDC CDS markers)\tbundled\tnucl\tgene\tcommand\t"
         "gspec-curated (INSDC annotated CDS)\n"
+        "sen_sero_sistr\tSISTR antigen database: O/H antigen panel with its formula"
+        " table\tbundled\tnucl\tgene\tcommand\tconverted from SISTR antigen database\n"
         "shi_sero\tShigella molecular serotype marker panel"
         " (ShigaTyper public-domain markers)\tbundled\tnucl\tgene\tcommand\t"
         "gspec-curated (ShigaTyper public-domain markers)\n"

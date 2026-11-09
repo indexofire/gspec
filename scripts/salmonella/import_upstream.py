@@ -73,6 +73,17 @@ def _read_fasta(path: Path) -> Iterator[tuple[str, str]]:
         yield header, "".join(chunks)
 
 
+def _unique_gene_id(base: str, used: set[str]) -> str:
+    """A gene id no other record claims (the sanitiser can collide two names)."""
+    gene = _gene_id(base)
+    suffix = 2
+    while gene in used:
+        gene = _gene_id(f"{base}_{suffix}")
+        suffix += 1
+    used.add(gene)
+    return gene
+
+
 def _gene_id(name: str) -> str:
     """A safe gspec gene id (no tabs/newlines, alias-free)."""
     cleaned = re.sub(r"[^A-Za-z0-9_.:-]+", "_", name.strip())
@@ -113,6 +124,37 @@ def _detect_family(path: Path) -> str | None:
     if stem.startswith(("wzx", "wzy")):
         return "o"
     return None
+
+
+def _sistr_formulas(path: Path, *, subspecies: str | None) -> list[dict[str, str]]:
+    """SISTR's WHO-2007 table as formula rows.
+
+    Two SISTR semantics are preserved: ``subspecies`` narrows the rows (the
+    antigen genes cannot decide the subspecies, so ``enterica`` is the default
+    scope), and ``can_h2_be_missing`` adds a phase-off alias row so a genome
+    caught in phase 2-off still resolves to the same serovar.
+    """
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        rows: list[dict[str, str]] = []
+        for row in reader:
+            row_spp = (row.get("subspecies") or "").strip()
+            if subspecies is not None and row_spp and row_spp != subspecies:
+                # A table without the column (older exports, hand-made fixtures)
+                # keeps every row rather than silently dropping all of them.
+                continue
+            serovar = (row.get("Serovar") or "").strip()
+            if not serovar:
+                continue
+            o = (row.get("Serogroup") or FALLBACK_PHASE).strip() or FALLBACK_PHASE
+            h1 = (row.get("H1") or FALLBACK_PHASE).strip() or FALLBACK_PHASE
+            h2 = (row.get("H2") or FALLBACK_PHASE).strip() or FALLBACK_PHASE
+            rows.append({"o": o, "h1": h1, "h2": h2, "serovar": serovar})
+            if (
+                row.get("can_h2_be_missing") or ""
+            ).strip().upper() == "TRUE" and h2 != FALLBACK_PHASE:
+                rows.append({"o": o, "h1": h1, "h2": FALLBACK_PHASE, "serovar": serovar})
+    return rows
 
 
 def _formula_rows(path: Path) -> list[dict[str, str]]:
@@ -191,13 +233,44 @@ def _write_bundle_metadata(
                     " endorsement of this conversion."
                 ),
                 "guidance": {
+                    "references": [
+                        {
+                            "citation": (
+                                "Yoshida CE, Kruczkiewicz P, Laing CR, Lingohr EJ,"
+                                " Gannon VPJ, Nash JHE, Taboada EN. The Salmonella In"
+                                " Silico Typing Resource (SISTR): an open"
+                                " web-accessible tool for rapidly typing and"
+                                " subtyping draft microbial genomes. PLoS One."
+                                " 2016;11(8):e0160528."
+                            ),
+                            "doi": "10.1371/journal.pone.0160528",
+                            "note": (
+                                "SISTR: the antigen references and the"
+                                " O:H1:H2 formula table this database was"
+                                " converted from."
+                            ),
+                        },
+                        {
+                            "citation": (
+                                "Grimont PAD, Weill FX. Antigenic formulae of the"
+                                " Salmonella serovars (Kauffmann-White-Le Minor"
+                                " scheme), WHO Collaborating Centre for Reference and"
+                                " Research on Salmonella, Institut Pasteur."
+                            ),
+                            "note": (
+                                "The antigenic-formula scheme the table encodes;"
+                                " bracket and parenthesis notation in the tokens is"
+                                " the scheme's."
+                            ),
+                        },
+                    ],
                     "caveats": [
                         "Converted upstream data: see `attribution` for the upstream"
                         " project, version and URL.",
                         "Antigen determination is a ranking step: a margin below the"
                         " measured gap between near-identical alleles is required, so"
                         " re-calibrate after an upstream refresh.",
-                    ]
+                    ],
                 },
             },
             indent=2,
@@ -225,7 +298,7 @@ def _write_database(
     source_label: str,
     licence: str,
     source_url: str,
-    markers: dict[str, list[tuple[str, str]]],
+    markers: dict[str, dict[str, list[str]]],
     formulas: list[dict[str, str]],
     dest: Path,
 ) -> None:
@@ -235,8 +308,7 @@ def _write_database(
         {
             "key": key,
             "entries": [
-                {"name": antigen, "genes": [gene]}
-                for gene, antigen in sorted(markers[key], key=lambda item: item[1])
+                {"name": antigen, "genes": genes} for antigen, genes in sorted(markers[key].items())
             ],
         }
         for key in ("o", "h1", "h2")
@@ -262,8 +334,11 @@ def _write_database(
                 "schema": "gspec.dbinfo/1",
                 "name": name,
                 "description": (
-                    f"{source_label}: {sum(len(v) for v in markers.values())} antigen"
-                    f" references, {len(formulas)} serovar formulas"
+                    f"{source_label}:"
+                    f" {sum(len(genes) for fam in markers.values() for genes in fam.values())}"
+                    f" antigen references for"
+                    f" {sum(len(fam) for fam in markers.values())} antigens,"
+                    f" {len(formulas)} serovar formulas"
                 ),
                 "vendor": f"converted from {source_label}",
                 "note": (
@@ -282,11 +357,49 @@ def _write_database(
         + "\n",
         encoding="utf-8",
     )
-    print(f"{name}: {sum(len(v) for v in markers.values())} antigen refs, {len(formulas)} formulas")
+    print(
+        f"{name}:"
+        f" {sum(len(genes) for fam in markers.values() for genes in fam.values())} refs,"
+        f" {sum(len(fam) for fam in markers.values())} antigens,"
+        f" {len(formulas)} formulas"
+    )
+
+
+def _report_reachability(
+    families: dict[str, dict[str, list[str]]], formulas: list[dict[str, str]]
+) -> None:
+    """How many formula rows can actually be reached from the declared antigens.
+
+    A row whose O/H1/H2 token has no reference sequence is unreachable: the
+    genome can never resolve that token, so the row is dead weight. Printing the
+    number (and the worst offenders) keeps the gap visible instead of shipping a
+    table that silently never fires.
+    """
+    known = {key: set(family) | {FALLBACK_PHASE} for key, family in families.items()}
+    dead = [
+        row
+        for row in formulas
+        if not (row["o"] in known["o"] and row["h1"] in known["h1"] and row["h2"] in known["h2"])
+    ]
+    total = len(formulas)
+    if total == 0:
+        print("  formula rows: 0 (the table produced no rows — check the input columns)")
+        return
+    reachable = total - len(dead)
+    print(f"  formula rows: {total} reachable: {reachable} ({100 * reachable / total:.1f}%)")
+    if dead:
+        sample = sorted({(row["o"], row["h1"], row["h2"], row["serovar"]) for row in dead})[:5]
+        print(f"  unreachable rows reference antigens with no reference sequence, e.g. {sample}")
 
 
 def import_sistr(
-    source: Path, dest: Path, *, name: str, formulas: Path | None, bundle: bool = False
+    source: Path,
+    dest: Path,
+    *,
+    name: str,
+    formulas: Path | None,
+    bundle: bool = False,
+    subspecies: str | None = "enterica",
 ) -> None:
     antigen_dir = source / "antigens" if (source / "antigens").is_dir() else source
     files = sorted(antigen_dir.glob("*.fasta"))
@@ -296,16 +409,25 @@ def import_sistr(
     if not table.is_file():
         raise SystemExit(f"{table}: formula table not found (pass --formulas)")
     pairs: list[tuple[str, str, str]] = []
-    markers: dict[str, list[tuple[str, str]]] = {"o": [], "h1": [], "h2": []}
+    markers: dict[str, dict[str, list[str]]] = {"o": {}, "h1": {}, "h2": {}}
+    used: set[str] = set()
     for path in files:
         family = _detect_family(path)
         if family is None:
             continue
         for record_id, sequence in _read_fasta(path):
             antigen = _sistr_antigen(record_id)
-            gene = _gene_id(f"{family}_{antigen}")
-            markers[family].append((gene, antigen))
+            if not antigen:
+                continue
+            # Every upstream allele reference is kept: an antigen covered by
+            # several sequences scores by the best of them, exactly as the
+            # upstream top-hit step does.
+            genes = markers[family].setdefault(antigen, [])
+            gene = _unique_gene_id(f"{family}_{antigen}", used)
+            genes.append(gene)
             pairs.append((gene, antigen, sequence))
+    rows = _sistr_formulas(table, subspecies=subspecies)
+    _report_reachability(markers, rows)
     _write_fasta(dest, name, pairs)
     _write_database(
         name=name,
@@ -313,7 +435,7 @@ def import_sistr(
         licence="Apache-2.0",
         source_url="https://zenodo.org/records/15078586",
         markers=markers,
-        formulas=_formula_rows(table),
+        formulas=rows,
         dest=dest,
     )
     if bundle:
@@ -337,15 +459,17 @@ def import_seqsero2(
 ) -> None:
     if not source.is_file():
         raise SystemExit(f"{source}: not a file")
-    markers: dict[str, list[tuple[str, str]]] = {"o": [], "h1": [], "h2": []}
+    markers: dict[str, dict[str, list[str]]] = {"o": {}, "h1": {}, "h2": {}}
     pairs: list[tuple[str, str, str]] = []
+    used: set[str] = set()
     for record_id, sequence in _read_fasta(source):
         parsed = _seqsero2_antigen(record_id)
         if parsed is None:
             continue
         family, antigen = parsed
-        gene = _gene_id(f"{family}_{antigen}")
-        markers[family].append((gene, antigen))
+        genes = markers[family].setdefault(antigen, [])
+        gene = _unique_gene_id(f"{family}_{antigen}", used)
+        genes.append(gene)
         pairs.append((gene, antigen, sequence))
     _write_fasta(dest, name, pairs)
     _write_database(
@@ -383,6 +507,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--name", required=True)
     parser.add_argument("--formulas", type=Path, help="serovar formula CSV (O, H1, H2, serovar)")
     parser.add_argument(
+        "--subspecies",
+        default="enterica",
+        help=(
+            "SISTR only: restrict the formula table to one subspecies"
+            " (antigen genes cannot decide the subspecies, so enterica is the"
+            " default; pass 'any' to keep every row)"
+        ),
+    )
+    parser.add_argument(
         "--bundle",
         action="store_true",
         help=(
@@ -394,7 +527,12 @@ def main(argv: list[str] | None = None) -> int:
     args.dest.mkdir(parents=True, exist_ok=True)
     if args.upstream == "sistr":
         import_sistr(
-            args.source, args.dest, name=args.name, formulas=args.formulas, bundle=args.bundle
+            args.source,
+            args.dest,
+            name=args.name,
+            formulas=args.formulas,
+            bundle=args.bundle,
+            subspecies=None if args.subspecies == "any" else args.subspecies,
         )
     else:
         if args.formulas is None:

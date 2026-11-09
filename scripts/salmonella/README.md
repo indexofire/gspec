@@ -58,6 +58,25 @@ python scripts/salmonella/import_upstream.py sistr \
 python -m pytest tests/test_bundled.py tests/test_serotype_formula.py
 ```
 
+The port was run against a local SISTR install
+(`…/site-packages/sistr/data`, SISTR db 1.1.3) and ships as `sen_sero_sistr`:
+
+| | count |
+|---|---|
+| O serogroups (wzx + wzy) | 46 |
+| H1 alleles (fliC) | 62 |
+| H2 alleles (fljB) | 25 |
+| antigen reference sequences | 1,549 |
+| subsp. enterica formula rows (incl. 52 phase-off aliases) | 1,577 |
+| **reachable formula rows** | **1,505 (95.4 %)** |
+
+The 72 unreachable rows reference WKL bracket tokens (`l,[z13],[z28]`, `1,6,7`,
+`g,m,[s]`, …) with no reference allele in SISTR's FASTAs; SISTR matches those
+through `SEROGROUP/H1/H2_SIMILARITY_GROUPS` widening, which this port does not
+implement yet. `gspec db info -d sen_sero_sistr` shows the Apache-2.0
+attribution; `tests/test_sen_sero_sistr.py` pins the numbers and exercises
+Typhimurium plus a phase-off (Paratyphi A) end to end.
+
 (The SISTR database is distributed as the Zenodo tarball
 `SISTR_V_1.1.3_db.tar.gz`; zenodo.org answered **403** from the environment this
 importer was developed in, so the committed bundle is generated where the file is

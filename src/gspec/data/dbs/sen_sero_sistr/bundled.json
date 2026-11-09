@@ -1,0 +1,28 @@
+{
+  "name": "sen_sero_sistr",
+  "description": "SISTR antigen database: O/H antigen panel with its formula table",
+  "vendor": "converted from SISTR antigen database",
+  "dbtype": "nucl",
+  "kind": "gene",
+  "snapshotted": "2026-11-09",
+  "license": "Apache-2.0",
+  "attribution": "SISTR (Salmonella In Silico Typing Resource), PHAC-NML (https://github.com/phac-nml/sistr_cmd), database SISTR_V_1.1.3_db (Zenodo record 15078586, Apache-2.0). Converted to gspec format.",
+  "note": "Converted by gspec's scripts/salmonella/import_upstream.py from https://zenodo.org/records/15078586 (retrieved 2026-11-09). The antigen references and the O:H1:H2 formula table are the upstream project's data, converted to gspec/v1 records and gspec.serotype/2; gspec claims no authorship of the content and does not imply upstream endorsement of this conversion.",
+  "guidance": {
+    "references": [
+      {
+        "citation": "Yoshida CE, Kruczkiewicz P, Laing CR, Lingohr EJ, Gannon VPJ, Nash JHE, Taboada EN. The Salmonella In Silico Typing Resource (SISTR): an open web-accessible tool for rapidly typing and subtyping draft microbial genomes. PLoS One. 2016;11(8):e0160528.",
+        "doi": "10.1371/journal.pone.0160528",
+        "note": "SISTR: the antigen references and the O:H1:H2 formula table this database was converted from."
+      },
+      {
+        "citation": "Grimont PAD, Weill FX. Antigenic formulae of the Salmonella serovars (Kauffmann-White-Le Minor scheme), WHO Collaborating Centre for Reference and Research on Salmonella, Institut Pasteur.",
+        "note": "The antigenic-formula scheme the table encodes; bracket and parenthesis notation in the tokens is the scheme's."
+      }
+    ],
+    "caveats": [
+      "Converted upstream data: see `attribution` for the upstream project, version and URL.",
+      "Antigen determination is a ranking step: a margin below the measured gap between near-identical alleles is required, so re-calibrate after an upstream refresh."
+    ]
+  }
+}

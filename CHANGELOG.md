@@ -57,6 +57,17 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **`sen_sero_sistr` — the SISTR antigen panel ported as a bundle.** Converted
+  from a local SISTR 1.1.3 install (`data/antigens/{wzx,wzy,fliC,fljB}.fasta` +
+  the WHO-2007 formula table): 46 O serogroups, 62 H1 and 25 H2 antigens
+  (1,549 reference sequences, every upstream allele kept so an antigen scores by
+  its best reference) and 1,577 subsp. *enterica* formula rows including 52
+  phase-off aliases from `can_h2_be_missing`. 1,505 rows (95.4 %) are reachable;
+  the remaining 72 use WKL bracket tokens that SISTR resolves through its
+  similarity groups, which this port does not implement yet. Ships with
+  `license: Apache-2.0` and the verbatim PHAC-NML/Zenodo attribution that
+  AGENTS.md §6 gate 1 requires of a converted dataset, surfaced by `db info`.
+
 - **`gspec.serotype/2` — ranked antigen families + an antigenic-formula table.**
   A full Salmonella panel is not a rule list: ~46 O groups, ~300 H alleles and
   thousands of `O:H1:H2 -> serovar` rows. `/2` models that directly: each antigen
