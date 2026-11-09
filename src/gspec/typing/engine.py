@@ -320,6 +320,8 @@ def score_rules(report: ClusterReport, scheme: TypingScheme) -> list[ScoredRule]
                 exact = True
             case ClusterMatchRule():
                 score, components, winner = score_cluster_match(rule, report)
+            case BestHitRule():
+                score, components, _best_detail = score_best_hit(rule, genes)
             case LearnedLinearRule():
                 score, components = score_learned_linear(rule, report, genes)
         scored.append(

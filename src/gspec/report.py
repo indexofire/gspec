@@ -118,13 +118,13 @@ def swap_dedup(
     every reference keeps its own HSPs — required by ``coverage="union"``,
     which aggregates all of a subject's blocks into one breadth figure.
     """
-    seen: set[tuple[str, ...]] = set()
+    seen: set[tuple[str | int, ...]] = set()
     for row in rows:
         if row.sstrand == "minus":
             s_start, s_end = row.send, row.sstart
         else:
             s_start, s_end = row.sstart, row.send
-        key: tuple[str, ...] = (
+        key: tuple[str | int, ...] = (
             (row.qseqid, row.qstart, row.qend)
             if dedup == "query"
             else (row.sseqid, row.qseqid, row.qstart, row.qend)

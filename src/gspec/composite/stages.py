@@ -43,7 +43,7 @@ def stage_scheme(document: TypingDocument, stage: CompositeStage) -> str:
                 f"pipeline stage {stage.name!r} names no scheme, but database"
                 f" {stage.db!r} declares {len(names)} ({', '.join(names)})",
                 code="COMPOSITE_MALFORMED",
-                context={"stage": stage.name, "db": stage.db, "schemes": names},
+                context={"stage": stage.name, "db": stage.db, "schemes": ", ".join(names)},
             )
         return names[0]
     if stage.scheme not in names:

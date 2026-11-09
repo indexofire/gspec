@@ -303,7 +303,7 @@ def discover_databases(datadir: Path) -> list[Database]:
     return sorted(databases, key=lambda database: database.name)
 
 
-def _manifest_kind(db_dir: Path) -> Literal["gene", "cluster"]:
+def _manifest_kind(db_dir: Path) -> Literal["gene", "cluster", "composite"]:
     """The kind declared by the database's gspec manifest, ``"gene"`` for
     legacy (manifest-less) directories. Same propagation contract as
     :func:`_manifest_dbtype` (a malformed manifest is never swallowed)."""

@@ -84,6 +84,15 @@
 - **`db rename` keeps every cluster sidecar.** The cluster-only documents are
   copied explicitly, and `kmer.json` — previously dropped, silently disabling a
   renamed database's k-mer substrate — now rides along.
+- **`score_rules` covers every rule kind.** The shared scoring dispatch skipped
+  `best_hit` rules, leaving the score/component locals unbound (a crash if that
+  kind ever reached the cluster scoring path, which the calibration harness
+  walks for any phenotype). It now scores them like the other four kinds.
+- **The `typecheck` gate is green again.** `basedpyright --strict` reported 88
+  errors since the 0.10.0 work (JSON-shaped test fixtures, `Literal` parameter
+  types, a manifest kind missing `composite`, and the unbound-locals case
+  above); all are fixed properly rather than silenced, so `pixi run typecheck`
+  exits 0 again — which the release workflow requires before publishing.
 
 ## [0.10.1] - 2026-11-08
 

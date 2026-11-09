@@ -11,6 +11,7 @@ imported from gspec.engines so every screening surface sees the same enums.
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import click
 
@@ -159,8 +160,8 @@ def _reject_database_flags_for_composite(
     min_gene_id: float,
     min_cluster_cov: float,
     merge_fragments: bool,
-    coverage: str,
-    dedup: str,
+    coverage: Literal["best_hsp", "union"],
+    dedup: Literal["query", "subject"],
     min_aligned_len: int | None,
     aligner: object,
     detail: bool,
@@ -204,8 +205,8 @@ def run_screen(
     output_format: OutputFormat,
     merge_fragments: bool = False,
     database: db.Database | None = None,
-    coverage: str = "best_hsp",
-    dedup: str = "query",
+    coverage: Literal["best_hsp", "union"] = "best_hsp",
+    dedup: Literal["query", "subject"] = "query",
     min_aligned_len: int | None = None,
     aligner: AlignerEnum | None = None,
     min_gene_cov: float = 90.0,

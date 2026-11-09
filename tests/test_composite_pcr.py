@@ -20,7 +20,8 @@ import pytest
 
 gseek = pytest.importorskip("gseek")
 
-from gspec.composite.models import read_composite  # noqa: E402
+from gspec.composite.calls import Call  # noqa: E402
+from gspec.composite.models import CompositeDocument, read_composite  # noqa: E402
 from gspec.composite.pcr import needed_products  # noqa: E402
 from gspec.composite.run import apply_conflicts  # noqa: E402
 from gspec.composite.stages import inputs_digest  # noqa: E402
@@ -83,10 +84,8 @@ def test_screen_cache_does_not_leak_between_input_sets(tmp_path: Path) -> None:
     assert inputs_digest([first, second]) == inputs_digest([second, first])
 
 
-def _conflict_document(**conflict: object) -> object:
-    from gspec.composite.models import CompositeDocument
-
-    payload = {
+def _conflict_document(**conflict: object) -> CompositeDocument:
+    payload: dict[str, object] = {
         "schema": "gspec.composite/1",
         "name": "conflict_demo",
         "fallback": "untypeable",
@@ -100,9 +99,7 @@ def _conflict_document(**conflict: object) -> object:
     return CompositeDocument.model_validate(payload)
 
 
-def _call(phenotype: str, score: float = 0.95, confidence: str = "high") -> object:
-    from gspec.composite.calls import Call
-
+def _call(phenotype: str, score: float = 0.95, confidence: str = "high") -> Call:
     return Call(phenotype=phenotype, score=score, confidence=confidence, scheme="only")
 
 
@@ -119,7 +116,7 @@ def test_conflict_rule_swaps_a_marker_call_for_the_locus_call() -> None:
         "locus": CompositeStage(name="locus", db="db_locus", tier="A"),
     }
     winner = (stages["marker"], _call("HS41", 1.0))
-    calls = {"marker": winner[1], "locus": _call("HS55", 0.93)}
+    calls: dict[str, Call | None] = {"marker": winner[1], "locus": _call("HS55", 0.93)}
     stage, call = apply_conflicts(document, winner, calls, stages)
     assert (stage.name, call.phenotype, stage.tier) == ("locus", "HS55", "A")
 
@@ -138,7 +135,7 @@ def test_conflict_override_may_name_any_stage() -> None:
         "locus_b": CompositeStage(name="locus_b", db="db_locus", tier="B"),
     }
     winner = (stages["marker"], _call("HS41", 1.0))
-    calls = {
+    calls: dict[str, Call | None] = {
         "marker": winner[1],
         "locus_a": _call("HS2", 0.99),
         "locus_b": _call("HS55", 0.88),
@@ -161,14 +158,17 @@ def test_conflict_does_not_fire_on_unrelated_or_gated_calls() -> None:
     marker_call = _call("HS41", 1.0)
 
     # 1) the override stage called something else
-    unmatching = {"marker": marker_call, "locus": _call("HS53")}
+    unmatching: dict[str, Call | None] = {"marker": marker_call, "locus": _call("HS53")}
     assert (
         apply_conflicts(document, (stages["marker"], marker_call), unmatching, stages)[1].phenotype
         == "HS41"
     )
 
     # 2) the override call is the stage's own fallback (nothing designated)
-    gated = {"marker": marker_call, "locus": _call("HS55", confidence="low")}
+    gated: dict[str, Call | None] = {
+        "marker": marker_call,
+        "locus": _call("HS55", confidence="low"),
+    }
     assert (
         apply_conflicts(document, (stages["marker"], marker_call), gated, stages)[1].phenotype
         == "HS41"

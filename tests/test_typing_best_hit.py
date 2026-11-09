@@ -23,7 +23,7 @@ def _call(gene: str, coverage: float, identity: float) -> GeneCall:
     )
 
 
-def _document(*rules: dict) -> TypingDocument:
+def _document(*rules: dict[str, object]) -> TypingDocument:
     return TypingDocument.model_validate(
         {
             "schema": "gspec.typing/2",
@@ -40,7 +40,7 @@ def _document(*rules: dict) -> TypingDocument:
     )
 
 
-def _rule(phenotype: str, gene: str, *, coverage_floor: float = 40.0) -> dict:
+def _rule(phenotype: str, gene: str, *, coverage_floor: float = 40.0) -> dict[str, object]:
     return {
         "model": "best_hit",
         "phenotype": phenotype,

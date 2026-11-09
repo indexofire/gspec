@@ -42,7 +42,7 @@ def kmer_reference_sets(
 
 
 def kmer_worker(
-    payload: tuple[str, str, tuple[tuple[str, str, float], ...], int, int],
+    payload: tuple[str, str, tuple[tuple[str, str, float], ...], int, float],
 ) -> tuple[str, dict[str, tuple[str, float, float]]]:
     """One file's k-mer designation: ``(set -> phenotype, fraction, min_fraction)``.
 

@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 from gspec.composite.calls import Call
 from gspec.composite.models import CompositeStage
@@ -58,25 +59,30 @@ def cluster_calls(
         )
         if cache_dir is not None:
             cache_path(cache_dir, key, "json").write_text(text, encoding="utf-8")
-    document = json.loads(text)
+    # The cache holds the gspec.cluster/1 or /2 document run_screen rendered;
+    # it stays an untyped JSON object at this boundary (mcp_tools precedent)
+    # and every field below is narrowed before use.
+    document: dict[str, Any] = json.loads(text)
+    files: Any = document.get("files", [])
     calls: dict[str, Call] = {}
-    for entry in document.get("files", []):
-        phenotypes = entry.get("phenotypes")
+    for entry in files:
+        row: Any = entry
+        phenotypes: Any = row.get("phenotypes")
         if phenotypes is None:
             # gspec.cluster/1 (single-scheme document): the best-locus call.
-            best = entry.get("best") or {}
-            detail = best.get("phenotype_detail") or {}
-            calls[entry["file"]] = Call(
+            best: Any = row.get("best") or {}
+            detail: Any = best.get("phenotype_detail") or {}
+            calls[str(row["file"])] = Call(
                 phenotype=best.get("phenotype"),
                 score=detail.get("score", 0.0) or 0.0,
                 confidence=detail.get("confidence", "low"),
                 scheme=scheme,
             )
             continue
-        call = phenotypes.get(scheme)
+        call: Any = phenotypes.get(scheme)
         if call is None:
             continue
-        calls[entry["file"]] = Call(
+        calls[str(row["file"])] = Call(
             phenotype=call.get("phenotype"),
             score=call.get("score", 0.0) or 0.0,
             confidence=call.get("confidence", "low"),

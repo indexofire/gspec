@@ -10,7 +10,7 @@ from gspec.errors import DatabaseError, InputError
 
 
 def _doc(**overrides: object) -> str:
-    payload = {
+    payload: dict[str, object] = {
         "schema": "gspec.composite/1",
         "name": "cje_penner",
         "stages": [

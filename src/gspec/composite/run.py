@@ -59,8 +59,6 @@ def apply_conflicts(
             else list(stages)  # document order (dicts insert in stage order)
         )
         for name in candidates:
-            if name is None:
-                continue
             override_stage = stages.get(name)
             override_call = calls.get(name)
             if override_stage is None or not accept(override_call, override_stage):

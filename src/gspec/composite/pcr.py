@@ -101,7 +101,7 @@ def primer_products(
     a pure-Python byte scan holding the GIL, so a thread pool would serialise
     it (measured 1.01x); processes give the expected ~Nx.
     """
-    payloads = []
+    payloads: list[tuple[str, tuple[Any, ...], int, int]] = []
     for path in paths:
         subset = primers
         if not stage.report_all_products and phenotypes is not None:

@@ -74,8 +74,10 @@ def _genome(tmp_path: Path, sequence: str, name: str = "asm.fna") -> Path:
     return path
 
 
-def _pipeline(tmp_path: Path, *, min_fraction: float = 0.5, sets: list[dict] | None = None) -> Path:
-    document = {
+def _pipeline(
+    tmp_path: Path, *, min_fraction: float = 0.5, sets: list[dict[str, object]] | None = None
+) -> Path:
+    document: dict[str, object] = {
         "schema": "gspec.composite/1",
         "name": "kmer_demo",
         "fallback": "untypeable",

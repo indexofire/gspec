@@ -219,7 +219,7 @@ class CompositeDocument(BaseModel, frozen=True):
             raise DatabaseError(
                 f"pipeline {self.name!r} has duplicate stage names: {', '.join(duplicates)}",
                 code="COMPOSITE_MALFORMED",
-                context={"pipeline": self.name, "stages": duplicates},
+                context={"pipeline": self.name, "stages": ", ".join(duplicates)},
             )
 
 
