@@ -19,7 +19,7 @@ table). Two layouts are understood:
 
 | upstream | files | licence | may the wheel carry it? |
 |---|---|---|---|
-| SISTR | `data/antigens/{wzx,wzy,fliC,fljB}.fasta` + the WHO-2007 CSV | **Apache-2.0** | legally yes (with attribution); this repo's §6 gate still says no for third-party snapshots, so import it into a *datadir* |
+| SISTR | `data/antigens/{wzx,wzy,fliC,fljB}.fasta` + the WHO-2007 CSV | **Apache-2.0** | **yes** with attribution — §6 gate 1 now admits a converted permissive dataset, and `--bundle` records it |
 | SeqSero2 | `seqsero2_db/H_and_O_and_specific_genes.fasta` (+ its own formula logic) | **GPL-2.0** | **no** — importing it locally is the only permitted use |
 
 ```bash
@@ -42,8 +42,27 @@ What the conversion produces, and why the shape is `/2`:
 - `info.json` records the upstream licence, URL, conversion date and the
   objection clause, so `gspec db info` shows what a user is actually running.
 
-The importer is a *conversion*, not curation: verify the upstream terms before
-redistributing anything it produces.
+The importer is a *conversion*, not curation. `--bundle` additionally writes
+`bundled.json` + `screen.json` so the result can ride the wheel, and records the
+upstream attribution verbatim (AGENTS.md §6 gate 1 requires `license`, `note`
+and `attribution` for a non-curated bundle). `seqsero2 --bundle` is refused: its
+content is GPL-2.0 and must stay local.
+
+Building the full bundled panel is one command once the upstream database is on
+disk:
+
+```bash
+python scripts/salmonella/import_upstream.py sistr \
+    --source /path/to/SISTR_V_1.1.3_db \
+    --dest src/gspec/data/dbs/sen_sero_sistr --name sen_sero_sistr --bundle
+python -m pytest tests/test_bundled.py tests/test_serotype_formula.py
+```
+
+(The SISTR database is distributed as the Zenodo tarball
+`SISTR_V_1.1.3_db.tar.gz`; zenodo.org answered **403** from the environment this
+importer was developed in, so the committed bundle is generated where the file is
+reachable — the conversion and the bundle metadata are exercised by
+`tests/test_serotype_formula.py` on an inline fixture.)
 
 ## How the panel is built
 

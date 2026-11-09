@@ -50,6 +50,13 @@
   alleles sit at ≤77.6 % to every other panel allele, so the presence floor
   separates them; Paratyphi B var. Java (monophasic `b:-`) reports the group-B
   partial instead of a wrong diphasic name.
+- **A converted permissive dataset may now ride the wheel.** AGENTS.md §6 gate 1
+  admits a bundle that is a *conversion* of an upstream dataset whose licence
+  permits redistribution (public domain, Apache-2.0, BSD, MIT), provided
+  `bundled.json` carries `license`, `note` and a verbatim `attribution` (upstream
+  project, version, URL, conversion date) which `gspec db info` surfaces.
+  Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
+  refuses SeqSero2 (GPL-2.0) outright.
 - **`gspec.serotype/2` — ranked antigen families + an antigenic-formula table.**
   A full Salmonella panel is not a rule list: ~46 O groups, ~300 H alleles and
   thousands of `O:H1:H2 -> serovar` rows. `/2` models that directly: each antigen

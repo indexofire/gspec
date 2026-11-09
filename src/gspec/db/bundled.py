@@ -70,6 +70,10 @@ class BundledMetadata(BaseModel, frozen=True):
     snapshotted: str
     license: str = ""
     note: str = ""
+    #: Required when the bundle is a *conversion* of an upstream dataset rather
+    #: than gspec-curated content (AGENTS.md §6 gate 1): the upstream project,
+    #: version, URL and conversion date, kept verbatim so `db info` shows it.
+    attribution: str = ""
     guidance: DbGuidance = DbGuidance()
 
 

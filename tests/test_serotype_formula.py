@@ -158,6 +158,71 @@ def test_loader_dispatches_on_the_schema_tag(tmp_path: Path) -> None:
         read_serotype_document(path)
 
 
+def test_imported_bundle_is_discoverable_and_attributed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``--bundle`` produces a wheel-eligible bundle: `gspec.bundled` discovers it,
+    its metadata parses, and the Apache-2.0 attribution is carried verbatim
+    (AGENTS.md §6 gate 1) while SeqSero2 (GPL-2.0) is refused outright."""
+    from gspec.db.bundled import bundled_databases
+
+    sistr = tmp_path / "sistr"
+    (sistr / "antigens").mkdir(parents=True)
+    (sistr / "antigens" / "wzy.fasta").write_text(
+        ">ref|gene|O:4\n" + "ACGT" * 200 + "\n", encoding="utf-8"
+    )
+    (sistr / "antigens" / "fliC.fasta").write_text(
+        ">ref|gene|i\n" + "TTTT" * 200 + "\n", encoding="utf-8"
+    )
+    table = tmp_path / "table.csv"
+    table.write_text("Serovar,Serogroup,H1,H2\nTyphimurium,O:4,i,-\n", encoding="utf-8")
+
+    root = tmp_path / "bundles"
+    dest = root / "sen_sero_sistr"
+    _import(
+        "sistr",
+        "--source",
+        str(sistr),
+        "--dest",
+        str(dest),
+        "--name",
+        "sen_sero_sistr",
+        "--formulas",
+        str(table),
+        "--bundle",
+    )
+    monkeypatch.setattr("gspec.db.bundled.BUNDLED_ROOT", root)
+    found = {database.name: database for database in bundled_databases()}
+    assert "sen_sero_sistr" in found
+    metadata = found["sen_sero_sistr"].metadata
+    assert metadata.license == "Apache-2.0"
+    assert "PHAC-NML" in metadata.attribution
+    assert "15078586" in metadata.attribution
+    assert (dest / "screen.json").is_file()
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(IMPORTER),
+            "seqsero2",
+            "--source",
+            str(sistr / "antigens" / "fliC.fasta"),
+            "--dest",
+            str(tmp_path / "db_seqsero"),
+            "--name",
+            "sal_seqsero",
+            "--formulas",
+            str(table),
+            "--bundle",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "GPL-2.0" in result.stderr
+
+
 def test_importer_parses_both_upstream_layouts(tmp_path: Path) -> None:
     """The parsers handle SISTR's ``...|<antigen>`` ids and SeqSero2's
     ``fliC_<antigen>_...``/``O-<group>_wzy__<len>`` ids, and build a /2 document."""

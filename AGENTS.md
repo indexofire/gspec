@@ -169,17 +169,23 @@ bundles the cluster-build pipeline (`bundled_cluster.py` rebuilds from the commi
 locus FASTA + resolved feature table — gene ids stay snapshot-resolved, the typing spec
 re-validates against them).
 Bundling stays the exception, not the pattern: every provider fetches from upstream at
-`db fetch` time. Third-party provider snapshots are never bundled, even under a
-permissive license — the wheel carries gspec-curated content only. Every new bundle
-passes three gates, in order:
+`db fetch` time. A bundle is either gspec-curated or a **permissively licensed upstream
+dataset** (see the attribution rule below) — never a copyleft or non-commercial one.
+Every new bundle passes three gates, in order:
 
-1. **Curation gate** (hard): the content must be gspec-owned or gspec-curated from
-   public-domain sources. A snapshot of a third-party provider database (ncbi, card,
-   ecoh, resfinder, ...) does not qualify, regardless of its license.
+1. **Curation gate** (hard): the content must be gspec-owned, gspec-curated from
+   public-domain sources, **or a converted copy of an upstream dataset whose licence
+   permits redistribution** (public domain, Apache-2.0, BSD, MIT). A dataset that is
+   merely downloadable is not enough: the licence must allow redistribution, and the
+   conversion must be recorded. A bundle that is not gspec-curated carries
+   `"license"`, `"note"` and `"attribution"` in `bundled.json` naming the upstream
+   project, version, URL and the conversion date, and `gspec db info` surfaces them.
 2. **License gate** (hard, independent of location): only public-domain or permissive
-   content (PD, Apache-2.0, BSD, MIT), provenance-audited. GPL (Kaptive) and
+   content (PD, Apache-2.0, BSD, MIT), provenance-audited. GPL (Kaptive, SeqSero2) and
    non-commercial terms (CARD, VFDB) never ride the MIT distribution — moving files
-   cannot fix this.
+   cannot fix this. An Apache-2.0 dataset may be bundled only with its NOTICE/
+   attribution preserved, and a *conversion* of it must not imply endorsement by the
+   upstream project.
 3. **Size gate** (budget): the bundled-root total stays ≤ 30 MiB, mechanically enforced by
    `tests/test_bundled.py` (every `pip install gspec` re-downloads all bundles; PyPI caps
    one file at 100 MiB).

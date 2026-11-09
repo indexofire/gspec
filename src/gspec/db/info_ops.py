@@ -70,6 +70,7 @@ class DbInfoDocument(BaseModel, frozen=True):
     records: int | None = None
     destination: str | None = None
     license: str | None = None
+    attribution: str | None = None
     snapshot: str | None = None
     typing_schema: str | None = None
     source_urls: tuple[str, ...] = ()
@@ -192,6 +193,7 @@ def collect_db_info(name: str, datadir: Path | None) -> DbInfoDocument:
         # A materialized bundled panel keeps the wheel-declared licence (the
         # gene build does not carry one into the manifest).
         license=(manifest.license if manifest and manifest.license else entry.license),
+        attribution=(bundled.metadata.attribution or None) if bundled else None,
         snapshot=bundled.metadata.snapshotted if bundled else None,
         typing_schema=(
             (manifest.typing_schema if manifest and manifest.typing_schema else None)

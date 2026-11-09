@@ -154,6 +154,71 @@ def _formula_rows(path: Path) -> list[dict[str, str]]:
         return rows
 
 
+def _write_bundle_metadata(
+    dest: Path,
+    *,
+    name: str,
+    source_label: str,
+    licence: str,
+    source_url: str,
+    attribution: str,
+    dbtype: str = "nucl",
+) -> None:
+    """``bundled.json`` + ``screen.json``: make ``dest`` a wheel-eligible bundle.
+
+    Only valid for an upstream dataset whose licence permits redistribution
+    (AGENTS.md §6 gate 1/2); the attribution is kept verbatim because the
+    Apache-2.0 NOTICE requirement travels with a conversion of the content.
+    """
+    (dest / "bundled.json").write_text(
+        json.dumps(
+            {
+                "name": name,
+                "description": f"{source_label}: O/H antigen panel with its formula table",
+                "vendor": f"converted from {source_label}",
+                "dbtype": dbtype,
+                "kind": "gene",
+                "snapshotted": datetime.now(UTC).strftime("%Y-%m-%d"),
+                "license": licence,
+                "attribution": attribution,
+                "note": (
+                    f"Converted by gspec's scripts/salmonella/import_upstream.py from"
+                    f" {source_url} (retrieved "
+                    f"{datetime.now(UTC).strftime('%Y-%m-%d')}). The antigen references"
+                    " and the O:H1:H2 formula table are the upstream project's data,"
+                    " converted to gspec/v1 records and gspec.serotype/2; gspec claims"
+                    " no authorship of the content and does not imply upstream"
+                    " endorsement of this conversion."
+                ),
+                "guidance": {
+                    "caveats": [
+                        "Converted upstream data: see `attribution` for the upstream"
+                        " project, version and URL.",
+                        "Antigen determination is a ranking step: a margin below the"
+                        " measured gap between near-identical alleles is required, so"
+                        " re-calibrate after an upstream refresh.",
+                    ]
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (dest / "screen.json").write_text(
+        json.dumps(
+            {
+                "schema": "gspec.screen/1",
+                "contigs": {"minid": 80.0, "mincov": 60.0, "merge_fragments": True},
+                "reads": {"min_breadth": 60.0, "min_identity": 80.0},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def _write_database(
     *,
     name: str,
@@ -220,7 +285,9 @@ def _write_database(
     print(f"{name}: {sum(len(v) for v in markers.values())} antigen refs, {len(formulas)} formulas")
 
 
-def import_sistr(source: Path, dest: Path, *, name: str, formulas: Path | None) -> None:
+def import_sistr(
+    source: Path, dest: Path, *, name: str, formulas: Path | None, bundle: bool = False
+) -> None:
     antigen_dir = source / "antigens" if (source / "antigens").is_dir() else source
     files = sorted(antigen_dir.glob("*.fasta"))
     if not files:
@@ -249,9 +316,25 @@ def import_sistr(source: Path, dest: Path, *, name: str, formulas: Path | None) 
         formulas=_formula_rows(table),
         dest=dest,
     )
+    if bundle:
+        _write_bundle_metadata(
+            dest,
+            name=name,
+            source_label="SISTR antigen database",
+            licence="Apache-2.0",
+            source_url="https://zenodo.org/records/15078586",
+            attribution=(
+                "SISTR (Salmonella In Silico Typing Resource), PHAC-NML"
+                " (https://github.com/phac-nml/sistr_cmd), database"
+                " SISTR_V_1.1.3_db (Zenodo record 15078586, Apache-2.0)."
+                " Converted to gspec format."
+            ),
+        )
 
 
-def import_seqsero2(source: Path, dest: Path, *, name: str, formulas: Path) -> None:
+def import_seqsero2(
+    source: Path, dest: Path, *, name: str, formulas: Path, bundle: bool = False
+) -> None:
     if not source.is_file():
         raise SystemExit(f"{source}: not a file")
     markers: dict[str, list[tuple[str, str]]] = {"o": [], "h1": [], "h2": []}
@@ -274,6 +357,11 @@ def import_seqsero2(source: Path, dest: Path, *, name: str, formulas: Path) -> N
         formulas=_formula_rows(formulas),
         dest=dest,
     )
+    if bundle:
+        raise SystemExit(
+            "SeqSero2 is GPL-2.0: its content cannot ride the MIT wheel"
+            " (AGENTS.md §6 gate 2). Import into a datadir instead."
+        )
 
 
 def _write_fasta(dest: Path, name: str, pairs: list[tuple[str, str, str]]) -> None:
@@ -294,14 +382,26 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dest", type=Path, required=True, help="database directory to create")
     parser.add_argument("--name", required=True)
     parser.add_argument("--formulas", type=Path, help="serovar formula CSV (O, H1, H2, serovar)")
+    parser.add_argument(
+        "--bundle",
+        action="store_true",
+        help=(
+            "also write bundled.json/screen.json so the result can ride the wheel"
+            " (permissive upstream licences only; SeqSero2 is refused)"
+        ),
+    )
     args = parser.parse_args(argv)
     args.dest.mkdir(parents=True, exist_ok=True)
     if args.upstream == "sistr":
-        import_sistr(args.source, args.dest, name=args.name, formulas=args.formulas)
+        import_sistr(
+            args.source, args.dest, name=args.name, formulas=args.formulas, bundle=args.bundle
+        )
     else:
         if args.formulas is None:
             raise SystemExit("seqsero2 import needs --formulas (SeqSero2 names serovars in code)")
-        import_seqsero2(args.source, args.dest, name=args.name, formulas=args.formulas)
+        import_seqsero2(
+            args.source, args.dest, name=args.name, formulas=args.formulas, bundle=args.bundle
+        )
     return 0
 
 
