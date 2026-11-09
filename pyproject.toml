@@ -41,6 +41,10 @@ gspec = "gspec.cli:app"
 gspec-mcp = "gspec.mcp:main"
 
 [project.optional-dependencies]
+# Floor for the alignment engine (`GSPEC_ENGINE=gseek`). In-silico PCR (composite
+# `pcr` stages) needs a gseek build exposing `read_primers`, which is unreleased
+# at this writing (PyPI's newest is 0.10.4); `composite_ops` gates on that
+# capability at runtime, so the extra stays on the published floor.
 gseek = ["gseek>=0.10.4"]
 
 [tool.hatch.build.targets.wheel]

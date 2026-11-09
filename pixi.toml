@@ -53,9 +53,13 @@ mkdocs-static-i18n = ">=1.2"
 
 # Optional alignment engine for every supported Python (3.12).
 [feature.gseek.pypi-dependencies]
-# Keep the dev environment on the same floor as the package extra in
-# pyproject.toml.
-gseek = ">=0.10.4"
+# in-silico PCR (`gspec db build -C` pcr stages) ships in gseek's unreleased
+# ispcr work, so the dev environment tracks that commit: PyPI's newest release
+# is 0.10.4, which has no `gseek.read_primers`. Swap this back to a version
+# range (`">=0.11"`) as soon as the release is published — the runtime gate in
+# composite_ops is a capability probe, so the published extra in pyproject.toml
+# stays on the released floor.
+gseek = { git = "https://github.com/indexofire/gseek", rev = "67940dbf0836200eae2b322b5cfadd4f591056db" }
 
 [environments]
 default = ["py312", "gseek"]
