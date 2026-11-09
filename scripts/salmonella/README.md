@@ -181,13 +181,26 @@ Researched (source read, no data copied):
   and the O:2/O:9 pair is settled by comparing the two `tyr` hit scores (strict
   `>`, O:9 on a tie), as documented above.
 
-So the faithful implementation is two-fold and neither half is a candidate-set
-explosion: (a) per family, mark the call *perfect* only when all hits agree on one
-antigen, and (b) always widen the chosen name to its similarity class at lookup
-time. Both were prototyped in this session; the second interacts with the
-O-widening path already shipped and left four `sen_sero_sistr` tests red, so the
-engine was reverted to the last verified state and the work is queued with the
-findings above.
+The faithful implementation is two-fold and neither half is a candidate-set
+explosion: (a) mark a family call *perfect* only when all its hits agree on one
+antigen, and (b) widen the chosen name to its similarity class **before** the
+lookup. Both are now landed:
+
+- `_FamilyCall.perfect` / `.ambiguous` record SISTR's `top_result()` rule, and a
+  serovar found from a non-perfect family set is named with `confidence: low` and
+  a `(not a perfect match)` note instead of pretending to be exact;
+- `_lookup_formula` widens each resolved name to its class before matching, so
+  `1,2` also reaches the `1,2,7` / `1,5` rows. A missing O group still widens to
+  every serogroup, while a missing H phase stays `"-"` (the monophasic alias).
+
+Consequence, measured on the same eight assemblies: the panel now reports the
+right serovar among its candidates for **4 of 8** (Typhimurium, Goldcoast twice,
+Schwarzengrund; Ohio is exact) instead of 2, i.e. `contains-truth: 50 %` versus
+`exact: 12.5 %`. Two assemblies stay partial (`Braenderup`, the other Goldcoast)
+and `D1:l,v` explodes into 23 candidates because its H phase is unresolved and
+`l,v` sits in a large class; `26SAL0020` has no antigen hits at all (SISTR also
+returns `-:-:-`). `regress_serovar.py` now prints both numbers, because an
+ambiguous-but-correct answer is what SISTR's pipe-joined strings deliver.
 
 **Still open, with the measurements that block a naive fix:**
 

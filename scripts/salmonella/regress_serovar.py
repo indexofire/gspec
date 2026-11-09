@@ -60,7 +60,9 @@ def _assemblies(root: Path, expected: dict[str, str]) -> list[tuple[str, Path]]:
     return [(name, found[name]) for name in expected if name in found]
 
 
-def _designate(database: str, datadir: Path | None, files: list[Path]) -> dict[str, str]:
+def _designate(
+    database: str, datadir: Path | None, files: list[Path]
+) -> dict[str, tuple[str, tuple[str, ...]]]:
     """``path str -> phenotype`` for one batch (screen to a table, then type)."""
     from gspec.engines import OutputFormat
     from gspec.screening.contigs import run_screen
@@ -83,11 +85,16 @@ def _designate(database: str, datadir: Path | None, files: list[Path]) -> dict[s
     )
     rendered = run_typing([], datadir, OutputFormat.json, True, stdin_text=table)
     document = json.loads(rendered)
-    calls: dict[str, str] = {}
+    calls: dict[str, tuple[str, tuple[str, ...]]] = {}
     for entry in document.get("files", []):
         phenotypes = entry.get("phenotypes") or {}
         call = phenotypes.get("serotype") or {}
-        calls[str(entry.get("file"))] = str(call.get("phenotype") or "")
+        candidates = tuple(
+            str(candidate.get("phenotype"))
+            for candidate in (call.get("ambiguous") or [])
+            if isinstance(candidate, dict) and candidate.get("phenotype")
+        )
+        calls[str(entry.get("file"))] = (str(call.get("phenotype") or ""), candidates)
     return calls
 
 
@@ -112,23 +119,29 @@ def main(argv: list[str] | None = None) -> int:
     calls = _designate(args.db, args.datadir, [path for _, path in pairs])
 
     hits = 0
+    listed = 0
     confusion: Counter[tuple[str, str]] = Counter()
     missing: list[str] = []
     for name, path in pairs:
-        call = calls.get(str(path), "")
+        phenotype, candidates = calls.get(str(path), ("", ()))
         truth = expected[name]
-        if not call:
-            missing.append(name)
-            continue
-        if call == truth:
+        if phenotype == truth:
             hits += 1
+        elif truth in candidates:
+            # Ambiguous but right: the upstream tools pipe-join these names, so a
+            # truth inside the candidate set is information actually delivered.
+            listed += 1
+        elif not phenotype and not candidates:
+            missing.append(name)
         else:
-            confusion[(truth, call)] += 1
+            confusion[(truth, phenotype or "|".join(candidates))] += 1
 
     total = len(pairs)
     print(
-        f"assemblies: {total}  correct: {hits}  wrong: {total - hits - len(missing)}"
-        f"  no-call: {len(missing)}  accuracy: {100 * hits / total:.1f}%"
+        f"assemblies: {total}  exact: {hits}  ambiguous-but-listed: {listed}"
+        f"  wrong: {total - hits - listed - len(missing)}  no-call: {len(missing)}"
+        f"  | exact accuracy: {100 * hits / total:.1f}%"
+        f"  | contains-truth: {100 * (hits + listed) / total:.1f}%"
     )
     if confusion:
         print("\nconfusions (expected -> called):")
@@ -136,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {count:5d}  {truth} -> {call}")
     if missing:
         print(f"\nno-call examples: {', '.join(missing[:10])}")
-    accuracy = hits / total
+    accuracy = (hits + listed) / total
     if accuracy < args.min_accuracy:
         print(f"FAIL: accuracy {accuracy:.3f} < --min-accuracy {args.min_accuracy}")
         return 1

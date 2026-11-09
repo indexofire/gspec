@@ -197,32 +197,7 @@ def _formula_keys(o: str, h1: str | None, h2: str | None) -> list[tuple[str, str
     return [(o, first, second), (o, first, "-"), (o, "-", second), (o, "-", "-")]
 
 
-def _widen(
-    document: SerotypeDocumentV2, o: str | None, h1: str | None, h2: str | None
-) -> list[tuple[str, str, str]]:
-    """Every formula key reachable by widening the tokens to their classes.
-
-    SISTR's ``*_SIMILARITY_GROUPS`` are the reason this exists: a WKL token such
-    as ``l,[z13],[z28]`` never matches an allele reference by string, but it is
-    equivalent to the references in its class. Widening is queried only after
-    the exact keys miss, so a precise formula always wins.
-    """
-    groups = document.similarity_groups
-
-    def members(family: Literal["o", "h1", "h2"], token: str | None) -> set[str]:
-        if token is None:
-            return {"-"}
-        for group in groups.get(family, ()):
-            if token in group:
-                return set(group)
-        return {token}
-
-    keys: list[tuple[str, str, str]] = []
-    for o_token in sorted(members("o", o)):
-        for h1_token in sorted(members("h1", h1)):
-            for h2_token in sorted(members("h2", h2)):
-                keys.extend(_formula_keys(o_token, h1_token, h2_token))
-    return keys
+FALLBACK_PHASE = "-"
 
 
 def _lookup_formula(
@@ -241,6 +216,7 @@ def _lookup_formula(
     index: dict[tuple[str, str, str], list[str]] = {}
     for row in document.formulas:
         index.setdefault((row.o, row.h1, row.h2), []).append(row.serovar)
+
     # An undecided O group widens to every serogroup the panel declares, which is
     # the upstream behaviour (SISTR replaces an unknown serogroup with the table's
     # whole column and reads the result as a pipe-joined candidate list). Without
@@ -248,15 +224,36 @@ def _lookup_formula(
     # — which is the common case on real data (`-:i:1,2` in SISTR's own output).
     # The H phases are NOT widened: their absence is a real monophasic signal and
     # the `"-"` alias rows already encode it.
-    for o_token in [o] if o is not None else list(o_names) or [None]:
-        for key in _formula_keys(o_token or "-", h1, h2):
-            found = index.get(key)
-            if found:
-                return tuple(sorted(set(found)))
-    if document.similarity_groups and o is not None:
-        widened = {serovar for key in _widen(document, o, h1, h2) for serovar in index.get(key, ())}
-        return tuple(sorted(widened))
-    return ()
+    def tokens(
+        family: Literal["o", "h1", "h2"], name: str | None, *, missing_all: bool
+    ) -> tuple[str, ...]:
+        """The names a family's call stands for.
+
+        A resolved name is widened to its similarity class *before* the lookup
+        (SISTR replaces the predicted antigen with its `*_SIMILARITY_GROUPS` class
+        and matches with `isin`), which is what reconciles cross-labelled
+        references: `1,2` and `1,2,7` are 99.54 % identical. A missing O group
+        widens to every serogroup instead; a missing H phase stays "-" because the
+        `can_h2_be_missing` alias rows already encode that case.
+        """
+        if name is None:
+            if missing_all:
+                return o_names or (FALLBACK_PHASE,)
+            return (FALLBACK_PHASE,)
+        members = [name]
+        for group in document.similarity_groups.get(family, ()):
+            if name in group:
+                members.extend(member for member in group if member not in members)
+                break
+        return tuple(members)
+
+    found: set[str] = set()
+    for o_token in tokens("o", o, missing_all=True):
+        for h1_token in tokens("h1", h1, missing_all=False):
+            for h2_token in tokens("h2", h2, missing_all=False):
+                for key in _formula_keys(o_token, h1_token, h2_token):
+                    found.update(index.get(key, ()))
+    return tuple(sorted(found))
 
 
 def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:

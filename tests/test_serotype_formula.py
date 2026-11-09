@@ -176,9 +176,10 @@ def _widened_document() -> SerotypeDocumentV2:
     )
 
 
-def test_exact_formula_wins_before_widening() -> None:
-    """A row whose token matches the allele by string is taken directly: the
-    widening step is a fallback, exactly as the upstream tools use it."""
+def test_widening_applies_before_the_lookup() -> None:
+    """The name is widened to its class *before* the lookup (SISTR's `isin` over
+    the class), so both rows of the class are reachable: the call is the candidate
+    set, not whichever row happened to match by string."""
     calls = {
         "invA": _call("invA"),
         "o_B": _call("o_B"),
@@ -186,7 +187,8 @@ def test_exact_formula_wins_before_widening() -> None:
         "h2_12": _call("h2_12"),
     }
     call = evaluate_serotype(calls, _widened_document())
-    assert call.phenotype == "Exact"
+    assert call.confidence == "ambiguous"
+    assert {entry.phenotype for entry in call.ambiguous} == {"Exact", "Widened"}
 
 
 def test_widening_resolves_a_bracket_token() -> None:

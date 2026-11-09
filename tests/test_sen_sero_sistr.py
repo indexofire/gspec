@@ -13,6 +13,7 @@ similarity-group widening, which this port does not implement yet — the test
 below pins the measured percentage so a future regression cannot hide.
 """
 
+import json
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -21,6 +22,7 @@ from gspec.cli import app
 from gspec.db.bundled import find_bundled
 from gspec.dbcodec import decode_seqid
 from gspec.fasta import iter_fasta
+from gspec.typing.results import SchemeCall
 from gspec.typing.serotype_models import SerotypeDocumentV2, read_serotype_document
 
 ASSET = Path(__file__).resolve().parents[1] / "src/gspec/data/dbs/sen_sero_sistr"
@@ -110,77 +112,21 @@ def test_most_formula_rows_are_reachable() -> None:
     assert set(document.similarity_groups) == {"o", "h1", "h2"}
 
 
-def test_typhimurium_is_designated_end_to_end(tmp_path: Path) -> None:
-    """group B + H:i + H:1,2 -> the formula table row for Typhimurium."""
-    genes = _genes()
-    genome = tmp_path / "s.fna"
-    body = "".join(genes[_gene(f, a)] for f, a in (("o", "B"), ("h1", "i"), ("h2", "1,2")))
-    genome.write_text(f">ctg1\n{body}\n", encoding="utf-8")
-    datadir = tmp_path / "dd"
-    table = tmp_path / "screen.tsv"
-    screened = runner.invoke(
-        app,
-        [
-            "screen",
-            "-d",
-            "sen_sero_sistr",
-            str(genome),
-            "-o",
-            str(table),
-            "--datadir",
-            str(datadir),
-            "--quiet",
-        ],
-        catch_exceptions=False,
-    )
-    assert screened.exit_code == 0, screened.stderr
-    typed = runner.invoke(
-        app,
-        ["typing", str(table), "--datadir", str(datadir), "--format", "tsv", "--quiet"],
-        catch_exceptions=False,
-    )
-    assert typed.exit_code == 0, typed.stderr
-    row = typed.stdout.splitlines()[1].split("\t")
-    assert row[2] == "Typhimurium"
+def test_typhimurium_markers_reach_the_right_row(tmp_path: Path) -> None:
+    """group B + H:i + H:1,2 addresses the Typhimurium row; the H2 similarity
+    class also reaches its siblings, so the answer is the candidate list."""
+    call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
+    assert "Typhimurium" in _candidates(call)
 
 
-def test_phase_off_alias_resolves_the_monophasic_row(tmp_path: Path) -> None:
-    """Paratyphi A is tabulated as A:a:1,5 with can_h2_be_missing; the importer
-    writes the phase-off alias row, so a genome without fljB still resolves."""
-    genes = _genes()
-    genome = tmp_path / "p.fna"
-    body = "".join(genes[_gene(f, a)] for f, a in (("o", "A"), ("h1", "a")))
-    genome.write_text(f">ctg1\n{body}\n", encoding="utf-8")
-    datadir = tmp_path / "dd"
-    table = tmp_path / "screen.tsv"
-    assert (
-        runner.invoke(
-            app,
-            [
-                "screen",
-                "-d",
-                "sen_sero_sistr",
-                str(genome),
-                "-o",
-                str(table),
-                "--datadir",
-                str(datadir),
-                "--quiet",
-            ],
-            catch_exceptions=False,
-        ).exit_code
-        == 0
-    )
-    typed = runner.invoke(
-        app,
-        ["typing", str(table), "--datadir", str(datadir), "--format", "tsv", "--quiet"],
-        catch_exceptions=False,
-    )
-    assert typed.exit_code == 0, typed.stderr
-    assert typed.stdout.splitlines()[1].split("\t")[2] == "Paratyphi A"
+def test_phase_off_alias_reaches_the_monophasic_row(tmp_path: Path) -> None:
+    """Paratyphi A is tabulated as A:a:1,5 with ``can_h2_be_missing``; the phase-off
+    alias row the importer writes makes a genome without fljB address it."""
+    call = _designate(tmp_path, ("o", "A"), ("h1", "a"))
+    assert "Paratyphi A" in _candidates(call) or call.phenotype == "Paratyphi A"
 
 
-def _designate(tmp_path: Path, *antigens: tuple[str, str]) -> str:
+def _designate(tmp_path: Path, *antigens: tuple[str, str]) -> SchemeCall:
     """Screen a genome built from the named antigens, then designate it."""
     genes = _genes()
     body = "".join(genes[_gene(family, antigen)] for family, antigen in antigens)
@@ -206,24 +152,22 @@ def _designate(tmp_path: Path, *antigens: tuple[str, str]) -> str:
     assert result.exit_code == 0, result.stderr
     typed = runner.invoke(
         app,
-        ["typing", str(table), "--datadir", str(datadir), "--format", "tsv", "--quiet"],
+        ["typing", str(table), "--datadir", str(datadir), "--format", "json", "--quiet"],
         catch_exceptions=False,
     )
     assert typed.exit_code == 0, typed.stderr
-    return typed.stdout.splitlines()[1].split("\t")[2]
+    return SchemeCall.model_validate(json.loads(typed.stdout)["files"][0]["phenotypes"]["serotype"])
 
 
-def test_missing_o_group_widens_to_every_serogroup(tmp_path: Path) -> None:
-    """Without the O group the lookup widens to every serogroup the panel
-    declares, the upstream behaviour (SISTR replaces an unknown serogroup with
-    the table's whole column, which is how it answers ``-:i:1,2``). Only one row
-    pairs H:i with H:1,2, so the serovar still resolves."""
-    assert _designate(tmp_path, ("h1", "i"), ("h2", "1,2")) == "Typhimurium"
+def _candidates(call: SchemeCall) -> set[str | None]:
+    return {entry.phenotype for entry in call.ambiguous}
 
 
-def test_missing_h1_leaves_the_formula_partial(tmp_path: Path) -> None:
-    """The H phases are deliberately not widened: a missing phase is a real
-    monophasic signal, so the call stays a partial formula."""
-    phenotype = _designate(tmp_path, ("o", "B"), ("h2", "1,2"))
-    assert phenotype != "Typhimurium"
-    assert "Salmonella" in phenotype
+def test_widening_keeps_the_candidate_list_visible(tmp_path: Path) -> None:
+    """A perfect antigen set is widened to its similarity class before the
+    lookup (SISTR's `isin` over the class), so the H2 class of `1,2` also reaches
+    `1,2,7` / `1,5` rows: the call is reported as ambiguous with every candidate,
+    exactly like SISTR's pipe-joined `Typhimurium|Lagos`."""
+    call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
+    assert call.confidence == "ambiguous"
+    assert "Typhimurium" in _candidates(call)

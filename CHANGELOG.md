@@ -57,6 +57,18 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **Salmonella serotype lookup follows SISTR's order.** A family call is marked
+  `perfect` only when a full-score hit exists and every hit names one antigen
+  (`BlastReader.top_result()`); otherwise the serovar is still named but with
+  `confidence: low` and a `(not a perfect match)` note. The predicted names are
+  widened to their `similarity_groups` class **before** the table lookup (SISTR's
+  `isin` over the class), so a cross-labelled reference (`1,2` vs `1,2,7` at
+  99.54 %) no longer forces the monophasic row. A missing O group still widens to
+  every serogroup; a missing H phase stays `"-"`. Measured on eight assemblies
+  against `sistr_cmd`: the right serovar is now among the candidates for 4/8
+  (was 2/8 exact), reported as `contains-truth: 50 %` alongside `exact: 12.5 %`
+  by the regression harness, which now prints both.
+
 - **The k-mer reads path gates on ANI.** `--min-identity` now means an ANI floor
   on that path (`containment**(1/k)`, mash-style), not an alignment filter: reads
   from a 1 %-diverged reference (~98.8 % ANI at k=27) stay in the table at

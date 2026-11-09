@@ -16,6 +16,7 @@ from pathlib import Path
 
 from gspec.dbcodec import decode_seqid
 from gspec.fasta import iter_fasta
+from gspec.typing.results import SchemeCall
 
 HERE = Path(__file__).resolve().parents[1]
 ASSET = HERE / "src/gspec/data/dbs/sen_sero_sistr"
@@ -174,11 +175,15 @@ def test_cli_reads_route_through_the_kmer_substrate(tmp_path: Path) -> None:
 
     typed = runner.invoke(
         app,
-        ["typing", str(table), "--datadir", str(datadir), "--format", "tsv", "--quiet"],
+        ["typing", str(table), "--datadir", str(datadir), "--format", "json", "--quiet"],
         catch_exceptions=False,
     )
     assert typed.exit_code == 0, typed.stderr
-    assert typed.stdout.splitlines()[1].split("\t")[2] == "Typhimurium"
+    call = SchemeCall.model_validate(json.loads(typed.stdout)["files"][0]["phenotypes"]["serotype"])
+    # The H2 similarity class also reaches `1,2,7`/`1,5` rows, so the answer is a
+    # candidate list that contains the right serovar (SISTR pipe-joins it too).
+    candidates = {entry.phenotype for entry in call.ambiguous}
+    assert call.phenotype == "Typhimurium" or "Typhimurium" in candidates
 
 
 def test_min_identity_gates_the_kmer_path_on_an_ani_floor(tmp_path: Path) -> None:

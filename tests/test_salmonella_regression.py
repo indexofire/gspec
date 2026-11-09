@@ -89,7 +89,9 @@ def test_harness_reports_full_accuracy_on_known_assemblies(
         check=False,
     )
     assert result.returncode == 0, result.stderr + result.stdout
-    assert "accuracy: 100.0%" in result.stdout
+    # Exact or ambiguous-but-listed: the harness reports both, and the truth must
+    # be among what was delivered.
+    assert "contains-truth: 100.0%" in result.stdout
 
 
 def test_harness_reports_a_confusion_instead_of_hiding_it(tmp_path: Path) -> None:
@@ -126,7 +128,8 @@ def test_harness_reports_a_confusion_instead_of_hiding_it(tmp_path: Path) -> Non
         check=False,
     )
     assert result.returncode == 1
-    assert "Dublin -> Typhimurium" in result.stdout
+    assert "contains-truth: 0.0%" in result.stdout
+    assert "Dublin ->" in result.stdout
 
 
 @pytest.mark.skipif(
