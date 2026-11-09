@@ -2,9 +2,8 @@
 # Field sources: version/license/python/deps mirror pyproject.toml exactly; the
 # external binaries mirror pixi.toml's conda dependencies. sha256 below hashes
 # the official PyPI sdist (verified against the release-workflow upload log).
-# sha256 of dist/gspec-0.8.1.tar.gz built from this tree.
 {% set name = "gspec" %}
-{% set version = "0.8.1" %}
+{% set version = "0.10.2" %}
 
 package:
   name: {{ name|lower }}
@@ -12,7 +11,7 @@ package:
 
 source:
   url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: 4c1c630c5508f00cc0c052fbb82a0823eabc57f94943abb8295d11ffd792ae0f
+  sha256: e80bffe8b8f92152fe960dc083f9cbe52473b99d3891506c4fbe78d50f4fa6d6
 
 build:
   number: 0
