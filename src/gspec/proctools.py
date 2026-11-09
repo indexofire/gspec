@@ -6,10 +6,14 @@ import sys
 from gspec.errors import DependencyError
 
 
-def run_tool(argv: list[str]) -> subprocess.CompletedProcess[str]:
-    """Run an external tool with an argv list (never a shell)."""
+def run_tool(argv: list[str], *, stdin_text: str | None = None) -> subprocess.CompletedProcess[str]:
+    """Run an external tool with an argv list (never a shell).
+
+    ``stdin_text`` feeds the child's stdin (the blastn pipeline's normalized
+    FASTA); ``capture_output`` always collects stdout/stderr as text.
+    """
     try:
-        return subprocess.run(argv, check=False, capture_output=True, text=True)
+        return subprocess.run(argv, input=stdin_text, check=False, capture_output=True, text=True)
     except FileNotFoundError as exc:
         raise DependencyError(
             f"required binary not found on PATH: {argv[0]}",

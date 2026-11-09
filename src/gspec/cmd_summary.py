@@ -8,49 +8,27 @@ and the explicit ``-`` marker reads stdin even under a terminal (until
 EOF). A bare invocation at a terminal keeps the help-on-bare policy.
 """
 
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 import click
 
-from gspec.dispatch import EnumChoice, dispatch, quiet_option
-from gspec.errors import InputError, usage_fail
+from gspec.dispatch import (
+    EnumChoice,
+    dispatch,
+    quiet_option,
+    stdin_is_tty,
+    stdin_table,
+)
 from gspec.formats.summary import format_summary_tsv, render_summary_json, render_summary_md
 from gspec.screening import OutputFormat
-from gspec.summary import STDIN_LABEL, SummaryParams, build_summary
+from gspec.summary import SummaryParams, build_summary
 
 
 def _stdin_is_tty() -> bool:
     """Whether stdin is a terminal — the injectable probe behind the
-    bare-help guard (a CliRunner stdin is never a tty). Duplicated from
-    cmd_typing so each module attribute stays its tests' monkeypatch seam."""
-    return sys.stdin.isatty()
-
-
-def _read_stdin() -> str:
-    """The piped report table's text; non-UTF-8 bytes are an InputError."""
-    try:
-        return sys.stdin.read()
-    except UnicodeDecodeError as exc:
-        raise InputError(
-            "report piped to stdin is not valid UTF-8",
-            code="SUMMARY_MALFORMED",
-            context={"file": STDIN_LABEL},
-        ) from exc
-
-
-def _stdin_text(files: list[Path]) -> str | None:
-    """Stdin's table text when stdin is the input: the explicit ``-``
-    marker (alone — mixing it with file arguments is a usage error) or the
-    argument-less piped invocation."""
-    if any(str(path) == STDIN_LABEL for path in files):
-        if len(files) > 1:
-            usage_fail("summarize either '-' (stdin) or report file(s), not both")
-        return _read_stdin()
-    if files:
-        return None
-    return _read_stdin()
+    bare-help guard (a CliRunner stdin is never a tty)."""
+    return stdin_is_tty()
 
 
 @click.argument(
@@ -98,7 +76,7 @@ def summary_command(
         ctx.exit(2)
 
     def run() -> None:
-        stdin_text = _stdin_text(args)
+        stdin_text = stdin_table(args, code="SUMMARY_MALFORMED", noun="report", verb="summarize")
         paths = args if stdin_text is None else []
         if identity and coverage and not quiet:
             click.echo("Using %IDENTITY/%COVERAGE per hit for the summary table", err=True)

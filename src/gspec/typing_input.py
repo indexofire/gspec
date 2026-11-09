@@ -22,11 +22,8 @@ from pydantic import BaseModel
 
 from gspec.cluster import GeneCall
 from gspec.errors import InputError
+from gspec.tables import STDIN_LABEL, read_table_text
 from gspec.typing_table import ScreenRow, parse_table
-
-#: The table label for stdin input — the conventional ``-`` marker, also
-#: how stdin renders in the JSON ``source`` array and error listings.
-STDIN_LABEL = "-"
 
 
 class FileGeneCalls(BaseModel, frozen=True):
@@ -46,20 +43,7 @@ class TypingInput(BaseModel, frozen=True):
 
 def _read_table(path: Path) -> str:
     """One result table's text; missing/unreadable/non-UTF-8 is an InputError."""
-    if not path.is_file():
-        raise InputError(
-            f"screen result file not found or unreadable: {path}",
-            code="INPUT_NOT_FOUND",
-            context={"file": str(path)},
-        )
-    try:
-        return path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        raise InputError(
-            f"screen result is not valid UTF-8: {path}",
-            code="SCREEN_TABLE_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    return read_table_text(path, code="SCREEN_TABLE_MALFORMED", noun="screen result")
 
 
 def _reject_cluster_table(label: str, text: str) -> None:

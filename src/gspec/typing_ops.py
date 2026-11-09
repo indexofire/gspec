@@ -20,7 +20,7 @@ from pathlib import Path
 import click
 
 from gspec.bundled import resolve_screen_datadir
-from gspec.cluster import load_typing
+from gspec.cluster import require_typing
 from gspec.db import Database
 from gspec.dbcodec import decode_seqid
 from gspec.engines import Emit, OutputFormat
@@ -33,6 +33,7 @@ from gspec.formats.typing_result import (
     typing_file_chunk,
     typing_tsv_preamble,
 )
+from gspec.progress import ChunkSink
 from gspec.screening import find_database
 from gspec.serotype_engine import evaluate_serotype
 from gspec.serotype_models import load_serotype, validate_serotype_references
@@ -54,18 +55,6 @@ def _resolve_database(table_database: str, datadir: Path | None, quiet: bool) ->
             context={"db": table_database},
         )
     return database
-
-
-def _typing_document(database: Database):
-    document = load_typing(database)
-    if document is None:
-        raise DatabaseError(
-            f"database {database.name!r} carries no typing scheme"
-            " (only databases built with `db build --typing` designate)",
-            code="TYPING_NO_SCHEME",
-            context={"db": database.name},
-        )
-    return document
 
 
 def _database_gene_ids(database: Database) -> frozenset[str]:
@@ -94,14 +83,7 @@ def run_typing(
         source.append(STDIN_LABEL)
 
     def render(db_name: str, results: list[TypingFileResult], *, now: datetime) -> str:
-        chunks: list[str] = []
-
-        def sink(chunk: str) -> None:
-            if chunk:
-                chunks.append(chunk)
-                if emit is not None:
-                    emit(chunk)
-
+        sink = ChunkSink(emit)
         if output_format is OutputFormat.json:
             sink(render_typing_result_json(source, db_name, results, now=now))
         elif output_format is OutputFormat.md:
@@ -110,7 +92,7 @@ def run_typing(
             sink(typing_tsv_preamble())
             for result in results:
                 sink(typing_file_chunk(result))
-        return "".join(chunks)
+        return sink.text()
 
     cluster_input = read_cluster_typing_input(paths, stdin_text)
     if cluster_input is not None:
@@ -141,7 +123,7 @@ def run_typing(
             for entry in table.files
         ]
     else:
-        document = _typing_document(database)
+        document = require_typing(database)
         if not quiet:
             click.echo(f"Typing {len(table.files)} file(s) against {table.database}", err=True)
         results = [

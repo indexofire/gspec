@@ -52,6 +52,7 @@ from pydantic import (
 
 from gspec.errors import DatabaseError, InputError
 from gspec.gbfeatures import FeaturesDocument
+from gspec.jsonio import validation_reason
 from gspec.typing_rules import TypingRule, check_rule_references
 
 # The scheme name a legacy gspec.typing/1 document degrades to (one
@@ -259,11 +260,6 @@ def uses_cluster_v2(document: TypingDocument) -> bool:
     return len(document.schemes) > 1
 
 
-def _reason(exc: ValidationError) -> str:
-    """The validation failure rendered as one line (str(exc) is multiline)."""
-    return " ".join(str(exc).split())
-
-
 def _read_text(path: Path) -> str:
     """The typing file's text; unreadable bytes are TYPING_MALFORMED."""
     try:
@@ -281,7 +277,7 @@ def _parse_json(text: str, path: Path) -> dict[str, object]:
         return _json_object_adapter.validate_json(text)
     except ValidationError as exc:
         raise DatabaseError(
-            f"malformed typing document {path}: {_reason(exc)}",
+            f"malformed typing document {path}: {validation_reason(exc)}",
             code="TYPING_MALFORMED",
             context={"file": str(path)},
         ) from exc
@@ -306,7 +302,7 @@ def read_typing_document(path: Path) -> TypingDocument:
         return _document_adapter.validate_python(data)
     except ValidationError as exc:
         raise DatabaseError(
-            f"malformed typing document {path}: {_reason(exc)}",
+            f"malformed typing document {path}: {validation_reason(exc)}",
             code="TYPING_MALFORMED",
             context={"file": str(path)},
         ) from exc

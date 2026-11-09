@@ -427,7 +427,7 @@ def test_run_blastn_shadow_falls_back_on_gseek_failure(
         return _blast_line()
 
     def _fail(*args: object, **kwargs: object) -> object:
-        raise blast.GapitError("boom", code="GSEEK_FAILED")
+        raise blast.GspecError("boom", code="GSEEK_FAILED")
 
     monkeypatch.setattr(blast, "_pipeline", _legacy)
     monkeypatch.setattr(blast, "run_blast_gseek", _fail)
@@ -463,7 +463,7 @@ def test_iter_minimap2_shadow_falls_back_on_gseek_failure(
         return iter([expected])
 
     def _fail(*args: object, **kwargs: object) -> object:
-        raise minimap2_run.GapitError("boom", code="GSEEK_FAILED")
+        raise minimap2_run.GspecError("boom", code="GSEEK_FAILED")
 
     monkeypatch.setattr(minimap2_run, "_iter_legacy", _legacy)
     monkeypatch.setattr(minimap2_run, "iter_paf_gseek", _fail)

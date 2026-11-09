@@ -39,9 +39,10 @@ calls as well).
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from gspec.errors import DatabaseError, InputError
+from gspec.errors import DatabaseError
+from gspec.jsonio import read_json
 
 COMPOSITE_SCHEMA = "gspec.composite/1"
 #: The document's filename inside a composite database directory.
@@ -225,26 +226,9 @@ class CompositeDocument(BaseModel, frozen=True):
 def read_composite(path: Path) -> CompositeDocument:
     """Parse one composite document; missing file = INPUT_NOT_FOUND,
     malformed content = COMPOSITE_MALFORMED (typing/floors precedent)."""
-    if not path.is_file():
-        raise InputError(
-            f"pipeline file not found or unreadable: {path}",
-            code="INPUT_NOT_FOUND",
-            context={"file": str(path)},
-        )
-    try:
-        document = CompositeDocument.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError) as exc:
-        raise DatabaseError(
-            f"could not read pipeline {path}: {exc}",
-            code="COMPOSITE_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
-    except ValidationError as exc:
-        raise DatabaseError(
-            f"malformed pipeline {path}: {' '.join(str(exc).split())}",
-            code="COMPOSITE_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    document = read_json(
+        CompositeDocument, path, code="COMPOSITE_MALFORMED", noun="pipeline document"
+    )
     document.validate_stages()
     return document.model_copy(update={"source_dir": path.resolve().parent})
 

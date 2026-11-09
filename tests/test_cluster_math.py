@@ -15,7 +15,7 @@ from gspec.cluster_math import (
     locus_sort_key,
     parse_cs,
 )
-from gspec.errors import GapitError
+from gspec.errors import GspecError
 
 
 class TestParseCs:
@@ -39,14 +39,14 @@ class TestParseCs:
     def test_unknown_op_is_typed_error(self) -> None:
         """Given a cs with an op outside : * + -, When parsed, Then a
         CS_PARSE_FAILED error carries the offending op."""
-        with pytest.raises(GapitError) as raised:
+        with pytest.raises(GspecError) as raised:
             parse_cs(":5=acgt", 0)
         assert raised.value.code == "CS_PARSE_FAILED"
 
     def test_malformed_length_is_typed_error(self) -> None:
         """Given a match op without an integer length, When parsed, Then a
         CS_PARSE_FAILED error names the op."""
-        with pytest.raises(GapitError) as raised:
+        with pytest.raises(GspecError) as raised:
             parse_cs(":xy", 0)
         assert raised.value.code == "CS_PARSE_FAILED"
 

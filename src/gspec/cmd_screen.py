@@ -33,6 +33,8 @@ from gspec.screening_cluster import reject_cluster_engine_flags
 from gspec.screening_reads import run_screen_assemblies, run_screen_reads
 from gspec.screening_reads_positional import run_screen_reads_positional
 
+_READS_ONLY_HINT = " (--r1/--r2, positional FASTQ, or --aligner minimap2)"
+
 
 def _reject_reads_only_flags(
     read_type: ReadTypeEnum | None,
@@ -43,31 +45,17 @@ def _reject_reads_only_flags(
     relative_to: str = "lpxA",
 ) -> None:
     """Reads-engine flags are usage errors outside reads mode, never silent."""
-    if read_type is not None:
-        usage_fail(
-            "--read-type is reads-mode only (--r1/--r2, positional FASTQ, or --aligner minimap2)"
-        )
-    if min_breadth != 90.0:
-        usage_fail(
-            "--min-breadth is reads-mode only (--r1/--r2, positional FASTQ, or --aligner minimap2)"
-        )
-    if min_depth != 0.0:
-        usage_fail(
-            "--min-depth is reads-mode only (--r1/--r2, positional FASTQ, or --aligner minimap2)"
-        )
-    if min_relative_depth != 0.0:
-        usage_fail(
-            "--min-relative-depth is reads-mode only"
-            " (--r1/--r2, positional FASTQ, or --aligner minimap2)"
-        )
-    if relative_to != "lpxA":
-        usage_fail(
-            "--relative-to is reads-mode only (--r1/--r2, positional FASTQ, or --aligner minimap2)"
-        )
-    if all_genes:
-        usage_fail(
-            "--all-genes is reads-mode only (--r1/--r2, positional FASTQ, or --aligner minimap2)"
-        )
+    given = (
+        ("--read-type", read_type, None),
+        ("--min-breadth", min_breadth, 90.0),
+        ("--min-depth", min_depth, 0.0),
+        ("--min-relative-depth", min_relative_depth, 0.0),
+        ("--relative-to", relative_to, "lpxA"),
+        ("--all-genes", all_genes, False),
+    )
+    for name, value, unchanged in given:
+        if value != unchanged:
+            usage_fail(f"{name} is reads-mode only{_READS_ONLY_HINT}")
 
 
 @click.argument(

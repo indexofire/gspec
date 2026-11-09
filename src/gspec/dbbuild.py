@@ -302,9 +302,10 @@ def build_database(
     return manifest
 
 
-def copy_sidecars(source: Path, target: Path) -> None:
-    """Copy the optional typing/floors/info sidecars verbatim."""
-    for sidecar in SIDECARS:
+def copy_sidecars(source: Path, target: Path, *, sidecars: Sequence[str] = SIDECARS) -> None:
+    """Copy the optional sidecars verbatim (the caller may widen the list —
+    ``db rename`` adds the cluster-only documents)."""
+    for sidecar in sidecars:
         if (source / sidecar).is_file():
             shutil.copyfile(source / sidecar, target / sidecar)
 

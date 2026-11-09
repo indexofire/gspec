@@ -30,9 +30,9 @@ from typing import Any
 from gspec import config, db
 from gspec.composite_models import DOCUMENT_FILENAME, CompositeDocument, read_composite
 from gspec.errors import DatabaseError, InputError
+from gspec.layout import MANIFEST_NAME
 
 BUNDLE_DIRNAME = "dbs"
-MANIFEST_FILENAME = "gspec-manifest.json"
 
 
 def composite_document_path(name: str, datadir: Path | None) -> Path:
@@ -77,7 +77,7 @@ def _write_manifest(destination: Path, name: str, document: CompositeDocument) -
         "dbtype": "nucl",
         "kind": "composite",
     }
-    (destination / MANIFEST_FILENAME).write_text(
+    (destination / MANIFEST_NAME).write_text(
         json.dumps(manifest, indent=1) + "\n", encoding="utf-8"
     )
 

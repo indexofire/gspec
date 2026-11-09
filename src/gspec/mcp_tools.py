@@ -42,22 +42,23 @@ from gspec.typing_ops import run_typing
 # sanctioned Any boundary, card.py precedent).
 
 
-def _paths(arguments: dict[str, Any], key: str) -> list[Path]:
+def _strings(arguments: dict[str, Any], key: str, what: str) -> list[str]:
+    """One JSON-RPC array-of-strings argument (``what`` names it in errors)."""
     value: Any = arguments.get(key, [])
     # items stays unnarrowed Any: iterating the isinstance-narrowed value
     # would leak Unknown into basedpyright strict; value proves list-ness.
     items: Any = arguments.get(key, [])
     if not isinstance(value, list) or not all(isinstance(item, str) for item in items):
-        usage_fail(f"{key} must be an array of file path strings")
-    return [Path(item) for item in items]
+        usage_fail(f"{key} must be an array of {what}")
+    return list(items)
+
+
+def _paths(arguments: dict[str, Any], key: str) -> list[Path]:
+    return [Path(item) for item in _strings(arguments, key, "file path strings")]
 
 
 def _string_list(arguments: dict[str, Any], key: str) -> list[str]:
-    value: Any = arguments.get(key, [])
-    items: Any = arguments.get(key, [])
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in items):
-        usage_fail(f"{key} must be an array of strings")
-    return list(items)
+    return _strings(arguments, key, "strings")
 
 
 def _string(arguments: dict[str, Any], key: str, default: str) -> str:

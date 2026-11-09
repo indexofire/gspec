@@ -37,6 +37,7 @@ from gspec.cluster import BestCall, ClusterParams, ClusterReport
 from gspec.formats.cluster import (
     ClusterLocusDocument,
     ClusterParamsDocument,
+    best_document,
     locus_document,
 )
 from gspec.formats.csvutil import delimited_line
@@ -86,16 +87,9 @@ class Cluster2Document(BaseModel, frozen=True):
 
 
 def _best_document(best: BestCall) -> Cluster2BestDocument:
-    return Cluster2BestDocument(
-        locus=best.locus,
-        label=best.label,
-        type=best.type,
-        coverage_pct=round(best.coverage_pct, 2),
-        identity_pct=round(best.identity_pct, 2),
-        genes_present=best.genes_present,
-        genes_partial=best.genes_partial,
-        genes_absent=best.genes_absent,
-    )
+    """The /1 block without its phenotype fields (one field mapping, two
+    documents: /2 moves every call into the file-level phenotypes map)."""
+    return Cluster2BestDocument.model_validate(best_document(best), from_attributes=True)
 
 
 def render_cluster2_json(

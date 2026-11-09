@@ -43,6 +43,19 @@
 
 - The ambiguity margin compares the *ordering* value, so a `best_hit.rank`
   scheme never turns a call ambiguous because the longer winner scores lower.
+- **The typed error base class is `GspecError`** (was `GapitError`, a pre-0.9
+  name): every gspec error derives from it, and the click group is
+  `GspecGroup`. Nothing else in the error contract moved (codes, exit codes
+  and envelopes are unchanged).
+- Sidecar failures share one reader, so the wording is now uniform
+  (`<noun> not found or unreadable`, `could not read <noun>`, `malformed
+  <noun>`); error codes and the `file` context are unchanged.
+
+### Fixed
+
+- **`db rename` keeps every cluster sidecar.** The cluster-only documents are
+  copied explicitly, and `kmer.json` — previously dropped, silently disabling a
+  renamed database's k-mer substrate — now rides along.
 
 ## [0.10.1] - 2026-11-08
 

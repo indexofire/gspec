@@ -15,7 +15,7 @@ from typing import Literal
 
 from gspec.cluster import ClusterReport
 from gspec.typing_decide import compose_call, decide_scheme
-from gspec.typing_engine import gene_calls, score_rules
+from gspec.typing_engine import gene_calls, locus_evidence, score_rules
 from gspec.typing_models import TypingDocument
 from gspec.typing_results import LocusEvidence, PhenotypeDetail, SchemeCall
 
@@ -31,17 +31,9 @@ def _fallback_locus(report: ClusterReport, scheme_name: str) -> LocusEvidence | 
     prefix = "OL" if scheme_name == "o_group" else "KL" if scheme_name == "k_group" else None
     if prefix is None:
         return None
-    for locus in report.loci:
-        if locus.locus.startswith(prefix):
-            return LocusEvidence(
-                locus=locus.locus,
-                coverage_pct=locus.coverage_pct,
-                identity_pct=locus.identity_pct,
-                genes_present=sum(1 for gene in locus.genes if gene.verdict == "present"),
-                genes_partial=sum(1 for gene in locus.genes if gene.verdict == "partial"),
-                missing=locus.missing,
-            )
-    return None
+    return next(
+        (locus_evidence(locus) for locus in report.loci if locus.locus.startswith(prefix)), None
+    )
 
 
 def _scheme_call(

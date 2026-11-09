@@ -8,9 +8,7 @@ database lookup, and the run_screen dispatcher. OutputFormat/AlignerEnum are
 imported from gspec.engines so every screening surface sees the same enums.
 """
 
-import os
 from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -26,7 +24,13 @@ from gspec.formats.json import render_json
 from gspec.formats.md import md_report_chunk, md_report_preamble
 from gspec.formats.tsv import tsv_file_chunk, tsv_preamble
 from gspec.layout import manifest_path
-from gspec.progress import screen_progress, terminal_rule
+from gspec.progress import (
+    ChunkSink,
+    map_inputs,
+    screen_progress,
+    terminal_rule,
+    warn_oversubscription,
+)
 from gspec.report import Report, ScreeningParams
 from gspec.screening_batch import screen_batch
 from gspec.screening_cluster import (
@@ -304,9 +308,7 @@ def run_screen(
     )
     ensure_blast()
     dbtype = db.blast_db_info(database.sequences_path).dbtype
-    cpu_count = os.cpu_count()
-    if not quiet and cpu_count is not None and jobs * threads > cpu_count:
-        click.echo(f"--jobs {jobs} --threads {threads} oversubscribes {cpu_count} cpus", err=True)
+    warn_oversubscription(jobs, threads, quiet=quiet)
 
     def screen_one(path: Path) -> Report:
         if task_id is not None:
@@ -325,15 +327,7 @@ def run_screen(
     batch_checked = False
 
     def iter_reports() -> Iterator[Report]:
-        # Subprocess-bound work (GIL irrelevant); executor.map yields
-        # positionally, so reports stay in input order (SPEC.md §4) and a
-        # failing file raises at its position, like the sequential loop.
         nonlocal batch_checked, batch_reports
-
-        def tracked(seq: Iterator[Report]) -> Iterator[Report]:
-            for report in seq:  # advance per completed file, input order
-                bar.advance()
-                yield report
 
         if not batch_checked:
             batch_checked = True
@@ -347,26 +341,14 @@ def run_screen(
                 jobs=jobs,
             )
         if batch_reports is not None:
-            yield from tracked(iter(batch_reports))
+            for report in batch_reports:
+                bar.advance()
+                yield report
             return
-        if jobs == 1:
-            yield from tracked(screen_one(path) for path in inputs)
-            return
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            yield from tracked(executor.map(screen_one, inputs))
+        yield from map_inputs(inputs, screen_one, jobs=jobs, on_done=bar.advance)
 
     with screen_progress(inputs, quiet=quiet) as (bar, task_id):
-        chunks: list[str] = []
-
-        def sink(chunk: str) -> None:
-            if chunk:
-                chunks.append(chunk)
-                if emit is not None:
-                    if stdout_emit:
-                        bar.write(chunk)
-                    else:
-                        with bar.suspend():
-                            emit(chunk)
+        sink = ChunkSink(emit, stdout=stdout_emit, bar=bar)
 
         if output_format is OutputFormat.json:
             sink(render_json(list(iter_reports()), params, now=datetime.now(UTC)))
@@ -391,4 +373,4 @@ def run_screen(
                 sink(tsv_file_chunk(report, csv=as_csv, nopath=nopath))
             if separator:
                 sink(separator)
-    return "".join(chunks)
+    return sink.text()

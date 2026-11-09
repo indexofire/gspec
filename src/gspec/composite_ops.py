@@ -26,10 +26,11 @@ from typing import Any
 
 from gspec import db
 from gspec.bundled import resolve_screen_datadir
-from gspec.cluster import load_typing
+from gspec.cluster import require_typing
 from gspec.composite_models import CompositeDocument, CompositeStage
 from gspec.engines import OutputFormat
 from gspec.errors import DatabaseError, DependencyError
+from gspec.formats.json import utc_timestamp
 from gspec.report import ScreeningParams
 from gspec.screen_defaults import screen_defaults
 from gspec.screening import find_database, run_screen
@@ -221,18 +222,6 @@ def _stage_database(document: CompositeDocument, name: str, datadir: Path | None
             if database.name == name:
                 return database
     return find_database(resolve_screen_datadir(datadir, name), name, quiet=True)
-
-
-def _typing_document(database: db.Database) -> TypingDocument:
-    document = load_typing(database)
-    if document is None:
-        raise DatabaseError(
-            f"database {database.name!r} carries no typing scheme"
-            " (only databases built with `db build --typing` designate)",
-            code="TYPING_NO_SCHEME",
-            context={"db": database.name},
-        )
-    return document
 
 
 def _stage_scheme(document: TypingDocument, stage: CompositeStage) -> str:
@@ -639,7 +628,7 @@ def run_composite(
         if database is None:
             database = _stage_database(document, stage.db, datadir)
             databases[stage.db] = database
-            typing_docs[stage.db] = _typing_document(database)
+            typing_docs[stage.db] = require_typing(database)
         schemes[stage.name] = _stage_scheme(typing_docs[stage.db], stage)
 
     gene_tables: dict[str, str] = {}
@@ -809,7 +798,7 @@ def render_composite_json(
     results: list[FileCall], document: CompositeDocument, *, now: datetime | None = None
 ) -> str:
     """``gspec.composite_result/1`` — the fused call plus per-stage evidence."""
-    stamp = (now or datetime.now(UTC)).astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    stamp = utc_timestamp(now or datetime.now(UTC))
     payload = {
         "schema": COMPOSITE_RESULT_SCHEMA,
         "pipeline": document.name,

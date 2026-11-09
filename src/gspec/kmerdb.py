@@ -39,6 +39,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from gspec.errors import DatabaseError
+from gspec.jsonio import read_json_optional
 
 _BASE_INDEX = {"A": 0, "C": 1, "G": 2, "T": 3}
 
@@ -155,16 +156,7 @@ def read_kmerdb(db_dir: Path) -> KmerDbDocument | None:
     """Load ``<db_dir>/kmer.json``; None when the database carries no
     k-mer substrate."""
     path = db_dir / "kmer.json"
-    if not path.is_file():
-        return None
-    try:
-        return KmerDbDocument.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise DatabaseError(
-            f"malformed kmer sidecar: {path}: {exc}",
-            code="KMERDB_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    return read_json_optional(KmerDbDocument, path, code="KMERDB_MALFORMED", noun="kmer sidecar")
 
 
 def _pack(codes: set[int]) -> bytes:

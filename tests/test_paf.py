@@ -2,7 +2,7 @@
 
 import pytest
 
-from gspec.errors import GapitError
+from gspec.errors import GspecError
 from gspec.paf import PafRecord, parse_paf_row
 
 CANONICAL = (
@@ -38,7 +38,7 @@ def test_missing_tp_tag_counts_as_primary() -> None:
 def test_row_with_too_few_fields_fails() -> None:
     """Given an 11-field line, When parsed, Then PAF_PARSE_FAILED."""
     fields = CANONICAL.split("\t")[:11]
-    with pytest.raises(GapitError) as excinfo:
+    with pytest.raises(GspecError) as excinfo:
         parse_paf_row("\t".join(fields))
     assert excinfo.value.code == "PAF_PARSE_FAILED"
 
@@ -80,6 +80,6 @@ def test_non_numeric_field_is_a_typed_parse_error() -> None:
     Then PAF_PARSE_FAILED (not a raw ValueError)."""
     fields = CANONICAL.split("\t")
     fields[1] = "not-an-int"
-    with pytest.raises(GapitError) as excinfo:
+    with pytest.raises(GspecError) as excinfo:
         parse_paf_row("\t".join(fields))
     assert excinfo.value.code == "PAF_PARSE_FAILED"

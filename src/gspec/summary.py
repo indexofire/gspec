@@ -9,24 +9,17 @@ CLI hands in, labeled :data:`STDIN_LABEL`) — stdin is one more input and
 follows the same parser path, error labels included.
 """
 
-import csv
-import io
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from pathlib import Path, PurePath
 from typing import Literal
 
 from pydantic import BaseModel
 
 from gspec.errors import InputError
+from gspec.tables import STDIN_LABEL, detect_separator, iter_rows, malformed, read_table_text
 
 FIELDSEP = ";"
 ABSENT = "."
-
-#: The table label for stdin input — the conventional ``-`` marker. Kept as
-#: an independent twin of gspec.typing_input.STDIN_LABEL: the two table
-#: parsers duplicate their tiny helpers rather than cross-import
-#: (see also ``_detect_separator`` below).
-STDIN_LABEL = "-"
 
 Warn = Callable[[str], None]
 
@@ -75,65 +68,11 @@ class SummaryMatrix(BaseModel, frozen=True):
 
 def _read_report(path: Path) -> str:
     """Read one report table; missing/unreadable/non-UTF-8 is an InputError."""
-    if not path.is_file():
-        raise InputError(
-            f"report file not found or unreadable: {path}",
-            code="INPUT_NOT_FOUND",
-            context={"file": str(path)},
-        )
-    try:
-        return path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        raise InputError(
-            f"report is not valid UTF-8: {path}",
-            code="SUMMARY_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
-
-
-def _lines(text: str) -> list[str]:
-    """Split like Perl's ``while (<$fh>)``: on \\n, no phantom final line."""
-    if not text:
-        return []
-    parts = text.split("\n")
-    if parts[-1] == "":
-        parts.pop()
-    return parts
-
-
-def _detect_separator(text: str) -> str:
-    """[gspec-extension] auto-detect the table separator per file: tab if the
-    first line has any, else comma, else tab (single-column degenerate)."""
-    first = _lines(text)[0] if text else ""
-    if "\t" in first:
-        return "\t"
-    if "," in first:
-        return ","
-    return "\t"
+    return read_table_text(path, code="SUMMARY_MALFORMED", noun="report")
 
 
 def _malformed(label: str, line_number: int, detail: str) -> InputError:
-    return InputError(
-        f"malformed report row: {detail} ({label}:{line_number})",
-        code="SUMMARY_MALFORMED",
-        context={"file": label, "line": str(line_number)},
-    )
-
-
-def _iter_rows(text: str, separator: str) -> Iterator[tuple[int, list[str]]]:
-    """Physical line number + cells, using the csv module for comma tables.
-
-    TSV keeps the abricate-parity raw split (no quoting convention); CSV
-    uses csv.reader so a quoted comma/newline inside a field round-trips.
-    """
-    if separator == ",":
-        reader = csv.reader(io.StringIO(text))
-        for columns in reader:
-            if columns:
-                yield reader.line_num, columns
-        return
-    for line_number, line in enumerate(_lines(text), start=1):
-        yield line_number, line.split(separator)
+    return malformed("SUMMARY_MALFORMED", "report", label, line_number, detail)
 
 
 def build_summary(
@@ -168,8 +107,8 @@ def build_summary(
     for label, text in sources:
         if not dutch:
             data[label] = {}
-        separator = _detect_separator(text)
-        for line_number, columns in _iter_rows(text, separator):
+        separator = detect_separator(text)
+        for line_number, columns in iter_rows(text, separator):
             if indexes is None:
                 # Header-name -> column index with Perl zip semantics (later dups win).
                 indexes = dict(zip(columns, range(len(columns)), strict=True))

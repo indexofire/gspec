@@ -10,47 +10,28 @@ typing`` types the piped output, and the explicit ``-`` marker reads stdin
 even under a terminal (until EOF).
 """
 
-import sys
 from pathlib import Path
 
 import click
 
-from gspec.dispatch import EnumChoice, datadir_option, dispatch, output_target, quiet_option
+from gspec.dispatch import (
+    EnumChoice,
+    datadir_option,
+    dispatch,
+    output_target,
+    quiet_option,
+    stdin_is_tty,
+    stdin_table,
+)
 from gspec.engines import OutputFormat
-from gspec.errors import InputError, usage_fail
-from gspec.typing_input import STDIN_LABEL
+from gspec.errors import usage_fail
 from gspec.typing_ops import run_typing
 
 
 def _stdin_is_tty() -> bool:
     """Whether stdin is a terminal — the injectable probe behind the
     bare-help guard (a CliRunner stdin is never a tty)."""
-    return sys.stdin.isatty()
-
-
-def _read_stdin() -> str:
-    """The piped screen table's text; non-UTF-8 bytes are an InputError."""
-    try:
-        return sys.stdin.read()
-    except UnicodeDecodeError as exc:
-        raise InputError(
-            "screen result piped to stdin is not valid UTF-8",
-            code="SCREEN_TABLE_MALFORMED",
-            context={"file": STDIN_LABEL},
-        ) from exc
-
-
-def _stdin_text(files: list[Path]) -> str | None:
-    """Stdin's table text when stdin is the input: the explicit ``-``
-    marker (alone — mixing it with file arguments is a usage error) or the
-    argument-less piped invocation."""
-    if any(str(path) == STDIN_LABEL for path in files):
-        if len(files) > 1:
-            usage_fail("type either '-' (stdin) or screen result file(s), not both")
-        return _read_stdin()
-    if files:
-        return None
-    return _read_stdin()
+    return stdin_is_tty()
 
 
 @click.argument(
@@ -109,7 +90,9 @@ def typing_command(
     def run() -> None:
         if output_format is OutputFormat.csv:
             usage_fail("--format csv is not available for typing (use tsv, json, or md)")
-        stdin_text = _stdin_text(args)
+        stdin_text = stdin_table(
+            args, code="SCREEN_TABLE_MALFORMED", noun="screen result", verb="type"
+        )
         paths = args if stdin_text is None else []
         with output_target(output) as deliver:
             # run_typing emits its output through `deliver`; echoing the

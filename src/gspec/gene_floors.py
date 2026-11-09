@@ -26,12 +26,13 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 from gspec.db import Database
 from gspec.dbcodec import decode_seqid
-from gspec.errors import DatabaseError, InputError
+from gspec.errors import DatabaseError
 from gspec.hits import Hit
+from gspec.jsonio import read_json
 from gspec.paf import PafRecord, alignment_identity
 
 FLOORS_FILENAME = "floors.json"
@@ -56,26 +57,7 @@ def read_floors(path: Path) -> GeneFloors:
     INPUT_NOT_FOUND input error, malformed content (bad JSON, wrong schema
     tag, values outside [0, 100]) the FLOORS_MALFORMED DatabaseError — the
     typing.json error precedent, file in context."""
-    if not path.is_file():
-        raise InputError(
-            f"floors file not found or unreadable: {path}",
-            code="INPUT_NOT_FOUND",
-            context={"file": str(path)},
-        )
-    try:
-        return GeneFloors.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError) as exc:
-        raise DatabaseError(
-            f"could not read floors document {path}: {exc}",
-            code="FLOORS_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
-    except ValidationError as exc:
-        raise DatabaseError(
-            f"malformed floors document {path}: {' '.join(str(exc).split())}",
-            code="FLOORS_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    return read_json(GeneFloors, path, code="FLOORS_MALFORMED", noun="floors document")
 
 
 def gene_floors(db: Database) -> GeneFloors | None:

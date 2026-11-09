@@ -18,7 +18,7 @@ from gspec.formats.schemas import SCHEMA_MODELS
 from gspec.mcp import register_mcp_command
 
 
-class GapitGroup(click.Group):
+class GspecGroup(click.Group):
     """Click group that renders click's own parse failures as gspec envelopes.
 
     Click validates options/arguments before the command body runs, so
@@ -66,7 +66,7 @@ class GapitGroup(click.Group):
 
 
 @click.group(
-    cls=GapitGroup,
+    cls=GspecGroup,
     name="gspec",
     help="Mass screening of contigs and reads for known genes across reference databases.",
     no_args_is_help=True,

@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from gspec.errors import GapitError
+from gspec.errors import GspecError
 
 ReadType = Literal["sr", "map-ont", "map-hifi"]
 
@@ -50,7 +50,7 @@ def parse_paf_row(line: str) -> PafRecord:
     present."""
     fields = line.split("\t")
     if len(fields) < 12:
-        raise GapitError(
+        raise GspecError(
             f"can not parse PAF row (expected >= 12 fields): {line!r}",
             code="PAF_PARSE_FAILED",
         )
@@ -67,7 +67,7 @@ def parse_paf_row(line: str) -> PafRecord:
                 cs = tag[len("cs:Z:") :]
         strand = fields[4]
         if strand not in ("+", "-"):
-            raise GapitError(
+            raise GspecError(
                 f"can not parse PAF strand (expected + or -): {strand!r}",
                 code="PAF_PARSE_FAILED",
             )
@@ -91,7 +91,7 @@ def parse_paf_row(line: str) -> PafRecord:
             cs=cs,
         )
     except (TypeError, ValueError) as exc:
-        raise GapitError(
+        raise GspecError(
             f"can not parse PAF row (numeric field): {line!r}",
             code="PAF_PARSE_FAILED",
         ) from exc

@@ -31,7 +31,7 @@ from gspec.cluster_math import (
 )
 from gspec.cluster_profile import CoverageMode
 from gspec.db import Database
-from gspec.errors import DatabaseError, GapitError
+from gspec.errors import DatabaseError, GspecError
 from gspec.gbfeatures import FeaturesDocument, LocusFeatures
 from gspec.gene_families import load_gene_families
 from gspec.locus_map_models import LocusMap
@@ -161,6 +161,24 @@ def load_typing(database: Database) -> TypingDocument | None:
     return read_typing_document(path) if path.is_file() else None
 
 
+def require_typing(database: Database) -> TypingDocument:
+    """The database's typing document, refusing one that carries none.
+
+    The shared guard behind designation (`gspec typing`) and pipeline stages:
+    a database built without ``--typing`` has nothing to designate from, and
+    that is a typed database error, never a silent skip.
+    """
+    document = load_typing(database)
+    if document is None:
+        raise DatabaseError(
+            f"database {database.name!r} carries no typing scheme"
+            " (only databases built with `db build --typing` designate)",
+            code="TYPING_NO_SCHEME",
+            context={"db": database.name},
+        )
+    return document
+
+
 def runs_by_locus(
     rows: Iterable[PafRecord], *, coverage_mode: CoverageMode = "primary"
 ) -> dict[str, tuple[list[tuple[CsRun, ...]], int]]:
@@ -173,7 +191,7 @@ def runs_by_locus(
         if coverage_mode == "primary" and not row.is_primary:
             continue
         if row.cs is None:
-            raise GapitError(
+            raise GspecError(
                 f"minimap2 row without a cs tag (cannot score cluster {row.tname})",
                 code="CS_MISSING",
                 context={"locus": row.tname},

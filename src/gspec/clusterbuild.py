@@ -29,6 +29,7 @@ from gspec.db import make_blast_db, make_minimap2_index
 from gspec.dbbuild import optional_tool_version_line, sha256_file, tool_version_line
 from gspec.errors import DatabaseError
 from gspec.fasta import iter_fasta
+from gspec.formats.json import utc_timestamp
 from gspec.gbfeatures import (
     FeaturesDocument,
     LocusSequence,
@@ -376,7 +377,7 @@ def perform_cluster_build(
         loci=loci,
         typing=typing,
         source_urls=("local",),
-        fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        fetched_at=utc_timestamp(datetime.now(UTC)),
         typing_schema=typing_schema,
         quiet=quiet,
     )

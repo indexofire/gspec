@@ -14,7 +14,7 @@ import pytest
 
 from gspec.blast import run_blastn
 from gspec.db import Database
-from gspec.errors import DependencyError, GapitError
+from gspec.errors import DependencyError, GspecError
 from gspec.report import ScreeningParams
 
 LOWERCASE_FASTA = ">contig1\nacgtacgtac\n"
@@ -67,7 +67,7 @@ def test_blastn_failure_raises_blast_failed_with_stderr(
     tmp_path: Path, fakedb: Database, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Given a blastn that exits 1 with a stderr message, When screened, Then
-    GapitError BLAST_FAILED carries that stderr text."""
+    GspecError BLAST_FAILED carries that stderr text."""
     bin_dir = fake_path(monkeypatch, tmp_path)
     write_fake_blastn(
         bin_dir,
@@ -76,7 +76,7 @@ def test_blastn_failure_raises_blast_failed_with_stderr(
     query = tmp_path / "contigs.fa"
     query.write_text(LOWERCASE_FASTA, encoding="utf-8")
     params = ScreeningParams(db="fakedb", minid=80.0, mincov=80.0, threads=1)
-    with pytest.raises(GapitError) as excinfo:
+    with pytest.raises(GspecError) as excinfo:
         run_blastn(query, fakedb, params, dbtype="nucl")
     assert excinfo.value.code == "BLAST_FAILED"
     assert "kaboom" in str(excinfo.value)

@@ -27,6 +27,7 @@ from gspec.clusterbuild import build_cluster_database
 from gspec.db_txn import staged_database
 from gspec.errors import DatabaseError
 from gspec.fasta import iter_fasta
+from gspec.formats.json import utc_timestamp
 from gspec.gbfeatures import FeaturesDocument, LocusSequence
 from gspec.layout import manifest_path
 from gspec.proctools import note
@@ -122,7 +123,7 @@ def materialize_cluster_bundle(
             loci=loci,
             typing=bundled.typing_path,
             source_urls=("local",),
-            fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            fetched_at=utc_timestamp(datetime.now(UTC)),
             typing_schema=typing_schema,
             quiet=True,  # the materializing note above is the only stderr line (gene-path parity)
             content_license=bundled.metadata.license,

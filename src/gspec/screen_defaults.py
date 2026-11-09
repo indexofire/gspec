@@ -42,11 +42,12 @@ depth. Per-gene identity floors stay in ``floors.json``
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 from gspec import config
 from gspec.db import Database
-from gspec.errors import DatabaseError, InputError
+from gspec.errors import DatabaseError
+from gspec.jsonio import read_json
 
 SCREEN_FILENAME = "screen.json"
 
@@ -99,26 +100,9 @@ class ScreenDefaults(BaseModel, frozen=True):
 def read_screen_defaults(path: Path) -> ScreenDefaults:
     """Parse one screen-defaults document; missing file = INPUT_NOT_FOUND,
     malformed content = SCREEN_DEFAULTS_MALFORMED (typing/floors precedent)."""
-    if not path.is_file():
-        raise InputError(
-            f"screen defaults file not found or unreadable: {path}",
-            code="INPUT_NOT_FOUND",
-            context={"file": str(path)},
-        )
-    try:
-        return ScreenDefaults.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError) as exc:
-        raise DatabaseError(
-            f"could not read screen defaults {path}: {exc}",
-            code="SCREEN_DEFAULTS_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
-    except ValidationError as exc:
-        raise DatabaseError(
-            f"malformed screen defaults {path}: {' '.join(str(exc).split())}",
-            code="SCREEN_DEFAULTS_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    return read_json(
+        ScreenDefaults, path, code="SCREEN_DEFAULTS_MALFORMED", noun="screen defaults document"
+    )
 
 
 def validate_screen_defaults(

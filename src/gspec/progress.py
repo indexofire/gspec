@@ -15,9 +15,11 @@ print byte-identically; when active the bar REPLACES those notes (its
 M/N + description carry them).
 """
 
+import os
 import shutil
 import sys
-from collections.abc import Generator, Sequence
+from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from typing import Final, Protocol
 
@@ -32,6 +34,8 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
+
+from gspec.engines import Emit
 
 # Module-level so tests can substitute a recording (record=True) console.
 STATUS_CONSOLE: Final = Console(stderr=True)
@@ -125,6 +129,80 @@ class _LiveBatch:
 
 
 _IDLE: Final = IdleBatch()
+
+
+class ChunkSink:
+    """The rendered-chunk sink every streaming call site shares.
+
+    Chunks are collected (the call site returns ``text()``) and mirrored to
+    the caller's ``emit`` when one is given: with ``stdout`` the chunk goes
+    through the live bar, otherwise the bar is suspended around the caller's
+    write (the file/``--output`` path). Empty chunks — a suppressed header
+    under ``--noheader`` — are dropped everywhere, so emitted bytes and the
+    returned document stay identical.
+    """
+
+    __slots__ = ("_bar", "_chunks", "_emit", "_stdout")
+
+    def __init__(
+        self, emit: Emit | None = None, *, stdout: bool = False, bar: BatchProgress = _IDLE
+    ) -> None:
+        self._bar = bar
+        self._chunks: list[str] = []
+        self._emit = emit
+        self._stdout = stdout
+
+    def __call__(self, chunk: str) -> None:
+        if not chunk:
+            return
+        self._chunks.append(chunk)
+        if self._emit is None:
+            return
+        if self._stdout:
+            self._bar.write(chunk)
+            return
+        with self._bar.suspend():
+            self._emit(chunk)
+
+    def text(self) -> str:
+        """The whole document — the buffered return value of the call site."""
+        return "".join(self._chunks)
+
+
+def map_inputs[T, R](
+    items: Sequence[T],
+    worker: Callable[[T], R],
+    *,
+    jobs: int,
+    on_done: Callable[[], None] | None = None,
+) -> Iterator[R]:
+    """Run ``worker`` over ``items``, yielding results in input order.
+
+    The work is subprocess-bound (the GIL is irrelevant), and
+    ``executor.map`` yields positionally: a failing item raises at its
+    position exactly like the sequential loop (SPEC.md §4). ``on_done``
+    fires as each result is yielded — the bar advance shared by every
+    batch call site.
+    """
+
+    def tracked(results: Iterable[R]) -> Iterator[R]:
+        for result in results:
+            if on_done is not None:
+                on_done()
+            yield result
+
+    if jobs == 1:
+        yield from tracked(worker(item) for item in items)
+        return
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        yield from tracked(executor.map(worker, items))
+
+
+def warn_oversubscription(jobs: int, threads: int, *, quiet: bool) -> None:
+    """Stderr note when ``--jobs`` x ``--threads`` exceeds the CPU count."""
+    cpu_count = os.cpu_count()
+    if not quiet and cpu_count is not None and jobs * threads > cpu_count:
+        print(f"--jobs {jobs} --threads {threads} oversubscribes {cpu_count} cpus", file=sys.stderr)
 
 
 def terminal_rule() -> str:

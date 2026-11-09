@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from gspec.db_txn import TXN_PREFIX
 from gspec.errors import InputError
 from gspec.formats.json import ToolDocument
+from gspec.jsonio import validation_reason, write_json
 from gspec.layout import manifest_path
 
 _SHA256_SHAPE = re.compile(r"[0-9a-fA-F]{64}")
@@ -81,7 +82,7 @@ def _iter_records(path: Path) -> Iterator[Record]:
                 yield Record.model_validate_json(line)
             except ValidationError as exc:
                 raise InputError(
-                    f"malformed record at {path}:{line_number}: {_reason(exc)}",
+                    f"malformed record at {path}:{line_number}: {validation_reason(exc)}",
                     code="RECORDS_MALFORMED",
                     context={"file": str(path), "line": str(line_number)},
                 ) from exc
@@ -138,18 +139,11 @@ class Manifest(BaseModel, frozen=True):
         return value.lower()
 
 
-def _reason(exc: ValidationError) -> str:
-    """The validation failure rendered as one line (str(exc) is multiline)."""
-    return " ".join(str(exc).split())
-
-
 def write_manifest(manifest: Manifest, path: Path) -> None:
     """Write the manifest as indented JSON (by alias, ``schema`` first) with a
     trailing newline, LF endings, UTF-8. None-valued optional fields
     (license/note) are omitted — every pre-existing manifest byte-identical."""
-    with path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(manifest.model_dump_json(indent=2, by_alias=True, exclude_none=True))
-        handle.write("\n")
+    write_json(manifest, path, exclude_none=True)
 
 
 def read_manifest(path: Path) -> Manifest:
@@ -170,7 +164,7 @@ def read_manifest(path: Path) -> Manifest:
         ) from exc
     except ValidationError as exc:
         raise InputError(
-            f"malformed manifest {path}: {_reason(exc)}",
+            f"malformed manifest {path}: {validation_reason(exc)}",
             code="MANIFEST_MALFORMED",
             context={"file": str(path)},
         ) from exc

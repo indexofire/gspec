@@ -17,10 +17,9 @@ from typing import Literal, NamedTuple
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from gspec import __version__
 from gspec.formats.csvutil import delimited_line
 from gspec.formats.json import ToolDocument, utc_timestamp
-from gspec.formats.md import md_cell, yaml_scalar
+from gspec.formats.md import frontmatter, md_row, md_table_head, yaml_scalar
 from gspec.typing_results import PhenotypeScore, SchemeCall
 
 COLUMNS = ("FILE", "SCHEME", "PHENOTYPE", "GENES", "CONFIDENCE", "SCORE", "RUNNER_UP", "NOTES")
@@ -136,24 +135,18 @@ def render_typing_md(
     """Render designation results as deterministic Markdown: YAML
     frontmatter (tool, db, source tables) then one eight-column table."""
     files = list(results)
-    lines: list[str] = [
-        "---",
-        "schema: gspec.typing_result/1",
-        f"tool: gspec {__version__}",
-        f"created_at: {utc_timestamp(now)}",
-        f"db: {yaml_scalar(db)}",
-        "source:",
-        *(f"  - {yaml_scalar(entry)}" for entry in source),
-        f"files: {len(files)}",
-        "---",
-        "",
-        "# gspec typing results",
-        "",
-        "| " + " | ".join(COLUMNS) + " |",
-        "|" + "---|" * len(COLUMNS),
-    ]
+    lines = frontmatter(
+        "gspec.typing_result/1",
+        now=now,
+        extra=(
+            f"db: {yaml_scalar(db)}",
+            "source:",
+            *(f"  - {yaml_scalar(entry)}" for entry in source),
+            f"files: {len(files)}",
+        ),
+    )
+    lines += ["# gspec typing results", "", *md_table_head(COLUMNS)]
     for result in files:
         for scheme, call in result.phenotypes.items():
-            cells = typing_row(result, scheme, call)
-            lines.append("| " + " | ".join(md_cell(cell) for cell in cells) + " |")
+            lines.append(md_row(typing_row(result, scheme, call)))
     return "\n".join(lines) + "\n"

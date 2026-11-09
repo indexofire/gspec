@@ -10,7 +10,7 @@ Three reference shapes are auto-detected from the first line:
   ``SF1-5``);
 - **ShigeiFinder** results (``#SAMPLE``/``SEROTYPE`` TSV).
 
-GapIt format: the normal ``gspec typing`` TSV (FILE, SCHEME, PHENOTYPE,
+gspec format: the normal ``gspec typing`` TSV (FILE, SCHEME, PHENOTYPE,
 CONFIDENCE, ...).
 
 Usage::

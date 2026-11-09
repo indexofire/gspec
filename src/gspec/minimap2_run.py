@@ -15,7 +15,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from gspec.db import Database, minimap2_target_names_safe
-from gspec.errors import DependencyError, GapitError
+from gspec.errors import DependencyError, GspecError
 from gspec.gseek_engine import engine, iter_paf_gseek
 from gspec.paf import PafRecord, Preset, parse_paf_row
 
@@ -59,7 +59,7 @@ def _iter_minimap2(argv: list[str], r1: Path) -> Iterator[PafRecord]:
         process.wait()
         thread.join()
     if process.returncode != 0:
-        raise GapitError(
+        raise GspecError(
             f"minimap2 failed: {''.join(stderr_chunks).strip()}",
             code="MINIMAP2_FAILED",
             context={"binary": "minimap2", "file": str(r1)},

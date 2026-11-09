@@ -126,7 +126,7 @@ def test_invalid_minid_usage_envelope(datadir: Path) -> None:
 
 
 def test_unexpected_exception_envelope() -> None:
-    """Given a non-GapitError failure, When rendered, Then the UNEXPECTED
+    """Given a non-GspecError failure, When rendered, Then the UNEXPECTED
     fallback envelope with exit 1 is used."""
     line = render_error(ValueError("boom"))
     envelope = envelope_adapter.validate_json(line)
@@ -167,7 +167,7 @@ def test_every_raise_site_uses_a_registered_code() -> None:
     """Given every typed raise helper/call in src/gspec, When scanned, Then
     its code is in ERROR_CODES (so the public enum cannot drift)."""
     source = Path(__file__).parents[1] / "src" / "gspec"
-    names = {"_fail", "GapitError", "DatabaseError", "InputError", "UsageError", "DependencyError"}
+    names = {"_fail", "GspecError", "DatabaseError", "InputError", "UsageError", "DependencyError"}
     found: set[str] = set()
     for path in source.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))

@@ -18,9 +18,7 @@ end. Chunk concatenation is always byte-identical to the buffered return
 value.
 """
 
-import os
 from collections.abc import Callable, Iterator
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,7 +30,13 @@ from gspec.errors import ensure_input_file, usage_fail
 from gspec.formats.md import reads_md_chunk, reads_md_preamble
 from gspec.formats.reads_json import render_reads2_json, render_reads_json
 from gspec.formats.reads_tsv import reads_tsv_chunk, reads_tsv_preamble
-from gspec.progress import screen_progress, terminal_rule
+from gspec.progress import (
+    ChunkSink,
+    map_inputs,
+    screen_progress,
+    terminal_rule,
+    warn_oversubscription,
+)
 from gspec.readpairs import SampleLanes, pair_samples
 from gspec.reads import ReadsParams, ReadsReport, ReadTypeEnum, screen_reads
 from gspec.screening import OutputFormat, find_database
@@ -92,9 +96,7 @@ def run_screen_reads_positional(
     samples = pair_samples(files, warn=warn)
     lanes = [lane for sample in samples for lane in sample.lanes]
     resolved = resolve_read_preset(lanes, read_type, quiet)
-    cpu_count = os.cpu_count()
-    if not quiet and cpu_count is not None and jobs * threads > cpu_count:
-        click.echo(f"--jobs {jobs} --threads {threads} oversubscribes {cpu_count} cpus", err=True)
+    warn_oversubscription(jobs, threads, quiet=quiet)
 
     def screen_sample(sample: SampleLanes) -> ReadsReport:
         if task_id is not None:
@@ -124,19 +126,7 @@ def run_screen_reads_positional(
         return report.model_copy(update={"reads": (sample.sample,)})
 
     def iter_reports() -> Iterator[ReadsReport]:
-        # Subprocess-bound work (GIL irrelevant); executor.map yields
-        # positionally, so reports stay in sample order and a failing sample
-        # raises at its position, like the sequential loop (run_screen twin).
-        def tracked(seq: Iterator[ReadsReport]) -> Iterator[ReadsReport]:
-            for report in seq:  # advance per completed sample, sample order
-                bar.advance()
-                yield report
-
-        if jobs == 1:
-            yield from tracked(screen_sample(sample) for sample in samples)
-            return
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            yield from tracked(executor.map(screen_sample, samples))
+        yield from map_inputs(samples, screen_sample, jobs=jobs, on_done=bar.advance)
 
     params = ReadsParams(
         db=db_name,
@@ -154,17 +144,7 @@ def run_screen_reads_positional(
     relative = min_relative_depth > 0.0
     fmt = output_format if output_format is not None else OutputFormat.tsv
     with screen_progress(samples, quiet=quiet) as (bar, task_id):
-        chunks: list[str] = []
-
-        def sink(chunk: str) -> None:
-            if chunk:
-                chunks.append(chunk)
-                if emit is not None:
-                    if stdout_emit:
-                        bar.write(chunk)
-                    else:
-                        with bar.suspend():
-                            emit(chunk)
+        sink = ChunkSink(emit, stdout=stdout_emit, bar=bar)
 
         if fmt is OutputFormat.md:
             # Static frontmatter leads (knowable before sample 1), then one
@@ -204,9 +184,9 @@ def run_screen_reads_positional(
                 )
             if separator:
                 sink(separator)
-            if header_pending and not chunks:
+            if header_pending and not sink.text():
                 sink(reads_tsv_preamble(reads2=reads2, relative=relative, csv=csv))
         else:
             render = render_reads2_json if reads2 else render_reads_json
             sink(render(list(iter_reports()), params, now=now))
-    return "".join(chunks)
+    return sink.text()

@@ -9,13 +9,11 @@ missing identity arrives as 100.0 because that format cannot gate identity —
 the reads engine has already applied its own presence rule before rendering.
 """
 
-import csv
-import io
 import re
-from collections.abc import Iterator
 from typing import NamedTuple
 
 from gspec.errors import InputError
+from gspec.tables import detect_separator, iter_rows, malformed
 
 _FILE_COLUMNS = ("#FILE", "FILE")
 _SAMPLE_COLUMNS = ("#SAMPLE", "SAMPLE")
@@ -73,11 +71,7 @@ class _Columns(NamedTuple):
 
 
 def _malformed(label: str, line_number: int, detail: str) -> InputError:
-    return InputError(
-        f"malformed screen result row: {detail} ({label}:{line_number})",
-        code="SCREEN_TABLE_MALFORMED",
-        context={"file": label, "line": str(line_number)},
-    )
+    return malformed("SCREEN_TABLE_MALFORMED", "screen result", label, line_number, detail)
 
 
 def _column_at(indexes: dict[str, int], names: tuple[str, ...]) -> int | None:
@@ -151,22 +145,6 @@ def _header(label: str, line_number: int, columns: list[str]) -> _Columns:
     )
 
 
-def _iter_rows(text: str, separator: str) -> Iterator[tuple[int, list[str]]]:
-    """Physical line number + cells: csv.reader for comma tables, raw split
-    for tab tables (the abricate-parity convention)."""
-    if separator == ",":
-        reader = csv.reader(io.StringIO(text))
-        for columns in reader:
-            if columns:
-                yield reader.line_num, columns
-        return
-    lines = text.split("\n")
-    if lines and lines[-1] == "":
-        lines.pop()
-    for line_number, line in enumerate(lines, start=1):
-        yield line_number, line.split(separator)
-
-
 def _reads_present(cell: str, label: str, line_number: int) -> bool:
     """The reads table's PRESENT cell (yes/no); anything else is malformed."""
     value = cell.strip().lower()
@@ -218,11 +196,10 @@ def parse_table(label: str, text: str) -> list[ScreenRow]:
     is the column map and later ``#``-prefixed lines are skipped headers
     (multi-run concatenations). Reads tables skip PRESENT=no rows, so
     ``--all-genes`` output types exactly its present calls."""
-    first = text.split("\n", 1)[0]
-    separator = "\t" if "\t" in first else "," if "," in first else "\t"
+    separator = detect_separator(text)
     header: _Columns | None = None
     rows: list[ScreenRow] = []
-    for line_number, columns in _iter_rows(text, separator):
+    for line_number, columns in iter_rows(text, separator):
         if header is None:
             header = _header(label, line_number, columns)
             continue

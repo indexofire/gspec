@@ -158,7 +158,7 @@ def score_exact_set(
     return (1.0 if ok else 0.0), components
 
 
-def _locus_evidence(locus: LocusCall) -> LocusEvidence:
+def locus_evidence(locus: LocusCall) -> LocusEvidence:
     """One locus call distilled into the winner-evidence model: its own
     coverage/identity, verdict counts, and the not-fully-present ids."""
     return LocusEvidence(
@@ -226,7 +226,7 @@ def score_cluster_match(
             )
         total = sum(component.score for component in components)
         if winner is None or total > winner[0]:
-            winner = (total, components, _locus_evidence(locus))
+            winner = (total, components, locus_evidence(locus))
     return winner if winner is not None else (0.0, (), None)
 
 

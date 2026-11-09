@@ -31,6 +31,7 @@ from gspec.db_info_models import DbGuidance, DbReference
 from gspec.db_ops import LOCAL_VENDOR, db_list_entries
 from gspec.errors import DatabaseError
 from gspec.formats.csvutil import tsv_cell
+from gspec.jsonio import read_json_optional
 from gspec.layout import manifest_path
 from gspec.providers import REGISTRY
 from gspec.records import Manifest, read_manifest
@@ -86,16 +87,10 @@ def _read_guidance(directory: Path) -> DbGuidance:
     sidecar is a typed error rather than silently ignored provenance.
     """
     path = directory / INFO_FILENAME
-    if not path.is_file():
-        return DbGuidance()
-    try:
-        return DbGuidance.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
-        raise DatabaseError(
-            f"malformed database info sidecar: {path}: {exc}",
-            code="DBINFO_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    guidance = read_json_optional(
+        DbGuidance, path, code="DBINFO_MALFORMED", noun="database info sidecar"
+    )
+    return DbGuidance() if guidance is None else guidance
 
 
 def _bundled_guidance(bundled: BundledDatabase | None) -> DbGuidance:

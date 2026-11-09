@@ -16,10 +16,11 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 from gspec.errors import DatabaseError
 from gspec.gbfeatures import FeaturesDocument
+from gspec.jsonio import read_json, write_json
 
 GENE_FAMILY_SCHEMA = "gspec.gene_families/1"
 GENE_FAMILY_FILENAME = "gene_families.json"
@@ -199,25 +200,12 @@ def build_family_document(
 def write_gene_families(document: GeneFamilyDocument, path: Path) -> None:
     """Deterministic JSON bytes: indent 2, by alias, trailing newline."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(document.model_dump_json(indent=2, by_alias=True) + "\n", encoding="utf-8")
+    write_json(document, path)
 
 
 def read_gene_families(path: Path) -> GeneFamilyDocument:
     """Read and validate a gene-family sidecar (typed DB error on failure)."""
-    try:
-        return GeneFamilyDocument.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError) as exc:
-        raise DatabaseError(
-            f"cannot read gene families {path}: {exc}",
-            code="GENE_FAMILIES_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
-    except ValidationError as exc:
-        raise DatabaseError(
-            f"malformed gene families {path}: {exc}",
-            code="GENE_FAMILIES_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    return read_json(GeneFamilyDocument, path, code="GENE_FAMILIES_MALFORMED", noun="gene families")
 
 
 def load_gene_families(db_dir: Path) -> GeneFamilyDocument | None:

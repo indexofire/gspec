@@ -11,9 +11,8 @@ totals.
 """
 
 from collections.abc import Iterable
-from datetime import UTC, datetime
+from datetime import datetime
 
-from gspec import __version__
 from gspec.cluster import ClusterParams, ClusterReport, LocusCall
 from gspec.formats.cluster2 import (
     cluster2_columns,
@@ -21,7 +20,7 @@ from gspec.formats.cluster2 import (
     count_or_dash,
     pct_or_dash,
 )
-from gspec.formats.md import md_cell, yaml_scalar
+from gspec.formats.md import frontmatter, md_row, md_table_head, yaml_scalar
 from gspec.typing_models import TypingDocument
 from gspec.typing_results import SchemeCall
 
@@ -50,10 +49,29 @@ _GENE_COLUMNS = ("Gene", "Start", "End", "Strand", "Coverage%", "Identity%", "Ve
 
 
 def _md_table(columns: tuple[str, ...], rows: Iterable[tuple[str, ...]]) -> list[str]:
-    """Header + separator + one escaped row per tuple (md.py table shape)."""
-    table = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
-    table += ["| " + " | ".join(md_cell(cell) for cell in row) + " |" for row in rows]
-    return table
+    """Header + separator + one escaped row per tuple (the shared md.py shape)."""
+    return [*md_table_head(columns), *(md_row(row) for row in rows)]
+
+
+def _best_locus(report: ClusterReport) -> LocusCall | None:
+    """The report's winning locus object (None when no call/coverage)."""
+    return next(
+        (locus for locus in report.loci if report.best and locus.locus == report.best.locus),
+        None,
+    )
+
+
+def _best_locus_section(top: LocusCall | None) -> list[str]:
+    """The per-file best-locus tail shared by the /1 and /2 sections: the
+    heading plus the winning locus's gene table (or the no-locus note)."""
+    if top is None:
+        return ["_No locus detected._", ""]
+    return [
+        f"Best locus `{top.locus}` ({top.label}, type {top.type}):",
+        "",
+        *_md_table(_GENE_COLUMNS, _gene_rows(top)),
+        "",
+    ]
 
 
 def _phenotype_cell(report: ClusterReport) -> str:
@@ -115,22 +133,19 @@ def cluster_md_head(
     thresholds — everything knowable before file 1), so a streaming caller
     emits it first; the per-file sections follow one chunk per file. The
     /2 renderers pass the gspec.cluster/2 tag."""
-    lines: list[str] = [
-        "---",
-        f"schema: {schema_tag}",
-        f"tool: gspec {__version__}",
-        f"created_at: {now.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}",
-        f"db: {yaml_scalar(params.db)}",
-        f"preset: {params.preset}",
-        f"min_gene_cov: {params.min_gene_cov}",
-        f"min_gene_id: {params.min_gene_id}",
-        f"min_cluster_cov: {params.min_cluster_cov}",
-        f"threads: {params.threads}",
-        "---",
-        "",
-        "# gspec cluster screening report",
-        "",
-    ]
+    lines = frontmatter(
+        schema_tag,
+        now=now,
+        extra=(
+            f"db: {yaml_scalar(params.db)}",
+            f"preset: {params.preset}",
+            f"min_gene_cov: {params.min_gene_cov}",
+            f"min_gene_id: {params.min_gene_id}",
+            f"min_cluster_cov: {params.min_cluster_cov}",
+            f"threads: {params.threads}",
+        ),
+    )
+    lines += ["# gspec cluster screening report", ""]
     return "\n".join(lines) + "\n"
 
 
@@ -147,13 +162,9 @@ def cluster_md_file_chunk(report: ClusterReport, *, typed: bool) -> str:
         )
     )
     lines.append("")
-    top = next(
-        (locus for locus in report.loci if report.best and locus.locus == report.best.locus),
-        None,
-    )
+    top = _best_locus(report)
     if top is None:
-        lines.append("_No locus detected._")
-        lines.append("")
+        lines += _best_locus_section(top)
         return "\n".join(lines) + "\n"
     if typed and report.best is not None and report.best.phenotype_detail is not None:
         detail = report.best.phenotype_detail
@@ -162,10 +173,7 @@ def cluster_md_file_chunk(report: ClusterReport, *, typed: bool) -> str:
             f" {detail.confidence} confidence)"
         )
         lines.append("")
-    lines.append(f"Best locus `{top.locus}` ({top.label}, type {top.type}):")
-    lines.append("")
-    lines.extend(_md_table(_GENE_COLUMNS, _gene_rows(top)))
-    lines.append("")
+    lines += _best_locus_section(top)
     return "\n".join(lines) + "\n"
 
 
@@ -232,18 +240,7 @@ def cluster2_md_file_chunk(report: ClusterReport, document: TypingDocument) -> s
     lines.append("")
     lines.extend(_phenotypes_lines(report))
     lines.append("")
-    top = next(
-        (locus for locus in report.loci if report.best and locus.locus == report.best.locus),
-        None,
-    )
-    if top is None:
-        lines.append("_No locus detected._")
-        lines.append("")
-        return "\n".join(lines) + "\n"
-    lines.append(f"Best locus `{top.locus}` ({top.label}, type {top.type}):")
-    lines.append("")
-    lines.extend(_md_table(_GENE_COLUMNS, _gene_rows(top)))
-    lines.append("")
+    lines += _best_locus_section(_best_locus(report))
     return "\n".join(lines) + "\n"
 
 

@@ -21,8 +21,10 @@ from gspec import config
 from gspec.bundled import BundledDatabase, bundled_databases
 from gspec.db import Database, discover_databases, mol_type
 from gspec.db_info_models import DbGuidance
-from gspec.errors import DatabaseError, UsageError
+from gspec.errors import UsageError
 from gspec.fasta import iter_fasta
+from gspec.formats.json import utc_timestamp
+from gspec.jsonio import read_json_optional
 from gspec.layout import manifest_path
 from gspec.progress import screen_progress
 from gspec.providers import REGISTRY
@@ -139,7 +141,7 @@ def perform_fetch(
                 context={"db": provider_name},
             )
         db_dir = config.ensure_datadir(datadir) / provider_name
-        fetched_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        fetched_at = utc_timestamp(datetime.now(UTC))
         if isinstance(provider, ClusterProvider):
             manifest = fetch_cluster_provider(
                 provider,
@@ -220,18 +222,13 @@ def _local_listing_metadata(directory: Path) -> tuple[str, str]:
     ``local`` rows. A malformed sidecar is a typed error, never silently
     ignored provenance.
     """
-    path = directory / "info.json"
-    if not path.is_file():
-        return "", ""
-    try:
-        guidance = DbGuidance.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
-        raise DatabaseError(
-            f"malformed database info sidecar: {path}: {exc}",
-            code="DBINFO_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
-    return guidance.description, guidance.vendor
+    guidance = read_json_optional(
+        DbGuidance,
+        directory / "info.json",
+        code="DBINFO_MALFORMED",
+        noun="database info sidecar",
+    )
+    return ("", "") if guidance is None else (guidance.description, guidance.vendor)
 
 
 def _extra_entries(root: Path, bundled: frozenset[str]) -> list[DbListEntry]:

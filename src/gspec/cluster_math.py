@@ -11,7 +11,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal
 
-from gspec.errors import GapitError
+from gspec.errors import GspecError
 from gspec.paf import union_length
 
 # One cs op projected onto the target: half-open [start, end) with `matches`
@@ -65,7 +65,7 @@ def parse_cs_steps(cs: str) -> tuple[CsStep, ...]:
             while index < len(cs) and cs[index].isdigit():
                 index += 1
             if digits_start == index:
-                raise GapitError(
+                raise GspecError(
                     f"cs match op without an integer length: {cs!r}",
                     code="CS_PARSE_FAILED",
                 )
@@ -75,7 +75,7 @@ def parse_cs_steps(cs: str) -> tuple[CsStep, ...]:
             tpos += length
         elif op == "*":
             if index + 2 > len(cs):
-                raise GapitError(
+                raise GspecError(
                     f"cs substitution op without two bases: {cs!r}", code="CS_PARSE_FAILED"
                 )
             steps.append(CsStep("substitution", qpos, qpos + 1, tpos, tpos + 1, matches=0))
@@ -87,7 +87,7 @@ def parse_cs_steps(cs: str) -> tuple[CsStep, ...]:
             while index < len(cs) and cs[index] not in ":*+-":
                 index += 1
             if bases_start == index:
-                raise GapitError(f"cs insertion op without bases: {cs!r}", code="CS_PARSE_FAILED")
+                raise GspecError(f"cs insertion op without bases: {cs!r}", code="CS_PARSE_FAILED")
             length = index - bases_start
             steps.append(CsStep("insertion", qpos, qpos + length, tpos, tpos, matches=0))
             qpos += length
@@ -96,12 +96,12 @@ def parse_cs_steps(cs: str) -> tuple[CsStep, ...]:
             while index < len(cs) and cs[index] not in ":*+-":
                 index += 1
             if bases_start == index:
-                raise GapitError(f"cs deletion op without bases: {cs!r}", code="CS_PARSE_FAILED")
+                raise GspecError(f"cs deletion op without bases: {cs!r}", code="CS_PARSE_FAILED")
             length = index - bases_start
             steps.append(CsStep("deletion", qpos, qpos, tpos, tpos + length, matches=0))
             tpos += length
         else:
-            raise GapitError(
+            raise GspecError(
                 f"unknown cs op {op!r} in {cs!r}",
                 code="CS_PARSE_FAILED",
             )

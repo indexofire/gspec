@@ -6,10 +6,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from gspec import __version__
 from gspec.formats.csvutil import delimited_line
 from gspec.formats.json import ToolDocument, utc_timestamp
-from gspec.formats.md import md_cell
+from gspec.formats.md import frontmatter, md_row, md_table_head
 from gspec.summary import ABSENT, FIELDSEP, SummaryMatrix, SummaryRow
 
 
@@ -86,33 +85,23 @@ def render_summary_json(matrix: SummaryMatrix, *, now: datetime) -> str:
     return document.model_dump_json(indent=2, by_alias=True)
 
 
-def _md_cell(value: str) -> str:
-    """Escape Markdown table metacharacters so cells cannot break the table."""
-    return md_cell(value)
-
-
 def render_summary_md(matrix: SummaryMatrix, *, now: datetime) -> str:
     """Render the matrix as deterministic Markdown: YAML frontmatter, then a
     File x gene table with escaped cells ('.' = absent, ';' = multi-value)."""
     columns = ("File", "Num found", *matrix.genes)
-    lines: list[str] = [
-        "---",
-        "schema: gspec.summary/1",
-        f"tool: gspec {__version__}",
-        f"created_at: {utc_timestamp(now)}",
-        f"metric: '{matrix.params.metric}'",
-        f"metrics: {json.dumps(list(matrix.params.metrics))}",
-        f"nopath: {str(matrix.params.nopath).lower()}",
-        f"files: {len(matrix.rows)}",
-        f"genes: {len(matrix.genes)}",
-        "---",
-        "",
-        "# gspec summary matrix",
-        "",
-        "| " + " | ".join(_md_cell(column) for column in columns) + " |",
-        "|" + "---|" * len(columns),
-    ]
+    lines = frontmatter(
+        "gspec.summary/1",
+        now=now,
+        extra=(
+            f"metric: '{matrix.params.metric}'",
+            f"metrics: {json.dumps(list(matrix.params.metrics))}",
+            f"nopath: {str(matrix.params.nopath).lower()}",
+            f"files: {len(matrix.rows)}",
+            f"genes: {len(matrix.genes)}",
+        ),
+    )
+    lines += ["# gspec summary matrix", "", *md_table_head(columns)]
     for row in matrix.rows:
-        cells = [_md_cell(_display_cell(matrix, row, gene)) for gene in matrix.genes]
-        lines.append("| " + " | ".join((_md_cell(row.file), str(row.num_found), *cells)) + " |")
+        cells = (_display_cell(matrix, row, gene) for gene in matrix.genes)
+        lines.append(md_row((row.file, str(row.num_found), *cells)))
     return "\n".join(lines) + "\n"

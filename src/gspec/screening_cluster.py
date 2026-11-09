@@ -11,9 +11,7 @@ output), a multi-scheme document calls every scheme into the /2 phenotypes
 map; untyped databases render the stage-2 output unchanged.
 """
 
-import os
 from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -45,7 +43,13 @@ from gspec.formats.cluster_md import (
 )
 from gspec.formats.locus_map import render_locus_map_json
 from gspec.gbfeatures import FeaturesDocument
-from gspec.progress import screen_progress, terminal_rule
+from gspec.progress import (
+    ChunkSink,
+    map_inputs,
+    screen_progress,
+    terminal_rule,
+    warn_oversubscription,
+)
 from gspec.typing_cluster2 import evaluate_cluster2
 from gspec.typing_engine import evaluate_typing
 from gspec.typing_models import TypingDocument, uses_cluster_v2, validate_references
@@ -235,11 +239,7 @@ def run_cluster_screen(
         usage_fail(f"--jobs must be >= 1: got {jobs}")
     if detail and output_format is not OutputFormat.json:
         usage_fail("--detail requires --format json")
-    cpu_count = os.cpu_count()
-    if not quiet and cpu_count is not None and jobs * params.threads > cpu_count:
-        click.echo(
-            f"--jobs {jobs} --threads {params.threads} oversubscribes {cpu_count} cpus", err=True
-        )
+    warn_oversubscription(jobs, params.threads, quiet=quiet)
     features = load_features(database)
     typing_document = load_typing(database)
     v2_document = (
@@ -266,32 +266,13 @@ def run_cluster_screen(
         )
 
     def iter_reports() -> Iterator[ClusterReport]:
-        # Each worker owns one minimap2 subprocess. executor.map yields in
-        # input order, so rendering and ``emit`` stay head-of-line exactly
-        # like the sequential path (a failing file raises at its position).
-        def tracked(seq: Iterator[ClusterReport]) -> Iterator[ClusterReport]:
-            for report in seq:
-                bar.advance()
-                yield report
-
-        if jobs == 1:
-            yield from tracked(screen_one(path) for path in files)
-            return
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            yield from tracked(executor.map(screen_one, files))
+        # Each worker owns one minimap2 subprocess; results stay in input
+        # order, so rendering and ``emit`` stay head-of-line exactly like the
+        # sequential path (a failing file raises at its position).
+        yield from map_inputs(files, screen_one, jobs=jobs, on_done=bar.advance)
 
     with screen_progress(files, quiet=quiet) as (bar, task_id):
-        chunks: list[str] = []
-
-        def sink(chunk: str) -> None:
-            if chunk:
-                chunks.append(chunk)
-                if emit is not None:
-                    if stdout_emit:
-                        bar.write(chunk)
-                    else:
-                        with bar.suspend():
-                            emit(chunk)
+        sink = ChunkSink(emit, stdout=stdout_emit, bar=bar)
 
         if output_format is OutputFormat.json:
             reports = list(iter_reports())
@@ -345,4 +326,4 @@ def run_cluster_screen(
                     sink(cluster_tsv_file_chunk(report, csv=csv, nopath=nopath, typed=typed))
                 if separator:
                     sink(separator)
-        return "".join(chunks)
+        return sink.text()

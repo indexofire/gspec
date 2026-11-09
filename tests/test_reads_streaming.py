@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from gspec.db import Database
-from gspec.errors import DependencyError, GapitError
+from gspec.errors import DependencyError, GspecError
 from gspec.minimap2_run import run_minimap2
 from gspec.paf import PafRecord
 
@@ -106,7 +106,7 @@ def test_nonzero_exit_after_spew_raises_typed_error(
     MINIMAP2_FAILED carries the captured stderr text."""
     bin_dir = fake_path(monkeypatch, tmp_path)
     write_fake_minimap2(bin_dir, stderr_text=STDERR_SPEW, stdout_text="", exit_code=1)
-    with pytest.raises(GapitError) as excinfo:
+    with pytest.raises(GspecError) as excinfo:
         call_with_watchdog(fakedb, tmp_path)
     assert excinfo.value.code == "MINIMAP2_FAILED"
     assert "spew-line-that-never-ends" in str(excinfo.value)

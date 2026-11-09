@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from gspec.cluster_math import parse_cs_steps
 from gspec.cluster_profile import CoverageMode
-from gspec.errors import GapitError
+from gspec.errors import GspecError
 from gspec.gbfeatures import GeneFeature, LocusFeatures
 from gspec.paf import PafRecord
 
@@ -213,7 +213,7 @@ def gene_query_spans(
         if coverage_mode == "primary" and not row.is_primary:
             continue
         if row.cs is None:
-            raise GapitError(
+            raise GspecError(
                 f"minimap2 row without a cs tag (cannot map cluster {row.tname})",
                 code="CS_MISSING",
                 context={"locus": row.tname},
@@ -264,7 +264,7 @@ def build_locus_alignment(
         if not length:
             length = row.tlen
         if row.cs is None:
-            raise GapitError(
+            raise GspecError(
                 f"minimap2 row without a cs tag (cannot map cluster {row.tname})",
                 code="CS_MISSING",
                 context={"locus": row.tname},

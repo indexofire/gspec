@@ -2,7 +2,6 @@
 
 import re
 import shlex
-import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -11,11 +10,12 @@ from typing import Literal
 from pydantic import BaseModel
 
 from gspec.db import Database
-from gspec.errors import DependencyError, GapitError, InputError
+from gspec.errors import DependencyError, GspecError, InputError
 from gspec.fragments import merge_fragment_hits, union_coverage_map, union_coverage_pct
 from gspec.gene_floors import apply_hit_floors, gene_floors
 from gspec.gseek_engine import engine, run_blast_gseek
 from gspec.hits import Hit, _hit, _swap_dedup, process_rows, process_rows_with_partials
+from gspec.proctools import run_tool
 from gspec.report import Report, ScreeningParams
 from gspec.seqconvert import SeqFormat, detect_format, to_fasta_lines
 
@@ -66,7 +66,7 @@ def parse_blast_row(line: str) -> BlastRow:
     hard error (upstream wording)."""
     fields = line.split("\t")
     if len(fields) != 15:
-        raise GapitError("can not find sequence data", code="BLAST_PARSE_FAILED")
+        raise GspecError("can not find sequence data", code="BLAST_PARSE_FAILED")
     try:
         return BlastRow(
             qseqid=fields[0],
@@ -86,7 +86,7 @@ def parse_blast_row(line: str) -> BlastRow:
             stitle=fields[14],
         )
     except (TypeError, ValueError) as exc:
-        raise GapitError(
+        raise GspecError(
             f"can not parse BLAST row (numeric field): {line!r}",
             code="BLAST_PARSE_FAILED",
         ) from exc
@@ -94,14 +94,7 @@ def parse_blast_row(line: str) -> BlastRow:
 
 def ensure_blast() -> None:
     """Require blastn >= 2.2.30 on PATH (SPEC.md §3 version gate)."""
-    try:
-        result = subprocess.run(["blastn", "-version"], check=False, capture_output=True, text=True)
-    except FileNotFoundError as exc:
-        raise DependencyError(
-            "required binary not found on PATH: blastn",
-            code="MISSING_DEPENDENCY",
-            context={"binary": "blastn"},
-        ) from exc
+    result = run_tool(["blastn", "-version"])
     if result.returncode != 0:
         raise DependencyError(
             f"blastn -version failed: {result.stderr.strip()}",
@@ -146,16 +139,9 @@ def _normalize(query: Path) -> tuple[str, SeqFormat]:
 
 def _pipeline(fasta_text: str, argv: list[str]) -> str:
     """``<argv>`` reading the normalized FASTA on stdin; returns stdout as text."""
-    try:
-        result = subprocess.run(argv, input=fasta_text, capture_output=True, text=True)
-    except FileNotFoundError as exc:
-        raise DependencyError(
-            f"required binary not found on PATH: {argv[0]}",
-            code="MISSING_DEPENDENCY",
-            context={"binary": argv[0]},
-        ) from exc
+    result = run_tool(argv, stdin_text=fasta_text)
     if result.returncode != 0:
-        raise GapitError(
+        raise GspecError(
             f"{argv[0]} failed: {result.stderr.strip()}",
             code="BLAST_FAILED",
             context={"binary": argv[0]},

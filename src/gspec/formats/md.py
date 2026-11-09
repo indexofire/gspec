@@ -6,10 +6,11 @@ byte-identically; designation renders from formats/typing_result.py).
 
 import json
 import re
-from collections.abc import Iterable
-from datetime import UTC, datetime
+from collections.abc import Iterable, Sequence
+from datetime import datetime
 
 from gspec import __version__
+from gspec.formats.json import utc_timestamp
 from gspec.reads import ReadsParams, ReadsReport
 from gspec.report import Report, ScreeningParams
 
@@ -56,25 +57,47 @@ def md_cell(value: str) -> str:
     )
 
 
+def md_table_head(columns: Sequence[str]) -> list[str]:
+    """A Markdown table's header and separator lines (cells escaped)."""
+    return [md_row(columns), "|" + "---|" * len(columns)]
+
+
+def md_row(cells: Sequence[str]) -> str:
+    """One escaped Markdown table row (the header line is a row, too)."""
+    return "| " + " | ".join(md_cell(cell) for cell in cells) + " |"
+
+
+def frontmatter(schema: str, *, now: datetime, extra: Iterable[str] = ()) -> list[str]:
+    """The YAML frontmatter block every Markdown document opens with: schema,
+    tool and timestamp, then the caller's pre-rendered ``key: value`` lines,
+    the closing fence and the blank line that precedes the title."""
+    return [
+        "---",
+        f"schema: {schema}",
+        f"tool: gspec {__version__}",
+        f"created_at: {utc_timestamp(now)}",
+        *extra,
+        "---",
+        "",
+    ]
+
+
 def md_report_preamble(params: ScreeningParams, *, now: datetime) -> str:
     """The frontmatter + title chunk: STATIC metadata only (schema, tool,
     timestamp, thresholds — everything knowable before file 1), so a
     streaming caller emits it first and then one section per file as it
     completes. Run totals (files/hits) live in the JSON document, not here."""
-    lines: list[str] = [
-        "---",
-        "schema: gspec.report/1",
-        f"tool: gspec {__version__}",
-        f"created_at: {now.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}",
-        f"db: {yaml_scalar(params.db)}",
-        f"minid: {params.minid}",
-        f"mincov: {params.mincov}",
-        f"threads: {params.threads}",
-        "---",
-        "",
-        "# gspec screening report",
-        "",
-    ]
+    lines = frontmatter(
+        "gspec.report/1",
+        now=now,
+        extra=(
+            f"db: {yaml_scalar(params.db)}",
+            f"minid: {params.minid}",
+            f"mincov: {params.mincov}",
+            f"threads: {params.threads}",
+        ),
+    )
+    lines += ["# gspec screening report", ""]
     return "\n".join(lines) + "\n"
 
 
@@ -86,8 +109,7 @@ def md_report_chunk(report: Report) -> str:
         lines.append("_No hits._")
         lines.append("")
         return "\n".join(lines) + "\n"
-    lines.append("| " + " | ".join(_COLUMNS) + " |")
-    lines.append("|" + "---|" * len(_COLUMNS))
+    lines += md_table_head(_COLUMNS)
     for hit in report.hits:
         cells = (
             hit.sequence,
@@ -105,7 +127,7 @@ def md_report_chunk(report: Report) -> str:
             hit.product,
             hit.function,
         )
-        lines.append("| " + " | ".join(md_cell(cell) for cell in cells) + " |")
+        lines.append(md_row(cells))
     for hit in report.hits:
         if not hit.merged:
             continue
@@ -153,8 +175,7 @@ def _reads_md_section(report: ReadsReport, columns: tuple[str, ...], with_identi
         lines.append("_No genes detected._")
         lines.append("")
         return "".join(f"{line}\n" for line in lines)
-    lines.append("| " + " | ".join(columns) + " |")
-    lines.append("|" + "---|" * len(columns))
+    lines += md_table_head(columns)
     for gene in report.genes:
         cells = (
             gene.gene,
@@ -169,7 +190,7 @@ def _reads_md_section(report: ReadsReport, columns: tuple[str, ...], with_identi
         )
         if with_identity:
             cells += (f"{gene.mean_identity_pct:.2f}",)
-        lines.append("| " + " | ".join(md_cell(cell) for cell in cells) + " |")
+        lines.append(md_row(cells))
     lines.append("")
     return "".join(f"{line}\n" for line in lines)
 
@@ -187,27 +208,17 @@ def _render_reads_markdown(
     lines to the frontmatter and an Identity% cell per gene."""
     files = list(reports)
     genes_found = sum(1 for report in files for gene in report.genes if gene.present)
-    lines: list[str] = [
-        "---",
-        f"schema: {schema}",
-        f"tool: gspec {__version__}",
-        f"created_at: {now.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+    extra = [
         f"db: {yaml_scalar(params.db)}",
         f"read_type: {params.read_type}",
         f"min_breadth: {params.min_breadth}",
         f"threads: {params.threads}",
     ]
     if with_identity:
-        lines.append(f"min_identity: {params.min_identity}")
-        lines.append(f"min_mapq: {params.min_mapq}")
-    lines += [
-        f"files: {len(files)}",
-        f"genes_found: {genes_found}",
-        "---",
-        "",
-        "# gspec read screening report",
-        "",
-    ]
+        extra += [f"min_identity: {params.min_identity}", f"min_mapq: {params.min_mapq}"]
+    extra += [f"files: {len(files)}", f"genes_found: {genes_found}"]
+    lines = frontmatter(schema, now=now, extra=extra)
+    lines += ["# gspec read screening report", ""]
     return (
         "\n".join(lines)
         + "\n"
@@ -253,20 +264,16 @@ def reads_md_preamble(params: ReadsParams, *, now: datetime, reads2: bool = Fals
     completes. Run totals (files/genes_found) live in the JSON document; the
     buffered single-sample --r1/--r2 render keeps its totals-bearing
     frontmatter unchanged."""
-    lines: list[str] = [
-        "---",
-        "schema: gspec.reads/2" if reads2 else "schema: gspec.reads/1",
-        f"tool: gspec {__version__}",
-        f"created_at: {now.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+    extra = [
         f"db: {yaml_scalar(params.db)}",
         f"read_type: {params.read_type}",
         f"min_breadth: {params.min_breadth}",
         f"threads: {params.threads}",
     ]
     if reads2:
-        lines.append(f"min_identity: {params.min_identity}")
-        lines.append(f"min_mapq: {params.min_mapq}")
-    lines += ["---", "", "# gspec read screening report", ""]
+        extra += [f"min_identity: {params.min_identity}", f"min_mapq: {params.min_mapq}"]
+    lines = frontmatter("gspec.reads/2" if reads2 else "gspec.reads/1", now=now, extra=extra)
+    lines += ["# gspec read screening report", ""]
     return "\n".join(lines) + "\n"
 
 

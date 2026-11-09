@@ -39,6 +39,7 @@ from gspec.dbbuild import (
 from gspec.dbcodec import decode_seqid
 from gspec.errors import DatabaseError, InputError, UsageError
 from gspec.fasta import FastaRecord, iter_fasta
+from gspec.formats.json import utc_timestamp
 from gspec.gene_floors import FLOORS_FILENAME, read_floors, validate_floors
 from gspec.layout import manifest_path
 from gspec.proctools import note
@@ -303,7 +304,7 @@ def perform_build(
             name=name,
             dbtype=_resolve_dbtype(dbtype, records),
             source_urls=("local",),
-            fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            fetched_at=utc_timestamp(datetime.now(UTC)),
             typing_schema=typing_schema,
             source=source,
             quiet=quiet,

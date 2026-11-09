@@ -33,6 +33,7 @@ from gspec.db import make_blast_db, validate_database_name
 from gspec.db_txn import staged_database
 from gspec.dbbuild import (
     SIDECARS,
+    copy_sidecars,
     optional_tool_version_line,
     rebuild_from_records,
     sha256_file,
@@ -44,11 +45,14 @@ from gspec.proctools import note
 from gspec.records import Manifest, read_manifest, write_manifest
 
 # Sidecars a database may carry; all of them reference ids, never the db name.
-_SIDECARS = (
+# Cluster databases add their own documents (kmer.json included — a rename
+# must not silently drop the k-mer substrate).
+CLUSTER_SIDECARS = (
     *SIDECARS,
     "features.json",
     "cluster.json",
     "gene_families.json",
+    "kmer.json",
     "markers.json",
     "serotype.json",
 )
@@ -64,13 +68,6 @@ class RenameReceipt(BaseModel, frozen=True):
     destination: str
 
 
-def _copy_sidecars(source: Path, target: Path) -> None:
-    """Copy the optional typing/floors/features sidecars verbatim."""
-    for sidecar in _SIDECARS:
-        if (source / sidecar).is_file():
-            shutil.copyfile(source / sidecar, target / sidecar)
-
-
 def _rename_gene(source: Path, target: Path, manifest: Manifest, quiet: bool) -> int:
     """Re-point every gene record at the new name and rebuild the artifacts."""
     return rebuild_from_records(source, target, manifest, name=manifest.name, quiet=quiet)
@@ -80,7 +77,7 @@ def _rename_cluster(source: Path, target: Path, manifest: Manifest, quiet: bool)
     """Copy the locus artifacts verbatim (their headers carry no db name)."""
     with staged_database(target) as build_dir:
         shutil.copyfile(source / "sequences", build_dir / "sequences")
-        _copy_sidecars(source, build_dir)
+        copy_sidecars(source, build_dir, sidecars=CLUSTER_SIDECARS)
         make_blast_db(build_dir / "sequences", manifest.name, dbtype=manifest.dbtype)
         note(quiet, f"BLAST index built ({manifest.dbtype})")
         write_manifest(

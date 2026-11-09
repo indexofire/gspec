@@ -16,9 +16,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
-from gspec.errors import DatabaseError
+from gspec.jsonio import read_json_optional
 
 CLUSTER_PROFILE_SCHEMA = "gspec.cluster_profile/1"
 CLUSTER_PROFILE_FILENAME = "cluster.json"
@@ -69,22 +69,10 @@ def load_cluster_profile(db_dir: Path) -> ClusterProfile:
     the file changes coverage semantics and must not be partially applied.
     """
     path = db_dir / CLUSTER_PROFILE_FILENAME
-    if not path.is_file():
-        return default_cluster_profile()
-    try:
-        return ClusterProfile.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError) as exc:
-        raise DatabaseError(
-            f"cannot read cluster profile {path}: {exc}",
-            code="CLUSTER_PROFILE_MALFORMED",
-            context={"db": db_dir.name, "file": str(path)},
-        ) from exc
-    except ValidationError as exc:
-        raise DatabaseError(
-            f"malformed cluster profile {path}: {exc}",
-            code="CLUSTER_PROFILE_MALFORMED",
-            context={"db": db_dir.name, "file": str(path)},
-        ) from exc
+    profile = read_json_optional(
+        ClusterProfile, path, code="CLUSTER_PROFILE_MALFORMED", noun="cluster profile"
+    )
+    return default_cluster_profile() if profile is None else profile
 
 
 __all__ = [

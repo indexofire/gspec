@@ -104,7 +104,7 @@ ERROR_CODES: frozenset[str] = frozenset(
 ERROR_CODE_ENUM = cast(list[JsonValue], sorted(ERROR_CODES))
 
 
-class GapitError(Exception):
+class GspecError(Exception):
     """Base class for all typed gspec errors."""
 
     code: str
@@ -116,25 +116,25 @@ class GapitError(Exception):
         self.context: dict[str, str] = context if context is not None else {}
 
 
-class UsageError(GapitError):
+class UsageError(GspecError):
     """Invalid command-line usage."""
 
     exit_code = 2
 
 
-class DependencyError(GapitError):
+class DependencyError(GspecError):
     """An external binary (BLAST+, minimap2) is missing from PATH."""
 
     exit_code = 3
 
 
-class DatabaseError(GapitError):
+class DatabaseError(GspecError):
     """A datadir/database is missing, unindexed, or failed to build."""
 
     exit_code = 4
 
 
-class InputError(GapitError):
+class InputError(GspecError):
     """User-supplied input is malformed."""
 
     exit_code = 5
@@ -168,9 +168,9 @@ class ErrorEnvelope(BaseModel, frozen=True):
 
 
 def render_error(exc: BaseException) -> str:
-    """One-line compact JSON envelope for any failure (non-GapitError becomes
+    """One-line compact JSON envelope for any failure (non-GspecError becomes
     UNEXPECTED, exit 1)."""
-    if isinstance(exc, GapitError):
+    if isinstance(exc, GspecError):
         envelope = ErrorEnvelope(code=exc.code, message=str(exc), context=exc.context)
     else:
         envelope = ErrorEnvelope(

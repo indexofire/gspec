@@ -127,7 +127,9 @@ def locus_document(locus: LocusCall) -> ClusterLocusDocument:
     )
 
 
-def _best_document(best: BestCall) -> ClusterBestDocument:
+def best_document(best: BestCall) -> ClusterBestDocument:
+    """The best-locus block (rounded percentages); the /2 renderer derives
+    its phenotype-free block from this one."""
     return ClusterBestDocument(
         locus=best.locus,
         label=best.label,
@@ -170,7 +172,7 @@ def render_cluster_json(
         files=[
             ClusterFileDocument(
                 file=report.file,
-                best=None if report.best is None else _best_document(report.best),
+                best=None if report.best is None else best_document(report.best),
                 loci=[locus_document(locus) for locus in report.loci],
             )
             for report in reports

@@ -104,9 +104,7 @@ def natural_key(text: str) -> tuple[object, ...]:
     equal-scoring hits. Splitting digit runs makes the order numeric where
     the name is numeric and lexical otherwise.
     """
-    import re as _re
-
-    parts = _re.split(r"(\d+)", text)
+    parts = re.split(r"(\d+)", text)
     key: list[object] = []
     for part in parts:
         key.append(int(part) if part.isdigit() else part)

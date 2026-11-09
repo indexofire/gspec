@@ -33,6 +33,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from gspec.errors import InputError
 from gspec.fasta import open_text
+from gspec.jsonio import write_json
 
 
 class GeneFeature(BaseModel, frozen=True):
@@ -80,9 +81,7 @@ class FeaturesDocument(BaseModel, frozen=True):
 
 def write_features_document(loci: tuple[LocusFeatures, ...], path: Path) -> None:
     """Write gspec.features/1 as indented JSON (by alias) + trailing newline."""
-    with path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(FeaturesDocument(loci=loci).model_dump_json(indent=2, by_alias=True))
-        handle.write("\n")
+    write_json(FeaturesDocument(loci=loci), path)
 
 
 def _fail(code: str, message: str, **context: str) -> InputError:

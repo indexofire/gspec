@@ -7,6 +7,7 @@ gspec except :mod:`gspec.errors`, so it can never participate in a cycle.
 """
 
 import enum
+import sys
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
@@ -14,7 +15,7 @@ from typing import IO, Any, TextIO, TypeVar
 
 import click
 
-from gspec.errors import GapitError, render_error
+from gspec.errors import GspecError, InputError, render_error, usage_fail
 
 # The option factories return click's pass-through option decorator; the
 # Any-bound TypeVar mirrors click.decorators' own FC typing (decorated
@@ -98,11 +99,44 @@ def output_target(path: Path | None) -> Generator[Callable[[str], None]]:
         writer.close()
 
 
+def stdin_is_tty() -> bool:
+    """Whether stdin is a terminal (a CliRunner stdin never is)."""
+    return sys.stdin.isatty()
+
+
+def stdin_table(files: list[Path], *, code: str, noun: str, verb: str) -> str | None:
+    """Stdin's table text when stdin is the input, else None.
+
+    The input is either the explicit ``-`` marker (alone — mixing it with
+    file arguments is a usage error) or the argument-less piped invocation.
+    ``noun``/``verb`` name the table and the action in the frozen messages;
+    non-UTF-8 bytes are a ``code`` input error carrying the ``-`` label.
+    """
+
+    def read() -> str:
+        try:
+            return sys.stdin.read()
+        except UnicodeDecodeError as exc:
+            raise InputError(
+                f"{noun} piped to stdin is not valid UTF-8",
+                code=code,
+                context={"file": "-"},
+            ) from exc
+
+    if any(str(path) == "-" for path in files):
+        if len(files) > 1:
+            usage_fail(f"{verb} either '-' (stdin) or {noun} file(s), not both")
+        return read()
+    if files:
+        return None
+    return read()
+
+
 def dispatch(action: Callable[[], None]) -> None:
     """Run a command body; any failure renders the gspec.error/1 envelope on
-    stderr and exits with the documented code (UNEXPECTED/1 for non-GapitError)."""
+    stderr and exits with the documented code (UNEXPECTED/1 for non-GspecError)."""
     try:
         action()
     except Exception as exc:
         click.echo(render_error(exc), err=True)
-        raise SystemExit(exc.exit_code if isinstance(exc, GapitError) else 1) from exc
+        raise SystemExit(exc.exit_code if isinstance(exc, GspecError) else 1) from exc

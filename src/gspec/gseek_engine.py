@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, TypeVar, cast
 
 from gspec.db import Database
-from gspec.errors import DependencyError, GapitError
+from gspec.errors import DependencyError, GspecError
 from gspec.report import ScreeningParams
 
 if TYPE_CHECKING:
@@ -74,37 +74,35 @@ def batch_supported() -> bool:
         return False
 
 
-def supports_batch(gseek: object) -> bool:
-    """Whether gseek exposes the multi-query API with per-file annotation."""
-    align_many = getattr(gseek, "align_many", None)
-    if not callable(align_many):
+def _accepts(gseek: object, function: str, parameter: str) -> bool:
+    """Whether ``gseek.<function>`` is callable and accepts ``parameter``.
+
+    The one capability probe behind the version bridge: gseek gained the
+    batch annotation keyword, precomputed refs, and per-call options across
+    0.10/0.11, and each surface degrades to its older behavior when absent.
+    """
+    candidate = getattr(gseek, function, None)
+    if not callable(candidate):
         return False
     try:
-        return "annotate_batch" in inspect.signature(align_many).parameters
+        return parameter in inspect.signature(candidate).parameters
     except (TypeError, ValueError):
         return False
+
+
+def supports_batch(gseek: object) -> bool:
+    """Whether gseek exposes the multi-query API with per-file annotation."""
+    return _accepts(gseek, "align_many", "annotate_batch")
 
 
 def _supports_batch_option(gseek: object, option: str) -> bool:
     """Whether the installed align_many accepts an optional keyword."""
-    align_many = getattr(gseek, "align_many", None)
-    if not callable(align_many):
-        return False
-    try:
-        return option in inspect.signature(align_many).parameters
-    except (TypeError, ValueError):
-        return False
+    return _accepts(gseek, "align_many", option)
 
 
 def supports_api_refs(gseek: object) -> bool:
     """Whether the installed gseek accepts precomputed query/target refs."""
-    align = getattr(gseek, "align", None)
-    if not callable(align):
-        return False
-    try:
-        return "target_refs" in inspect.signature(align).parameters
-    except (TypeError, ValueError):
-        return False
+    return _accepts(gseek, "align", "target_refs")
 
 
 def _supports_external_blast_db() -> bool:
@@ -246,7 +244,7 @@ def engine() -> _LegacyEngine | Engine:
     """Return the engine switch, importing gseek only for gseek/shadow modes."""
     raw = os.environ.get(_ENGINE_ENV, "legacy").strip().lower() or "legacy"
     if raw not in _VALID_MODES:
-        raise GapitError(
+        raise GspecError(
             f"unknown engine mode {raw!r}; expected one of {sorted(_VALID_MODES)}",
             code="INVALID_ENGINE",
             context={_ENGINE_ENV: raw},
@@ -284,7 +282,7 @@ def _gseek() -> _GseekModule:
 
 def _record_int(value: int | None, field: str) -> int:
     if value is None:
-        raise GapitError(
+        raise GspecError(
             f"gseek {field} field is missing from an alignment record",
             code="GSEEK_RECORD_INVALID",
             context={"field": field},
@@ -373,7 +371,7 @@ def _paf_record(record: _GseekRecord) -> PafRecord:
     try:
         nm = int(nm_raw) if nm_raw is not None else None
     except ValueError as exc:
-        raise GapitError(
+        raise GspecError(
             f"gseek minimap2 NM tag is not an integer: {nm_raw!r}",
             code="GSEEK_RECORD_INVALID",
             context={"tag": "NM"},
@@ -469,7 +467,7 @@ def run_blast_gseek(
                 context={"binary": binary, "backend": "blast"},
             ) from exc
         except Exception as exc:
-            raise GapitError(
+            raise GspecError(
                 f"gseek BLAST failed: {exc}",
                 code="GSEEK_FAILED",
                 context={"backend": "blast"},
@@ -558,7 +556,7 @@ def run_blast_many_gseek(
             context={"binary": binary, "backend": "blast"},
         ) from exc
     except Exception as exc:
-        raise GapitError(
+        raise GspecError(
             f"gseek BLAST batch failed: {exc}",
             code="GSEEK_FAILED",
             context={"backend": "blast"},
@@ -569,13 +567,13 @@ def run_blast_many_gseek(
         try:
             index = int(raw_index) if raw_index is not None else -1
         except ValueError as exc:
-            raise GapitError(
+            raise GspecError(
                 "gseek batch record has a non-integer batch_index",
                 code="GSEEK_RECORD_INVALID",
                 context={"batch_index": str(raw_index)},
             ) from exc
         if index < 0 or index >= len(groups):
-            raise GapitError(
+            raise GspecError(
                 "gseek batch record has an out-of-range batch_index",
                 code="GSEEK_RECORD_INVALID",
                 context={"batch_index": str(raw_index)},
@@ -666,7 +664,7 @@ def iter_paf_gseek(
                 context={"binary": "minimap2", "backend": "minimap2"},
             ) from exc
         except Exception as exc:
-            raise GapitError(
+            raise GspecError(
                 f"gseek minimap2 failed: {exc}",
                 code="GSEEK_FAILED",
                 context={"backend": "minimap2"},

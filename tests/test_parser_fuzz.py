@@ -2,7 +2,7 @@
 
 No hypothesis dependency: a fixed-seed byte/syntax mutator exercises the
 BLAST/PAF/cs/GBK/GFF parsers with 100 variants each. Every outcome must be a
-typed GapitError (or a successful parse), never a raw IndexError/KeyError/
+typed GspecError (or a successful parse), never a raw IndexError/KeyError/
 ValueError/ValidationError from a user-controlled input.
 """
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 from gspec.blast import parse_blast_row
 from gspec.cluster_math import parse_cs
-from gspec.errors import GapitError
+from gspec.errors import GspecError
 from gspec.gbfeatures import parse_genbank_features
 from gspec.gffparse import parse_gff3_features
 from gspec.paf import parse_paf_row
@@ -111,7 +111,7 @@ def test_mutated_text_parsers_never_raise_raw_exceptions() -> None:
         for _ in range(100):
             try:
                 parser(_mutate(rng, text))
-            except GapitError:
+            except GspecError:
                 pass
             except Exception as exc:  # pragma: no cover - failure detail
                 raise AssertionError(f"{name} raised raw {type(exc).__name__}: {exc}") from exc
@@ -125,7 +125,7 @@ def test_mutated_file_parsers_never_raise_raw_exceptions(tmp_path: Path) -> None
             path.write_text(_mutate(rng, text), encoding="utf-8")
             try:
                 parser(path)
-            except GapitError:
+            except GspecError:
                 pass
             except Exception as exc:  # pragma: no cover - failure detail
                 raise AssertionError(f"{name} raised raw {type(exc).__name__}: {exc}") from exc

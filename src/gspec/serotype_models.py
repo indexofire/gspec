@@ -11,9 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from gspec.errors import DatabaseError
+from gspec.jsonio import read_json
 
 SEROTYPE_FILENAME = "serotype.json"
 
@@ -99,20 +100,7 @@ class SerotypeDocument(BaseModel, frozen=True):
 
 def read_serotype_document(path: Path) -> SerotypeDocument:
     """Read and validate a serotype profile; malformed content is typed."""
-    try:
-        return SerotypeDocument.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError) as exc:
-        raise DatabaseError(
-            f"cannot read serotype profile {path}: {exc}",
-            code="SEROTYPE_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
-    except ValidationError as exc:
-        raise DatabaseError(
-            f"malformed serotype profile {path}: {exc}",
-            code="SEROTYPE_MALFORMED",
-            context={"file": str(path)},
-        ) from exc
+    return read_json(SerotypeDocument, path, code="SEROTYPE_MALFORMED", noun="serotype profile")
 
 
 def load_serotype(db_dir: Path) -> SerotypeDocument | None:

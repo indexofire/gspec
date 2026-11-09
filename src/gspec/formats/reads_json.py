@@ -60,20 +60,10 @@ class ReadsDocument(BaseModel, frozen=True):
     files: list[ReadsFileDocument]
 
 
-class GeneCoverage2Document(BaseModel, frozen=True):
+class GeneCoverage2Document(GeneCoverageDocument, frozen=True):
     """One gene's presence call in reads/2 mode: the reads/1 fields plus the
-    alen-weighted mean per-alignment identity."""
+    alen-weighted mean per-alignment identity and the relative-depth share."""
 
-    gene: str
-    database: str
-    accession: str
-    product: str
-    resistance: str
-    tlen: int
-    breadth_pct: float
-    mean_depth: float
-    reads_mapped: int
-    present: bool
     mean_identity_pct: float
     relative_depth_pct: float | None = None
 
@@ -150,17 +140,9 @@ def render_reads_json(reports: Iterable[ReadsReport], params: ReadsParams, *, no
 
 
 def _gene_coverage2_document(gene: GeneCoverage) -> GeneCoverage2Document:
+    """The reads/2 gene block: the shared reads/1 fields plus the /2 extras."""
     return GeneCoverage2Document(
-        gene=gene.gene,
-        database=gene.database,
-        accession=gene.accession,
-        product=gene.product,
-        resistance=gene.function,
-        tlen=gene.tlen,
-        breadth_pct=round(gene.breadth_pct, 2),
-        mean_depth=round(gene.mean_depth, 2),
-        reads_mapped=gene.reads_mapped,
-        present=gene.present,
+        **_gene_coverage_document(gene).model_dump(),
         mean_identity_pct=round(gene.mean_identity_pct, 2),
         relative_depth_pct=(
             None if gene.relative_depth_pct is None else round(gene.relative_depth_pct, 2)
