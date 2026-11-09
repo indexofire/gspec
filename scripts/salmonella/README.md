@@ -99,6 +99,35 @@ importer was developed in, so the committed bundle is generated where the file i
 reachable — the conversion and the bundle metadata are exercised by
 `tests/test_serotype_formula.py` on an inline fixture.)
 
+## Hybrid and accuracy routes
+
+**Hybrid (`--extra-h-from`).** SISTR's O serogroups and WHO-2007 formula table
+key on serogroup *letters*; SeqSero2 names the O antigens by *number* (`O-9,46`,
+`O-4`), so its O family cannot address the table (measured overlap: 0/35
+serogroups). Its H alleles, however, use the same WKL notation (H1 overlap
+44/55, H2 13/17), and 1,467 of 1,525 enterica rows have both phases covered by
+them. `import_upstream.py sistr --extra-h-from <SeqSero2 fasta>` therefore keeps
+SISTR's O family and adds SeqSero2's `fliC`/`fljB` references: measured 46 O + 66
+H1 + 25 H2 antigens, 1,851 upstream references collapsed to 637, reachability
+97.5 %. `--bundle` is refused for a hybrid (GPL-2.0 content).
+
+**Accuracy (`regress_serovar.py`).** Point it at a directory of assemblies and
+SISTR's `data/genomes-to-serovar.txt`:
+
+```bash
+python scripts/salmonella/regress_serovar.py --db sal_hybrid \
+    --assemblies /path/to/fastas \
+    --expected ~/.mamba/envs/sistr/lib/python3.9/site-packages/sistr/data/genomes-to-serovar.txt \
+    --datadir ~/.local/share/gspec/db --min-accuracy 0.9
+```
+
+It prints accuracy, a per-serovar confusion table and the no-call list, and exits
+non-zero below `--min-accuracy`. `tests/test_salmonella_regression.py` proves the
+harness on assemblies generated from the panel (100 % when the truth matches,
+a reported `Dublin -> Typhimurium` confusion when it does not). The truth table
+ships with SISTR but the genome FASTAs do not, so the real accuracy run needs
+those assemblies.
+
 ## How the panel is built
 
 ```

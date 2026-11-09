@@ -57,6 +57,17 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **Hybrid import and an accuracy harness for the Salmonella panel.** Two
+  measured facts shaped the hybrid: SeqSero2 names O antigens by number while the
+  WHO-2007 table keys on serogroup letters (0/35 overlap), but the H alleles use
+  the same WKL notation (H1 44/55, H2 13/17) and cover both phases for 1,467 of
+  1,525 enterica rows. `import_upstream.py sistr --extra-h-from <SeqSero2 fasta>`
+  keeps SISTR's O family and adds SeqSero2's flagellin references (46 O + 66 H1 +
+  25 H2 antigens, reachability 97.5 %); it refuses `--bundle` because the result
+  carries GPL-2.0 content. `scripts/salmonella/regress_serovar.py` scores a
+  database against SISTR's `genomes-to-serovar.txt` (accuracy, confusion table,
+  no-call list, `--min-accuracy` exit code).
+
 - **`sen_sero_sistr` — the SISTR antigen panel ported as a bundle.** Converted
   from a local SISTR 1.1.3 install (`data/antigens/{wzx,wzy,fliC,fljB}.fasta` +
   the WHO-2007 formula table): 46 O serogroups, 62 H1 and 25 H2 antigens

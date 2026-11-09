@@ -539,6 +539,7 @@ def import_sistr(
     formulas: Path | None,
     bundle: bool = False,
     subspecies: str | None = "enterica",
+    extra_h_from: Path | None = None,
 ) -> None:
     antigen_dir = source / "antigens" if (source / "antigens").is_dir() else source
     files = sorted(antigen_dir.glob("*.fasta"))
@@ -568,6 +569,34 @@ def import_sistr(
             )
             genes.append(gene)
             pairs.append((gene, antigen, sequence))
+    if extra_h_from is not None:
+        # A hybrid: SISTR's O groups and formula table, plus a second project's
+        # H alleles. Both projects name the H antigens in WKL notation, so the
+        # extra references only widen each antigen's evidence; the O family must
+        # stay SISTR's (its serogroup letters are what the table keys on).
+        if bundle:
+            raise SystemExit(
+                "a hybrid using SeqSero2 H alleles carries GPL-2.0 content and"
+                " cannot ride the MIT wheel (AGENTS.md §6 gate 2); drop --bundle"
+            )
+        added = 0
+        for record_id, sequence in _read_fasta(extra_h_from):
+            parsed = _seqsero2_antigen(record_id)
+            if parsed is None:
+                continue
+            family, antigen = parsed
+            if family not in {"h1", "h2"}:
+                continue
+            genes = markers[family].setdefault(antigen, [])
+            gene = (
+                _gene_id(f"{family}_{antigen}")
+                if not genes
+                else (f"{_gene_id(f'{family}_{antigen}')}__{len(genes) + 1}")
+            )
+            genes.append(gene)
+            pairs.append((gene, antigen, sequence))
+            added += 1
+        print(f"  extra H references from {extra_h_from.name}: {added}")
     sequences = {gene: sequence for gene, _, sequence in pairs}
     markers, kept = _collapse_references(markers, sequences)
     markers, pairs = _renumber(markers, kept)
@@ -660,6 +689,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--name", required=True)
     parser.add_argument("--formulas", type=Path, help="serovar formula CSV (O, H1, H2, serovar)")
     parser.add_argument(
+        "--extra-h-from",
+        type=Path,
+        help=(
+            "SISTR only: add another project's fliC/fljB references (e.g. "
+            "SeqSero2's H_and_O_and_specific_genes.fasta). The O family stays "
+            "SISTR's because the formula table keys on its serogroup letters; a "
+            "hybrid carries GPL-2.0 content, so --bundle is refused."
+        ),
+    )
+    parser.add_argument(
         "--subspecies",
         default="enterica",
         help=(
@@ -686,6 +725,7 @@ def main(argv: list[str] | None = None) -> int:
             formulas=args.formulas,
             bundle=args.bundle,
             subspecies=None if args.subspecies == "any" else args.subspecies,
+            extra_h_from=args.extra_h_from,
         )
     else:
         if args.formulas is None:
