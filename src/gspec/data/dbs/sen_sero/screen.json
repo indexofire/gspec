@@ -1,0 +1,12 @@
+{
+  "schema": "gspec.screen/1",
+  "contigs": {
+    "minid": 90.0,
+    "mincov": 60.0,
+    "merge_fragments": true
+  },
+  "reads": {
+    "min_breadth": 60.0,
+    "min_identity": 90.0
+  }
+}

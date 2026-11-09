@@ -1,0 +1,25 @@
+# sen_sero markers — one row per marker in the gspec/v1 panel.
+#
+# marker_id       gspec gene name (what a report shows)
+# role            functional category written into the record's func slot
+# serovar         serovar/group the marker was taken from (provenance, human)
+# genome          INSDC accession the CDS was extracted from
+# selector        gene=<symbol> or locus_tag=<tag> inside that genome
+# phase           phase1 / phase2 / - : the flagellin locus synteny the builder
+#                 verifies (phase1 = beside fliD/fliB, phase2 = beside hin/fljA)
+# note            what the marker actually is (product + why it is here)
+#
+# Every selector is an annotated identifier, never a coordinate: the builder
+# fails loudly when the symbol/tag disappears from the annotation, which is the
+# signal that a reference accession needs re-curation.
+marker_id	role	serovar	genome	selector	phase	note
+invA	control	Typhimurium	NC_003197.2	gene=invA	-	type III secretion export apparatus InvA; presence control for subsp. enterica
+rfbJ_B	o_antigen	Typhimurium	NC_003197.2	gene=rfbJ	-	CDP-abequose synthase; abequose is the group B (O:4) determinant, 13-36% identical to any other panel marker
+rfbE_D1	o_antigen	Typhi	NC_003198.1	gene=rfbE	-	CDP-paratose 2-epimerase (tyvelose synthase); group D1 (O:9) determinant (Paratyphi A carries a pseudogene, see README)
+rfbS_A	o_antigen	Paratyphi A	NC_006511.1	gene=rfbS	-	CDP-paratose synthase; group A backbone — 98.5-99.3% identical to the D1 allele, so it does NOT separate O:2 from O:9 on its own
+fliC_i	h1_allele	Typhimurium	NC_003197.2	gene=fliC	phase1	phase-1 flagellin H:i (fliC), 100% to itself, <=76% to every other H1 allele in the panel
+fliC_gm	h1_allele	Enteritidis	NC_011294.1	locus_tag=SEN_RS05440	phase1	phase-1 flagellin H:g,m (fliC, annotated without a gene symbol; identified by fliD/fliB synteny)
+fliC_a	h1_allele	Paratyphi A	NC_006511.1	locus_tag=SPA_RS04555	phase1	phase-1 flagellin H:a (fliC, fliD/fliB synteny)
+fliC_d	h1_allele	Typhi	NC_003198.1	locus_tag=STY_RS10160	phase1	phase-1 flagellin H:d (fliC, fliD/fliB synteny)
+fljB_12	h2_allele	Typhimurium	NC_003197.2	gene=fljB	phase2	phase-2 flagellin H:1,2 (fljB); 97.0% identical to the Paratyphi A H2-region flagellin, hence the 98% rule floor
+fliC_r	h1_allele	Heidelberg	NZ_CP066851.1	locus_tag=JIG31_RS14450	phase1	phase-1 flagellin H:r (fliC, fliD/fliB synteny); 90.4% identical to fliC_i, the closest H1 pair in the panel, still far below the 98% rule floor

@@ -1,0 +1,118 @@
+{
+  "schema": "gspec.serotype/1",
+  "name": "sen_sero",
+  "control_gene": "invA",
+  "control_coverage_floor": 80.0,
+  "control_identity_floor": 98.0,
+  "fallback": "Salmonella subsp. enterica (serovar not in panel)",
+  "ambiguous": "No prediction (markers of several serovars)",
+  "unresolved": "Salmonella subsp. enterica (no complete antigen set)",
+  "rules": [
+    {
+      "phenotype": "Salmonella Typhimurium",
+      "requires": [
+        "rfbJ_B",
+        "fliC_i",
+        "fljB_12"
+      ],
+      "requires_any": [],
+      "excludes": [],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "control_exempt": false,
+      "notes": [
+        "formula 4,5,12:i:1,2",
+        "gene panel: group B (rfbJ) + H:i + H:1,2"
+      ]
+    },
+    {
+      "phenotype": "Salmonella Enteritidis",
+      "requires": [
+        "rfbE_D1",
+        "fliC_gm"
+      ],
+      "requires_any": [],
+      "excludes": [
+        "fljB_12"
+      ],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "control_exempt": false,
+      "notes": [
+        "formula 9,12:g,m:-",
+        "gene panel: group D1 (rfbE) + H:g,m",
+        " monophasic, so fljB must be absent (rule floor 98% keeps the 97%-identical Paratyphi A H2-region from counting)"
+      ]
+    },
+    {
+      "phenotype": "Salmonella Typhi",
+      "requires": [
+        "rfbE_D1",
+        "fliC_d"
+      ],
+      "requires_any": [],
+      "excludes": [
+        "fljB_12"
+      ],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "control_exempt": false,
+      "notes": [
+        "formula 9,12,[Vi]:d:-",
+        "gene panel: group D1 + H:d",
+        " Vi antigen not screened, the formula's [Vi] is not asserted"
+      ]
+    },
+    {
+      "phenotype": "Salmonella Heidelberg",
+      "requires": [
+        "rfbJ_B",
+        "fliC_r",
+        "fljB_12"
+      ],
+      "requires_any": [],
+      "excludes": [],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "control_exempt": false,
+      "notes": [
+        "formula 4,[5],12:r:1,2",
+        "gene panel: group B (rfbJ) + H:r + H:1,2 (the H2 marker is shared with Typhimurium: the two fljB 1,2 alleles are 99.9% identical)"
+      ]
+    },
+    {
+      "phenotype": "Salmonella Paratyphi A",
+      "requires": [
+        "rfbS_A",
+        "fliC_a"
+      ],
+      "requires_any": [],
+      "excludes": [
+        "rfbE_D1"
+      ],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "control_exempt": false,
+      "notes": [
+        "formula 2,12:a:-",
+        "gene panel: provisional \u2014 excludes the D1 rfbE allele, which a Paratyphi A genome may still carry as a pseudogene",
+        " the definitive O:2 call needs the rfb cluster stage"
+      ]
+    }
+  ]
+}

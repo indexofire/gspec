@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`sen_sero` — Salmonella enterica subsp. enterica O/H antigen panel.** Nine
+  curated markers (the `invA` control, group-B `rfbJ`, the group-D1 `rfbE`, the
+  group-A `rfbS`, the four phase-1 flagellin alleles H:i/H:g,m/H:a/H:d and the
+  phase-2 `fljB` H:1,2) extracted from annotated RefSeq CDS, plus four serovar
+  rules (Typhimurium, Heidelberg, Enteritidis, Typhi, Paratyphi A) with measured floors
+  (`identity_floor 98`, `coverage_floor 80`). Scope is **subsp. enterica only**:
+  the other subspecies' antigenic formula is readable but which subspecies a
+  genome is cannot be decided by antigen genes — that needs biochemical tests,
+  so the panel does not pretend to. `gspec screen -d sen_sero` reports the
+  markers and `gspec typing` designates, like every gene database.
+  Known limits, carried as caveats in `db info`: O:2 vs O:9 is not separable by
+  gene presence (`rfc` 98.5–99.9 % and `rfbS` 98.5–99.3 % identical across
+  groups; Paratyphi A keeps an `rfbE` pseudogene), so Paratyphi A is
+  provisional until an `rfb`-locus cluster stage lands; Vi (`tviB`/`tviC`) is
+  not screened; `hin` phase state is not read. Two curation gates keep the
+  panel honest: the builder refuses a flagellin marker that is not
+  synteny-verified (phase 1 beside `fliD`/`fliB`, phase 2 beside `hin`/`fljA`),
+  and the test suite fails when any two markers are ≥95 % identical — the
+  measured reason Enteritidis-family serovars (Dublin, Gallinarum) that differ
+  by 3 nt in `fliC` are deliberately absent. Curation workflow, the measured
+  identity matrix and the regeneration commands live in
+  `scripts/salmonella/README.md`.
+
 ## [0.10.2] - 2026-11-09
 
 ### Added

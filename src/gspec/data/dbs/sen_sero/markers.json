@@ -1,0 +1,151 @@
+{
+  "schema": "gspec.sen_markers/1",
+  "source": {
+    "tool": "NCBI E-utilities efetch (fasta_cds_na)",
+    "license": "INSDC sequence data (no copyright restrictions)",
+    "genomes": [
+      "NC_003197.2",
+      "NC_003198.1",
+      "NC_006511.1",
+      "NC_011294.1",
+      "NZ_CP066851.1"
+    ]
+  },
+  "thresholds": {
+    "rule_identity_floor": 98.0,
+    "rule_coverage_floor": 80.0,
+    "basis": "scripts/salmonella/identity_matrix.py"
+  },
+  "markers": [
+    {
+      "marker": "invA",
+      "role": "control",
+      "serovar": "Typhimurium",
+      "source": {
+        "genome": "NC_003197.2",
+        "protein_id": "NP_461817.1",
+        "product": "invasion protein",
+        "phase_check": "-"
+      },
+      "length": 2058,
+      "note": "type III secretion export apparatus InvA; presence control for subsp. enterica"
+    },
+    {
+      "marker": "rfbJ_B",
+      "role": "o_antigen",
+      "serovar": "Typhimurium",
+      "source": {
+        "genome": "NC_003197.2",
+        "protein_id": "NP_461034.1",
+        "product": "CDP-abequose synthase",
+        "phase_check": "-"
+      },
+      "length": 900,
+      "note": "CDP-abequose synthase; abequose is the group B (O:4) determinant, 13-36% identical to any other panel marker"
+    },
+    {
+      "marker": "rfbE_D1",
+      "role": "o_antigen",
+      "serovar": "Typhi",
+      "source": {
+        "genome": "NC_003198.1",
+        "protein_id": "WP_000770936.1",
+        "product": "CDP-paratose 2-epimerase",
+        "phase_check": "-"
+      },
+      "length": 1017,
+      "note": "CDP-paratose 2-epimerase (tyvelose synthase); group D1 (O:9) determinant (Paratyphi A carries a pseudogene, see README)"
+    },
+    {
+      "marker": "rfbS_A",
+      "role": "o_antigen",
+      "serovar": "Paratyphi A",
+      "source": {
+        "genome": "NC_006511.1",
+        "protein_id": "WP_000697756.1",
+        "product": "CDP-paratose synthase",
+        "phase_check": "-"
+      },
+      "length": 840,
+      "note": "CDP-paratose synthase; group A backbone \u2014 98.5-99.3% identical to the D1 allele, so it does NOT separate O:2 from O:9 on its own"
+    },
+    {
+      "marker": "fliC_i",
+      "role": "h1_allele",
+      "serovar": "Typhimurium",
+      "source": {
+        "genome": "NC_003197.2",
+        "protein_id": "NP_460912.1",
+        "product": "flagellar biosynthesis; flagellin",
+        "phase_check": "phase1"
+      },
+      "length": 1488,
+      "note": "phase-1 flagellin H:i (fliC), 100% to itself, <=76% to every other H1 allele in the panel"
+    },
+    {
+      "marker": "fliC_gm",
+      "role": "h1_allele",
+      "serovar": "Enteritidis",
+      "source": {
+        "genome": "NC_011294.1",
+        "protein_id": "WP_000079833.1",
+        "product": "flagellin N-terminal helical domain-containing protein",
+        "phase_check": "phase1"
+      },
+      "length": 1518,
+      "note": "phase-1 flagellin H:g,m (fliC, annotated without a gene symbol; identified by fliD/fliB synteny)"
+    },
+    {
+      "marker": "fliC_a",
+      "role": "h1_allele",
+      "serovar": "Paratyphi A",
+      "source": {
+        "genome": "NC_006511.1",
+        "protein_id": "WP_000079811.1",
+        "product": "FliC/FljB family flagellin",
+        "phase_check": "phase1"
+      },
+      "length": 1488,
+      "note": "phase-1 flagellin H:a (fliC, fliD/fliB synteny)"
+    },
+    {
+      "marker": "fliC_d",
+      "role": "h1_allele",
+      "serovar": "Typhi",
+      "source": {
+        "genome": "NC_003198.1",
+        "protein_id": "WP_000079784.1",
+        "product": "FliC/FljB family flagellin",
+        "phase_check": "phase1"
+      },
+      "length": 1521,
+      "note": "phase-1 flagellin H:d (fliC, fliD/fliB synteny)"
+    },
+    {
+      "marker": "fljB_12",
+      "role": "h2_allele",
+      "serovar": "Typhimurium",
+      "source": {
+        "genome": "NC_003197.2",
+        "protein_id": "NP_461698.1",
+        "product": "filament structural protein",
+        "phase_check": "phase2"
+      },
+      "length": 1521,
+      "note": "phase-2 flagellin H:1,2 (fljB); 97.0% identical to the Paratyphi A H2-region flagellin, hence the 98% rule floor"
+    },
+    {
+      "marker": "fliC_r",
+      "role": "h1_allele",
+      "serovar": "Heidelberg",
+      "source": {
+        "genome": "NZ_CP066851.1",
+        "protein_id": "WP_000079808.1",
+        "product": "FliC/FljB family flagellin",
+        "phase_check": "phase1"
+      },
+      "length": 1482,
+      "note": "phase-1 flagellin H:r (fliC, fliD/fliB synteny); 90.4% identical to fliC_i, the closest H1 pair in the panel, still far below the 98% rule floor"
+    }
+  ]
+}

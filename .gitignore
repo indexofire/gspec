@@ -20,3 +20,6 @@ site/
 
 # development
 dev/
+
+# sen_sero curation cache (regenerate with build_sen_sero.py)
+scripts/salmonella/.cache/

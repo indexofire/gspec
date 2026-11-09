@@ -1,0 +1,6 @@
+{
+  "schema": "gspec.dbinfo/1",
+  "name": "sen_sero",
+  "description": "Salmonella subsp. enterica O/H antigen panel: 4 serovars (Typhimurium, Enteritidis, Typhi, Paratyphi A) from curated INSDC CDS markers.",
+  "vendor": "gspec-curated (INSDC annotated CDS)"
+}

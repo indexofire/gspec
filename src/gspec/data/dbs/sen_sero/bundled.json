@@ -1,0 +1,30 @@
+{
+  "name": "sen_sero",
+  "description": "Salmonella enterica subsp. enterica serotyping panel (gspec-curated INSDC CDS markers)",
+  "vendor": "gspec-curated (INSDC annotated CDS)",
+  "dbtype": "nucl",
+  "kind": "gene",
+  "snapshotted": "2026-11-09",
+  "license": "INSDC sequence data (public; no redistribution restriction)",
+  "note": "O-antigen/H-antigen markers extracted from annotated RefSeq CDS (NC_003197.2 Typhimurium LT2, NC_011294.1 Enteritidis P125109, NC_006511.1 Paratyphi A ATCC 9150, NC_003198.1 Typhi CT18); serotype.json applies the curated serovar rules with measured thresholds (scripts/salmonella/README.md). Subsp. enterica only: the other subspecies cannot be separated by antigen genes.",
+  "guidance": {
+    "references": [
+      {
+        "citation": "Zhang S, Yin Y, Jones MB, et al. Salmonella serotype determination utilizing high-throughput genome sequencing data. J Clin Microbiol. 2015;53(5):1685-1692.",
+        "doi": "10.1128/JCM.00323-15",
+        "note": "SeqSero: the O/H gene approach this panel follows."
+      },
+      {
+        "citation": "Yoshida CE, Kruczkiewicz P, Laing CR, et al. The Salmonella In Silico Typing Resource (SISTR): an open web-accessible tool for rapidly typing and subtyping draft microbial genomes. PLoS One. 2016;11(8):e0160528.",
+        "doi": "10.1371/journal.pone.0160528",
+        "note": "SISTR: serovar nomenclature and validation reference."
+      }
+    ],
+    "caveats": [
+      "Gene panel only: O:2 (group A) and O:9 (group D1) are not separated by presence markers (rfc 98.5-99.9% and rfbS 98.5-99.3% identical across groups); the definitive O call needs an rfb-locus cluster stage.",
+      "Paratyphi A is provisional: its rule excludes the D1 rfbE allele, which that serovar may carry as a pseudogene.",
+      "Vi antigen (tviB/tviC) is not screened, so Typhi reports 9,12:d:- rather than asserting Vi.",
+      "Only subsp. enterica is typed by design; the other subspecies need biochemical differentiation."
+    ]
+  }
+}

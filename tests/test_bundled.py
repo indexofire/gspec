@@ -140,6 +140,7 @@ def test_bundled_discovery_finds_all_bundled() -> None:
         "lpn_vf",
         "pau_sero",
         "sag_sero",
+        "sen_sero",
         "shi_sero",
         "str_lancefield",
         "vch_oagc",
@@ -210,7 +211,7 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
     """Given every bundled panel, When every header is inspected, Then no VF
     tag, VFDB marker, or ARO accession appears anywhere — the DEC lesson
     from the license audit (2 VFDB records hid past header-spotting) is
-    locked mechanically across all seven bundles (record counts pinned;
+    locked mechanically across every bundle (record counts pinned;
     the vpa_ok cluster snapshot's bare locus ids are trivially clean)."""
     typed_counts = {
         "cje_cps": 42,
@@ -220,6 +221,7 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "lpn_vf": 275,
         "pau_sero": 14,
         "sag_sero": 14,
+        "sen_sero": 10,
         "shi_sero": 96,
         "str_lancefield": 29,
         "vch_oagc": 191,
