@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Literal
 
 from gspec.cluster.core import GeneCall
 from gspec.typing.results import PhenotypeScore, SchemeCall, ScoreComponent
@@ -162,23 +163,66 @@ def _family_call(
     return name, best_score, winners
 
 
-def _lookup_formula(
-    document: SerotypeDocumentV2, o: str | None, h1: str | None, h2: str | None
-) -> str | None:
-    """The serovar for a formula, trying the phase combinations the table holds.
+def _formula_keys(o: str, h1: str | None, h2: str | None) -> list[tuple[str, str, str]]:
+    """The phase combinations a table may hold for this call.
 
     Monophasic serovars are tabulated with ``"-"``, so an unresolved phase is
-    looked up as ``"-"`` first and only then reported as a partial formula.
+    looked up as ``"-"`` before the call is called partial.
+    """
+    first, second = h1 or "-", h2 or "-"
+    return [(o, first, second), (o, first, "-"), (o, "-", second), (o, "-", "-")]
+
+
+def _widen(
+    document: SerotypeDocumentV2, o: str | None, h1: str | None, h2: str | None
+) -> list[tuple[str, str, str]]:
+    """Every formula key reachable by widening the tokens to their classes.
+
+    SISTR's ``*_SIMILARITY_GROUPS`` are the reason this exists: a WKL token such
+    as ``l,[z13],[z28]`` never matches an allele reference by string, but it is
+    equivalent to the references in its class. Widening is queried only after
+    the exact keys miss, so a precise formula always wins.
+    """
+    groups = document.similarity_groups
+
+    def members(family: Literal["o", "h1", "h2"], token: str | None) -> set[str]:
+        if token is None:
+            return {"-"}
+        for group in groups.get(family, ()):
+            if token in group:
+                return set(group)
+        return {token}
+
+    keys: list[tuple[str, str, str]] = []
+    for o_token in sorted(members("o", o)):
+        for h1_token in sorted(members("h1", h1)):
+            for h2_token in sorted(members("h2", h2)):
+                keys.extend(_formula_keys(o_token, h1_token, h2_token))
+    return keys
+
+
+def _lookup_formula(
+    document: SerotypeDocumentV2, o: str | None, h1: str | None, h2: str | None
+) -> tuple[str, ...]:
+    """The serovar(s) for a formula: exact first, then similarity widening.
+
+    A single serovar is a call; several are genuine ambiguity (the upstream tools
+    pipe-join them, gspec reports candidates); none is a partial formula.
     """
     if o is None:
-        return None
-    index = {(row.o, row.h1, row.h2): row.serovar for row in document.formulas}
-    first, second = h1 or "-", h2 or "-"
-    for key in ((o, first, second), (o, first, "-"), (o, "-", second), (o, "-", "-")):
+        return ()
+    index: dict[tuple[str, str, str], list[str]] = {}
+    for row in document.formulas:
+        index.setdefault((row.o, row.h1, row.h2), []).append(row.serovar)
+    for key in _formula_keys(o, h1, h2):
         found = index.get(key)
-        if found is not None:
-            return found
-    return None
+        if found:
+            # Several serovars can share one formula; report them all.
+            return tuple(sorted(set(found)))
+    if document.similarity_groups:
+        widened = {serovar for key in _widen(document, o, h1, h2) for serovar in index.get(key, ())}
+        return tuple(sorted(widened))
+    return ()
 
 
 def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:
@@ -209,15 +253,26 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             confidence="low",
             notes=("control gene absent",),
         )
-    serovar = _lookup_formula(document, o, h1[0], h2[0]) if control else None
-    if serovar is not None:
-        score = max(o_score, h1[1], h2[1])
+    serovars = _lookup_formula(document, o, h1[0], h2[0]) if control else ()
+    score = max(o_score, h1[1], h2[1])
+    if len(serovars) == 1:
         return SchemeCall(
-            phenotype=serovar,
+            phenotype=serovars[0],
             score=round(score, 4),
             confidence="high",
             components=components,
             notes=tuple(notes),
+        )
+    if len(serovars) > 1:
+        return SchemeCall(
+            phenotype=None,
+            score=round(score, 4),
+            confidence="ambiguous",
+            components=components,
+            ambiguous=tuple(
+                PhenotypeScore(phenotype=serovar, score=round(score, 4)) for serovar in serovars
+            ),
+            notes=(*notes, "formula matched several serovars after widening"),
         )
     if o is None:
         return SchemeCall(

@@ -68,14 +68,30 @@ The port was run against a local SISTR install
 | H2 alleles (fljB) | 25 |
 | antigen reference sequences | 1,549 |
 | subsp. enterica formula rows (incl. 52 phase-off aliases) | 1,577 |
-| **reachable formula rows** | **1,505 (95.4 %)** |
+| reference sequences after collapsing at ≥99 % identity | 621 |
+| **reachable formula rows** | **1,536 (97.4 %)** |
 
-The 72 unreachable rows reference WKL bracket tokens (`l,[z13],[z28]`, `1,6,7`,
-`g,m,[s]`, …) with no reference allele in SISTR's FASTAs; SISTR matches those
-through `SEROGROUP/H1/H2_SIMILARITY_GROUPS` widening, which this port does not
-implement yet. `gspec db info -d sen_sero_sistr` shows the Apache-2.0
-attribution; `tests/test_sen_sero_sistr.py` pins the numbers and exercises
-Typhimurium plus a phase-off (Paratyphi A) end to end.
+Two conversion steps keep the panel usable:
+
+- **References are collapsed at ≥99 % identity** (1,549 → 621). Contig screening
+  is unaffected — any of them would hit — but the *reads* path aggregates per
+  gene, so ~10 near-identical `fliC` references per antigen split the reads and
+  each reference falls under the breadth floor (measured: two `o_B` references at
+  100 %/98 % breadth, two `h1_i` references at 80 %/75 %). Gene ids are
+  renumbered after collapsing (`<family>_<antigen>`, then `__2`, `__3`) so a
+  rebuild does not shift them.
+- **SISTR's similarity groups are ported** (`sistr_similarity_groups.json`,
+  Apache-2.0, acknowledged in `bundled.json`). The `gspec.serotype/2` lookup is
+  exact first and only widens a token to its class when nothing matches, which
+  is SISTR's own order; a widened key that fits several rows is reported as an
+  ambiguous call with the candidates, not pipe-joined. That took reachability
+  from 95.4 % to 97.4 %.
+
+The remaining 41 rows name alleles that SISTR's reference FASTAs themselves do
+not contain (`z67`, `z91`, `g,m,t`, …). `gspec db info -d sen_sero_sistr` shows
+the Apache-2.0 attribution; `tests/test_sen_sero_sistr.py` pins the numbers and
+exercises Typhimurium, the phase-off alias (Paratyphi A) and the partial
+formula end to end.
 
 (The SISTR database is distributed as the Zenodo tarball
 `SISTR_V_1.1.3_db.tar.gz`; zenodo.org answered **403** from the environment this

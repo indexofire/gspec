@@ -53,7 +53,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from gspec.dbcodec import encode_seqid
 
+HERE = Path(__file__).resolve().parent
+
 FALLBACK_PHASE = "-"
+#: Reference alleles of one antigen that are at least this identical are the same
+#: evidence: keeping them all makes a reads table split its reads across several
+#: references (each then misses the breadth floor) without adding resolution.
+REFERENCE_IDENTITY_FLOOR = 99.0
+#: SISTR's ``{SEROGROUP,H1,H2}_*_SIMILARITY_GROUPS``, ported verbatim from
+#: ``sistr/src/serovar_prediction/constants.py`` (SISTR is Apache-2.0; the
+#: attribution in ``bundled.json`` names it). They are the upstream answer to
+#: WKL bracket tokens: two tokens in a class are the same antigen, so a genome
+#: whose allele matches one of them still resolves the row.
+SIMILARITY_GROUPS = HERE / "sistr_similarity_groups.json"
 #: SeqSero2 marks genes that only sharpen a call and must not become antigens
 #: (e.g. the "not in 3,10" discriminator, or the O:1,3,19 short probe).
 _SEQSERO2_SKIP = re.compile(r"not_in|partial$|_full$")
@@ -73,15 +85,35 @@ def _read_fasta(path: Path) -> Iterator[tuple[str, str]]:
         yield header, "".join(chunks)
 
 
-def _unique_gene_id(base: str, used: set[str]) -> str:
-    """A gene id no other record claims (the sanitiser can collide two names)."""
-    gene = _gene_id(base)
-    suffix = 2
-    while gene in used:
-        gene = _gene_id(f"{base}_{suffix}")
-        suffix += 1
-    used.add(gene)
-    return gene
+def _reference_ids(
+    markers: dict[str, dict[str, list[str]]], sequences: dict[str, str]
+) -> dict[str, dict[str, list[str]]]:
+    """Assign deterministic gene ids: ``<family>_<antigen>``, then ``__2``, ``__3``.
+
+    Numbering is per antigen in input order, so a rebuild produces the same ids
+    (a global counter shifted them whenever an unrelated antigen changed). Two
+    antigen names can sanitise to the same token; the later name (by sort order)
+    gets a ``__g<n>`` prefix tag so both stay unique and stable.
+    """
+    bases: dict[str, list[str]] = {}
+    for family, antigens in markers.items():
+        for antigen in antigens:
+            bases.setdefault(_gene_id(f"{family}_{antigen}"), []).append(antigen)
+    tagged: dict[tuple[str, str], str] = {}
+    for base, antigens in bases.items():
+        for index, antigen in enumerate(sorted(antigens)):
+            family = base.split("_", 1)[0]
+            tagged[(family, antigen)] = base if index == 0 else f"{base}__g{index + 1}"
+    out: dict[str, dict[str, list[str]]] = {}
+    for family, antigens in markers.items():
+        out[family] = {}
+        for antigen, old_genes in antigens.items():
+            prefix = tagged[(family, antigen)]
+            ids = [prefix] + [f"{prefix}__{n}" for n in range(2, len(old_genes) + 1)]
+            for new, old in zip(ids, old_genes, strict=True):
+                sequences[new] = sequences.pop(old)
+            out[family][antigen] = ids
+    return out
 
 
 def _gene_id(name: str) -> str:
@@ -301,6 +333,7 @@ def _write_database(
     markers: dict[str, dict[str, list[str]]],
     formulas: list[dict[str, str]],
     dest: Path,
+    similarity_groups: dict[str, list[list[str]]] | None = None,
 ) -> None:
     """Write ``sequences`` + ``serotype.json`` + ``info.json`` for one database."""
     dest.mkdir(parents=True, exist_ok=True)
@@ -323,6 +356,7 @@ def _write_database(
         "margin": 0.01,
         "antigens": families,
         "formulas": formulas,
+        **({"similarity_groups": similarity_groups} if similarity_groups else {}),
         "fallback": "Not Salmonella",
         "unresolved": "Salmonella subsp. enterica (no antigen set resolved)",
         "partial": "Salmonella {formula} (serovar not in the formula table)",
@@ -365,8 +399,100 @@ def _write_database(
     )
 
 
+def _collapse_references(
+    markers: dict[str, dict[str, list[str]]],
+    sequences: dict[str, str],
+    *,
+    floor: float = REFERENCE_IDENTITY_FLOOR,
+) -> tuple[dict[str, dict[str, list[str]]], dict[str, str]]:
+    """Drop near-identical references of the same antigen (keep the longest).
+
+    Contig screening is unaffected (any of them would hit), but the *reads* path
+    aggregates per gene: with ~10 near-identical fliC references per antigen the
+    reads spread out and every reference falls under the breadth floor. One
+    representative per 99 %-identity cluster keeps both paths working.
+    """
+    import difflib
+
+    # A 15-mer containment prefilter (0.99 ** 15 ~= 0.86) rejects the clearly
+    # different pairs before the quadratic alignment, which took the whole panel
+    # from minutes to seconds; the survivors are confirmed by alignment.
+    prefilter_k = 15
+    prefilter_floor = (floor / 100.0) ** prefilter_k
+
+    def fingerprints(sequence: str) -> set[str]:
+        return {
+            sequence[i : i + prefilter_k]
+            for i in range(len(sequence) - prefilter_k + 1)
+            if set(sequence[i : i + prefilter_k]) <= set("ACGT")
+        }
+
+    kept_markers: dict[str, dict[str, list[str]]] = {key: {} for key in markers}
+    kept_sequences: dict[str, str] = {}
+    dropped = 0
+    for family, antigens in markers.items():
+        for antigen, genes in antigens.items():
+            keep: list[str] = []
+            prints: dict[str, set[str]] = {}
+            for gene in sorted(genes, key=lambda name: len(sequences[name]), reverse=True):
+                sequence = sequences[gene]
+                print_set = fingerprints(sequence)
+                near = [
+                    other
+                    for other in keep
+                    if prints[other]
+                    and len(print_set & prints[other]) / len(print_set | prints[other])
+                    >= prefilter_floor
+                ]
+                if any(
+                    difflib.SequenceMatcher(
+                        None, sequence, sequences[other], autojunk=False
+                    ).ratio()
+                    * 100.0
+                    >= floor
+                    for other in near
+                ):
+                    dropped += 1
+                    continue
+                keep.append(gene)
+                prints[gene] = print_set
+                kept_sequences[gene] = sequence
+            kept_markers[family][antigen] = keep
+    print(
+        f"  references: {sum(len(v) for fam in markers.values() for v in fam.values())}"
+        f" -> {len(kept_sequences)} (collapsed {dropped} at >={floor:.0f}% identity)"
+    )
+    return kept_markers, kept_sequences
+
+
+def _renumber(
+    markers: dict[str, dict[str, list[str]]], sequences: dict[str, str]
+) -> tuple[dict[str, dict[str, list[str]]], list[tuple[str, str, str]]]:
+    """Compact gene ids after collapsing: ``<family>_<antigen>``, ``__2``, ``__3``.
+
+    The pre-collapse numbering left gaps (``h2_1_2__65``) because it counted the
+    upstream records that were then dropped; renumbering the survivors keeps the
+    ids short and stable for a given input.
+    """
+    markers_out: dict[str, dict[str, list[str]]] = {}
+    pairs: list[tuple[str, str, str]] = []
+    for family, antigens in markers.items():
+        markers_out[family] = {}
+        for antigen, genes in antigens.items():
+            base = _gene_id(f"{family}_{antigen}")
+            ids = [base] + [f"{base}__{n}" for n in range(2, len(genes) + 1)]
+            markers_out[family][antigen] = ids
+            for gene, new in zip(genes, ids, strict=True):
+                sequences[new] = sequences[gene]
+                pairs.append((new, antigen, sequences[new]))
+    return markers_out, pairs
+
+
 def _report_reachability(
-    families: dict[str, dict[str, list[str]]], formulas: list[dict[str, str]]
+    families: dict[str, dict[str, list[str]]],
+    formulas: list[dict[str, str]],
+    *,
+    groups: dict[str, list[list[str]]] | None = None,
 ) -> None:
     """How many formula rows can actually be reached from the declared antigens.
 
@@ -376,10 +502,23 @@ def _report_reachability(
     table that silently never fires.
     """
     known = {key: set(family) | {FALLBACK_PHASE} for key, family in families.items()}
+
+    def reachable_token(family: str, token: str) -> bool:
+        if token in known[family]:
+            return True
+        for group in (groups or {}).get(family, []):
+            if token in group and any(member in known[family] for member in group):
+                return True
+        return False
+
     dead = [
         row
         for row in formulas
-        if not (row["o"] in known["o"] and row["h1"] in known["h1"] and row["h2"] in known["h2"])
+        if not (
+            reachable_token("o", row["o"])
+            and reachable_token("h1", row["h1"])
+            and reachable_token("h2", row["h2"])
+        )
     ]
     total = len(formulas)
     if total == 0:
@@ -410,7 +549,6 @@ def import_sistr(
         raise SystemExit(f"{table}: formula table not found (pass --formulas)")
     pairs: list[tuple[str, str, str]] = []
     markers: dict[str, dict[str, list[str]]] = {"o": {}, "h1": {}, "h2": {}}
-    used: set[str] = set()
     for path in files:
         family = _detect_family(path)
         if family is None:
@@ -423,11 +561,19 @@ def import_sistr(
             # several sequences scores by the best of them, exactly as the
             # upstream top-hit step does.
             genes = markers[family].setdefault(antigen, [])
-            gene = _unique_gene_id(f"{family}_{antigen}", used)
+            gene = (
+                _gene_id(f"{family}_{antigen}")
+                if not genes
+                else (f"{_gene_id(f'{family}_{antigen}')}__{len(genes) + 1}")
+            )
             genes.append(gene)
             pairs.append((gene, antigen, sequence))
+    sequences = {gene: sequence for gene, _, sequence in pairs}
+    markers, kept = _collapse_references(markers, sequences)
+    markers, pairs = _renumber(markers, kept)
     rows = _sistr_formulas(table, subspecies=subspecies)
-    _report_reachability(markers, rows)
+    groups = json.loads(SIMILARITY_GROUPS.read_text(encoding="utf-8"))
+    _report_reachability(markers, rows, groups=groups)
     _write_fasta(dest, name, pairs)
     _write_database(
         name=name,
@@ -437,6 +583,7 @@ def import_sistr(
         markers=markers,
         formulas=rows,
         dest=dest,
+        similarity_groups=groups,
     )
     if bundle:
         _write_bundle_metadata(
@@ -461,16 +608,22 @@ def import_seqsero2(
         raise SystemExit(f"{source}: not a file")
     markers: dict[str, dict[str, list[str]]] = {"o": {}, "h1": {}, "h2": {}}
     pairs: list[tuple[str, str, str]] = []
-    used: set[str] = set()
     for record_id, sequence in _read_fasta(source):
         parsed = _seqsero2_antigen(record_id)
         if parsed is None:
             continue
         family, antigen = parsed
         genes = markers[family].setdefault(antigen, [])
-        gene = _unique_gene_id(f"{family}_{antigen}", used)
+        gene = (
+            _gene_id(f"{family}_{antigen}")
+            if not genes
+            else (f"{_gene_id(f'{family}_{antigen}')}__{len(genes) + 1}")
+        )
         genes.append(gene)
         pairs.append((gene, antigen, sequence))
+    sequences = {gene: sequence for gene, _, sequence in pairs}
+    markers, kept = _collapse_references(markers, sequences)
+    markers, pairs = _renumber(markers, kept)
     _write_fasta(dest, name, pairs)
     _write_database(
         name=name,

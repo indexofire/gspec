@@ -24,6 +24,7 @@ from gspec.cluster.core import GeneCall
 from gspec.typing.serotype_engine import evaluate_serotype
 from gspec.typing.serotype_models import (
     SerotypeDocumentV2,
+    SerotypeFormula,
     read_serotype_document,
 )
 
@@ -145,6 +146,109 @@ def test_missing_control_gene_falls_back() -> None:
     calls = {"o_4": _call("o_4"), "h1_i": _call("h1_i"), "h2_12": _call("h2_12")}
     call = evaluate_serotype(calls, _document())
     assert (call.phenotype, call.confidence) == ("Not Salmonella", "low")
+
+
+def _widened_document() -> SerotypeDocumentV2:
+    """Two rows whose H1 tokens only meet through a similarity class."""
+    return _document(
+        antigens=[
+            {
+                "key": "o",
+                "entries": [{"name": "B", "genes": ["o_B"]}],
+            },
+            {
+                "key": "h1",
+                "entries": [
+                    {"name": "z13,z28", "genes": ["h1_z13_z28"]},
+                    {"name": "l,z13,[z28]", "genes": []}
+                    if False
+                    else {"name": "l,z13,[z28]", "genes": ["h1_never"]},
+                ],
+            },
+            {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+        ],
+        formulas=[
+            {"o": "B", "h1": "l,z13,[z28]", "h2": "1,2", "serovar": "Widened"},
+            {"o": "B", "h1": "z13,z28", "h2": "1,2", "serovar": "Exact"},
+        ],
+        similarity_groups={"h1": (("z13,z28", "l,z13,[z28]"),)},
+    )
+
+
+def test_exact_formula_wins_before_widening() -> None:
+    """A row whose token matches the allele by string is taken directly: the
+    widening step is a fallback, exactly as the upstream tools use it."""
+    calls = {
+        "invA": _call("invA"),
+        "o_B": _call("o_B"),
+        "h1_z13_z28": _call("h1_z13_z28"),
+        "h2_12": _call("h2_12"),
+    }
+    call = evaluate_serotype(calls, _widened_document())
+    assert call.phenotype == "Exact"
+
+
+def test_widening_resolves_a_bracket_token() -> None:
+    """Only the bracket token has a reference allele; its class mate resolves it."""
+    document = _widened_document()
+    document = document.model_copy(
+        update={"formulas": tuple(row for row in document.formulas if row.serovar != "Exact")}
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_B": _call("o_B"),
+        "h1_z13_z28": _call("h1_z13_z28"),
+        "h2_12": _call("h2_12"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Widened"
+
+
+def test_widening_to_several_serovars_is_ambiguous() -> None:
+    """Widening can match more than one row; gspec reports the candidates instead
+    of pipe-joining them (SISTR's behaviour) or picking one."""
+    document = _widened_document().model_copy(
+        update={
+            "formulas": (
+                # No row carries the allele's own token, so widening decides; two
+                # rows share the widened key, which is genuine ambiguity.
+                SerotypeFormula(o="B", h1="l,z13,[z28]", h2="1,2", serovar="Widened"),
+                SerotypeFormula(o="B", h1="l,z13,[z28]", h2="1,2", serovar="Other"),
+            )
+        }
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_B": _call("o_B"),
+        "h1_z13_z28": _call("h1_z13_z28"),
+        "h2_12": _call("h2_12"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype is None
+    assert call.confidence == "ambiguous"
+    assert {entry.phenotype for entry in call.ambiguous} == {"Widened", "Other"}
+
+
+def test_two_serovars_sharing_one_formula_are_ambiguous() -> None:
+    """The table can list several serovars for one formula; an exact hit then
+    reports them all rather than letting dict order pick one."""
+    document = _widened_document().model_copy(
+        update={
+            "formulas": (
+                SerotypeFormula(o="B", h1="z13,z28", h2="1,2", serovar="Exact"),
+                SerotypeFormula(o="B", h1="z13,z28", h2="1,2", serovar="Twin"),
+            )
+        }
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_B": _call("o_B"),
+        "h1_z13_z28": _call("h1_z13_z28"),
+        "h2_12": _call("h2_12"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.confidence == "ambiguous"
+    assert {entry.phenotype for entry in call.ambiguous} == {"Exact", "Twin"}
 
 
 def test_loader_dispatches_on_the_schema_tag(tmp_path: Path) -> None:

@@ -35,6 +35,16 @@ def _genes() -> dict[str, str]:
     }
 
 
+def _gene(family: str, antigen: str) -> str:
+    """First reference id of one antigen — ids are derived, never hardcoded."""
+    for declared in _document().antigens:
+        if declared.key == family:
+            for entry in declared.entries:
+                if entry.name == antigen:
+                    return entry.genes[0]
+    raise AssertionError(f"{family}:{antigen} not declared")
+
+
 def _document() -> SerotypeDocumentV2:
     document = read_serotype_document(ASSET / "serotype.json")
     assert isinstance(document, SerotypeDocumentV2)
@@ -81,19 +91,32 @@ def test_most_formula_rows_are_reachable() -> None:
     known = {
         family.key: {entry.name for entry in family.entries} | {"-"} for family in document.antigens
     }
+
+    def reachable_token(family: str, token: str) -> bool:
+        if token in known[family]:
+            return True
+        for group in document.similarity_groups.get(family):  # type: ignore[arg-type]
+            if token in group and any(member in known[family] for member in group):
+                return True
+        return False
+
     reachable = [
         row
         for row in document.formulas
-        if row.o in known["o"] and row.h1 in known["h1"] and row.h2 in known["h2"]
+        if reachable_token("o", row.o)
+        and reachable_token("h1", row.h1)
+        and reachable_token("h2", row.h2)
     ]
-    assert len(reachable) / len(document.formulas) >= 0.95
+    assert len(reachable) / len(document.formulas) >= 0.97
+    assert set(document.similarity_groups) == {"o", "h1", "h2"}
 
 
 def test_typhimurium_is_designated_end_to_end(tmp_path: Path) -> None:
     """group B + H:i + H:1,2 -> the formula table row for Typhimurium."""
     genes = _genes()
     genome = tmp_path / "s.fna"
-    genome.write_text(f">ctg1\n{genes['o_B']}{genes['h1_i']}{genes['h2_1_2']}\n", encoding="utf-8")
+    body = "".join(genes[_gene(f, a)] for f, a in (("o", "B"), ("h1", "i"), ("h2", "1,2")))
+    genome.write_text(f">ctg1\n{body}\n", encoding="utf-8")
     datadir = tmp_path / "dd"
     table = tmp_path / "screen.tsv"
     screened = runner.invoke(
@@ -127,7 +150,8 @@ def test_phase_off_alias_resolves_the_monophasic_row(tmp_path: Path) -> None:
     writes the phase-off alias row, so a genome without fljB still resolves."""
     genes = _genes()
     genome = tmp_path / "p.fna"
-    genome.write_text(f">ctg1\n{genes['o_A']}{genes['h1_a']}\n", encoding="utf-8")
+    body = "".join(genes[_gene(f, a)] for f, a in (("o", "A"), ("h1", "a")))
+    genome.write_text(f">ctg1\n{body}\n", encoding="utf-8")
     datadir = tmp_path / "dd"
     table = tmp_path / "screen.tsv"
     assert (
@@ -162,9 +186,14 @@ def test_missing_antigen_reports_a_partial_formula(tmp_path: Path, missing: str)
     """Without the O group nothing is looked up; without the H1 allele the
     formula is printed with '-' and no serovar name is claimed."""
     genes = _genes()
-    keep = [name for name in ("o_B", "h1_i", "h2_1_2") if name != missing]
+    picked = {
+        "o_B": _gene("o", "B"),
+        "h1_i": _gene("h1", "i"),
+        "h2_1_2": _gene("h2", "1,2"),
+    }
+    body = "".join(genes[gene] for key, gene in picked.items() if key != missing)
     genome = tmp_path / "m.fna"
-    genome.write_text(f">ctg1\n{''.join(genes[name] for name in keep)}\n", encoding="utf-8")
+    genome.write_text(f">ctg1\n{body}\n", encoding="utf-8")
     datadir = tmp_path / "dd"
     table = tmp_path / "screen.tsv"
     assert (

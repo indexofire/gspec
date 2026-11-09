@@ -62,9 +62,13 @@
   the WHO-2007 formula table): 46 O serogroups, 62 H1 and 25 H2 antigens
   (1,549 reference sequences, every upstream allele kept so an antigen scores by
   its best reference) and 1,577 subsp. *enterica* formula rows including 52
-  phase-off aliases from `can_h2_be_missing`. 1,505 rows (95.4 %) are reachable;
-  the remaining 72 use WKL bracket tokens that SISTR resolves through its
-  similarity groups, which this port does not implement yet. Ships with
+  phase-off aliases from `can_h2_be_missing`; references at ≥99 % identity are
+  collapsed (1,549 → 621) because the reads path aggregates per gene and
+  near-identical references split the reads. **SISTR's similarity groups are
+  ported** and `gspec.serotype/2` widens a token to its class only after an exact
+  lookup misses (several matches become an ambiguous call, never a pipe-joined
+  string), taking reachability from 95.4 % to **97.4 %** (1,536/1,577); the
+  remaining 41 rows name alleles SISTR's own FASTAs do not contain. Ships with
   `license: Apache-2.0` and the verbatim PHAC-NML/Zenodo attribution that
   AGENTS.md §6 gate 1 requires of a converted dataset, surfaced by `db info`.
 

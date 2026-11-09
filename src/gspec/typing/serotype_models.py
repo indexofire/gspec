@@ -207,6 +207,14 @@ class SerotypeDocumentV2(BaseModel, frozen=True):
     margin: float = Field(default=0.01, ge=0.0, le=1.0)
     antigens: tuple[AntigenFamily, ...] = Field(min_length=1)
     formulas: tuple[SerotypeFormula, ...] = Field(min_length=1)
+    #: Equivalent token classes per family, e.g. ``{"h1": [["z13,z28", "l,z13,[z28]"]]}``.
+    #: The lookup is exact first; only when no row matches is a token widened to
+    #: its class, which is how the upstream tools treat WKL bracket variants
+    #: (SISTR's ``*_SIMILARITY_GROUPS``). Widening can match several serovars,
+    #: which is reported as an ambiguous call, never a silent pick.
+    similarity_groups: dict[Literal["o", "h1", "h2"], tuple[tuple[str, ...], ...]] = Field(
+        default_factory=dict
+    )
     fallback: str = "Not Salmonella"
     unresolved: str = "Salmonella subsp. enterica (no antigen set resolved)"
     partial: str = "Salmonella {formula} (serovar not in the formula table)"
