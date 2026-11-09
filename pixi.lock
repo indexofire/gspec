@@ -1130,8 +1130,8 @@ packages:
   timestamp: 1626369596591
 - pypi: ./
   name: gspec
-  version: 0.10.1
-  sha256: 2b024ea70cfd9867298b5fc560d2bdc67605cb7604caf21edb0e99148e2280ff
+  version: 0.10.2
+  sha256: 3794ecd4bb32c84f605f527539002d643ec7d4c6bc727ac2390c504febabc981
   requires_dist:
   - click>=8.2
   - pydantic>=2.7

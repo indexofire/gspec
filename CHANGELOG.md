@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-11-09
+
 ### Added
 
 - **Composite databases (`gspec.composite/1`)** — a database directory whose
