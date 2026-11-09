@@ -188,6 +188,8 @@ def test_serotype_rules_only_name_panel_markers() -> None:
         "Salmonella Enteritidis",
         "Salmonella Typhi",
         "Salmonella Heidelberg",
+        "Salmonella Paratyphi B",
+        "Salmonella Saintpaul",
         "Salmonella Paratyphi A",
         "Salmonella group B (O:4), H not determined",
         "Salmonella group A (O:2), H not determined",
@@ -257,6 +259,25 @@ def test_group_b_o_antigen_alone_gives_a_partial_call(tmp_path: Path, datadir: P
     """Given only the group-B O marker, Then the panel reports the O group and
     says the H phase is undetermined instead of guessing a serovar."""
     row = _designate(tmp_path, datadir, "invA", "rfbJ_B")
+    assert row["PHENOTYPE"] == "Salmonella group B (O:4), H not determined"
+
+
+def test_paratyphi_b_markers_designate_paratyphi_b(tmp_path: Path, datadir: Path) -> None:
+    row = _designate(tmp_path, datadir, "invA", "rfbJ_B", "fliC_b", "fljB_12")
+    assert row["PHENOTYPE"] == "Salmonella Paratyphi B"
+    assert "4,[5],12:b:1,2" in row["NOTES"]
+
+
+def test_saintpaul_markers_designate_saintpaul(tmp_path: Path, datadir: Path) -> None:
+    row = _designate(tmp_path, datadir, "invA", "rfbJ_B", "fliC_eh", "fljB_12")
+    assert row["PHENOTYPE"] == "Salmonella Saintpaul"
+    assert "4,[5],12:e,h:1,2" in row["NOTES"]
+
+
+def test_monophasic_paratyphi_b_reports_the_group_partial(tmp_path: Path, datadir: Path) -> None:
+    """Paratyphi B var. Java is monophasic (b:-): the H2 requirement fails and the
+    panel answers with the group-B partial rather than a wrong diphasic name."""
+    row = _designate(tmp_path, datadir, "invA", "rfbJ_B", "fliC_b")
     assert row["PHENOTYPE"] == "Salmonella group B (O:4), H not determined"
 
 

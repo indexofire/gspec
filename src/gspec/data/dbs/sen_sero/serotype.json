@@ -116,6 +116,59 @@
       ]
     },
     {
+      "phenotype": "Salmonella Paratyphi B",
+      "requires": [
+        "rfbJ_B",
+        "fliC_b",
+        "fljB_12"
+      ],
+      "requires_any": [],
+      "excludes": [],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "outranks": {
+        "rfbJ_B": [
+          "tyr_A",
+          "rfbE_D1"
+        ]
+      },
+      "control_exempt": false,
+      "notes": [
+        "formula 4,[5],12:b:1,2",
+        "group B (rfbJ) + H:b + H:1,2",
+        " the shared H2 marker covers all group-B 1,2 alleles (LT2 and the Heidelberg/Paratyphi B/Saintpaul copies are 99.9% identical)"
+      ]
+    },
+    {
+      "phenotype": "Salmonella Saintpaul",
+      "requires": [
+        "rfbJ_B",
+        "fliC_eh",
+        "fljB_12"
+      ],
+      "requires_any": [],
+      "excludes": [],
+      "max_coverage": {},
+      "min_alignment_start_pct": {},
+      "max_alignment_start_pct": {},
+      "coverage_floor": 80.0,
+      "identity_floor": 98.0,
+      "outranks": {
+        "rfbJ_B": [
+          "tyr_A",
+          "rfbE_D1"
+        ]
+      },
+      "control_exempt": false,
+      "notes": [
+        "formula 4,[5],12:e,h:1,2",
+        "group B (rfbJ) + H:e,h + H:1,2"
+      ]
+    },
+    {
       "phenotype": "Salmonella Paratyphi A",
       "requires": [
         "tyr_A",

@@ -24,6 +24,8 @@ Salmonella Typhimurium	4,5,12:i:1,2	rfbJ_B;fliC_i;fljB_12		gene panel: group B (
 Salmonella Enteritidis	9,12:g,m:-	rfbE_D1;fliC_gm	fljB_12	gene panel: group D1 (rfbE) + H:g,m; monophasic, so fljB must be absent (rule floor 98% keeps the 97%-identical Paratyphi A H2-region from counting)	rfbE_D1:tyr_A
 Salmonella Typhi	9,12,[Vi]:d:-	rfbE_D1;fliC_d	fljB_12	gene panel: group D1 + H:d; Vi antigen not screened, the formula's [Vi] is not asserted	rfbE_D1:tyr_A
 Salmonella Heidelberg	4,[5],12:r:1,2	rfbJ_B;fliC_r;fljB_12		gene panel: group B (rfbJ) + H:r + H:1,2 (the H2 marker is shared with Typhimurium: the two fljB 1,2 alleles are 99.9% identical)	rfbJ_B:tyr_A,rfbE_D1
+Salmonella Paratyphi B	4,[5],12:b:1,2	rfbJ_B;fliC_b;fljB_12		group B (rfbJ) + H:b + H:1,2; the shared H2 marker covers all group-B 1,2 alleles (LT2 and the Heidelberg/Paratyphi B/Saintpaul copies are 99.9% identical)	rfbJ_B:tyr_A,rfbE_D1
+Salmonella Saintpaul	4,[5],12:e,h:1,2	rfbJ_B;fliC_eh;fljB_12		group B (rfbJ) + H:e,h + H:1,2	rfbJ_B:tyr_A,rfbE_D1
 Salmonella Paratyphi A	2,12:a:-	tyr_A;fliC_a		gene panel: provisional — excludes the D1 rfbE allele, which a Paratyphi A genome may still carry as a pseudogene; the definitive O:2 call needs the rfb cluster stage	tyr_A:rfbE_D1
 Salmonella group B (O:4), H not determined	4,[5],12:-:-	rfbJ_B		partial call: group B O antigen detected, no panel H allele matched — the full serovar rules above outrank this one (decision: most_specific)	
 Salmonella group A (O:2), H not determined	2,12:-:-	tyr_A		partial call (decision: most_specific)	tyr_A:rfbE_D1

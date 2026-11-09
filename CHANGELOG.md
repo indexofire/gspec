@@ -8,7 +8,8 @@
   curated markers (the `invA` control, group-B `rfbJ`, the group-D1 `rfbE`, the
   group-A `rfbS`, the four phase-1 flagellin alleles H:i/H:g,m/H:a/H:d and the
   phase-2 `fljB` H:1,2) extracted from annotated RefSeq CDS, plus four serovar
-  rules (Typhimurium, Heidelberg, Enteritidis, Typhi, Paratyphi A) with measured floors
+  rules (Typhimurium, Heidelberg, Paratyphi B, Saintpaul, Enteritidis, Typhi,
+  Paratyphi A) with measured floors
   (`identity_floor 98`, `coverage_floor 80`). Scope is **subsp. enterica only**:
   the other subspecies' antigenic formula is readable but which subspecies a
   genome is cannot be decided by antigen genes — that needs biochemical tests,
@@ -42,6 +43,13 @@
   instead of inheriting SeqSero2's tie-break. Paratyphi A is therefore no longer
   a provisional presence call. The panel's separability gate now governs only
   presence-gated markers, since a ranked pair is exempt by construction.
+- **`sen_sero` adds Paratyphi B and Saintpaul**, both group B: `fliC_b` (H:b) and
+  `fliC_eh` (H:e,h) join the panel from RefSeq complete genomes
+  (`NZ_CP171405.1`, `NZ_CP075134.1`, synteny-verified) and share the existing
+  `fljB_12` — the group-B 1,2 copies are 99.9 % identical. The two new H1
+  alleles sit at ≤77.6 % to every other panel allele, so the presence floor
+  separates them; Paratyphi B var. Java (monophasic `b:-`) reports the group-B
+  partial instead of a wrong diphasic name.
 - **`gspec.serotype/1` gains a `decision` policy.** `ambiguous` (the default)
   keeps reporting every matching rule's phenotype as an ambiguity, so `shi_sero`
   is byte-identical. `most_specific` drops matches whose positive markers are a

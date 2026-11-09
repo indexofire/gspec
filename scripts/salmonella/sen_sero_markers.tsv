@@ -24,3 +24,5 @@ fliC_d	h1_allele	Typhi	NC_003198.1	locus_tag=STY_RS10160	phase1	phase-1 flagelli
 fljB_12	h2_allele	Typhimurium	NC_003197.2	gene=fljB	phase2	phase-2 flagellin H:1,2 (fljB); 97.0% identical to the Paratyphi A H2-region flagellin, hence the 98% rule floor
 fliC_r	h1_allele	Heidelberg	NZ_CP066851.1	locus_tag=JIG31_RS14450	phase1	phase-1 flagellin H:r (fliC, fliD/fliB synteny); 90.4% identical to fliC_i, the closest H1 pair in the panel, still far below the 98% rule floor
 tyr_A	o_allele	Paratyphi A	NC_006511.1	gene=rfbE	-	CDP-paratose 2-epimerase (tyr) of group A (O:2), 98.5-99.2% identical to the group D1 copy (rfbE_D1): decided by rule-level ranking (`outranks`), the SeqSero2 'tyr-O-2 vs tyr-O-9' step
+fliC_b	h1_allele	Paratyphi B	NZ_CP171405.1	locus_tag=ACGIJI_RS09290	phase1	phase-1 flagellin H:b (fliC, fliD/fliB synteny); <=77.6% identical to any other panel H1 allele. Monophasic variant Java (4,[5],12:b:-) lacks the H2 phase and reports the group-B partial
+fliC_eh	h1_allele	Saintpaul	NZ_CP075134.1	locus_tag=A7S31_RS09225	phase1	phase-1 flagellin H:e,h (fliC, fliD/fliB synteny); <=76.9% identical to any other panel H1 allele

@@ -48,13 +48,18 @@ Every marker is selected by an **annotated identifier** (`gene=` symbol or
 | `tyr_A` (group A) vs `rfbE_D1` (group D1) | 98.5–99.2 % | **near-identical by design**: separated by the rule-level `outranks` ranking, never by a presence floor — the mechanism SeqSero2 and SISTR both use |
 | `rfbJ` (group B, CDP-abequose synthase) vs everything else | 13–36 % | group B (O:4) *is* separable at the gene level |
 | `fliC_i` (H:i) vs `fliC_r` (H:r) | 87.8–90.4 % | closest H1 pair in the panel; still far below the 98 % floor |
+| `fliC_b` (H:b) / `fliC_eh` (H:e,h) vs the rest | ≤77.6 % / ≤76.9 % | the two group-B additions separate on their own H1 allele |
 | `fljB` H:1,2 of Typhimurium vs Heidelberg | 99.9 % | one shared H2 marker covers both group-B serovars |
 | `fliC_gm` (H:g,m) vs `fliC_gp` (H:g,p) | **99.80 %** (3 nt in 1518) | **inseparable by template identity at any sane floor** — the reason Dublin/Gallinarum/Pullorum are out of scope |
 | `invA` vs everything | ≤25 % | control gene is unambiguous |
 
-The panel therefore ships **five serovars**: Typhimurium and Heidelberg (group B,
-`rfbJ`), Enteritidis and Typhi (group D1, `rfbE`), and the provisional
-Paratyphi A (group A, `rfbS`, pending the rfb cluster stage).
+The panel therefore ships **seven serovars**: Typhimurium, Heidelberg,
+Paratyphi B and Saintpaul (group B, `rfbJ` + one H1 allele each + the shared
+`fljB_12`), Enteritidis and Typhi (group D1, `rfbE`), and Paratyphi A (group A,
+`tyr_A`, ranked against the D1 copy). The three generic "H not determined" rows
+answer the partial cases (group B alone, group A alone, group D1 alone), and a
+monophasic variant of a diphasic serovar lands there instead of being misnamed
+(Paratyphi B var. Java is the pinned test).
 
 `tests/test_sen_sero.py::test_panel_markers_are_mutually_separable` turns the
 matrix into a gate: every marker pair must stay below 95 % identity, so a future

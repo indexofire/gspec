@@ -8,7 +8,9 @@
       "NC_003198.1",
       "NC_006511.1",
       "NC_011294.1",
-      "NZ_CP066851.1"
+      "NZ_CP066851.1",
+      "NZ_CP075134.1",
+      "NZ_CP171405.1"
     ]
   },
   "thresholds": {
@@ -159,6 +161,32 @@
       },
       "length": 1032,
       "note": "CDP-paratose 2-epimerase (tyr) of group A (O:2), 98.5-99.2% identical to the group D1 copy (rfbE_D1): decided by rule-level ranking (`outranks`), the SeqSero2 'tyr-O-2 vs tyr-O-9' step"
+    },
+    {
+      "marker": "fliC_b",
+      "role": "h1_allele",
+      "serovar": "Paratyphi B",
+      "source": {
+        "genome": "NZ_CP171405.1",
+        "protein_id": "WP_000079810.1",
+        "product": "FliC/FljB family flagellin",
+        "phase_check": "phase1"
+      },
+      "length": 1488,
+      "note": "phase-1 flagellin H:b (fliC, fliD/fliB synteny); <=77.6% identical to any other panel H1 allele. Monophasic variant Java (4,[5],12:b:-) lacks the H2 phase and reports the group-B partial"
+    },
+    {
+      "marker": "fliC_eh",
+      "role": "h1_allele",
+      "serovar": "Saintpaul",
+      "source": {
+        "genome": "NZ_CP075134.1",
+        "protein_id": "WP_001524582.1",
+        "product": "FliC/FljB family flagellin",
+        "phase_check": "phase1"
+      },
+      "length": 1509,
+      "note": "phase-1 flagellin H:e,h (fliC, fliD/fliB synteny); <=76.9% identical to any other panel H1 allele"
     }
   ]
 }
