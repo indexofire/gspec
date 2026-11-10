@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Literal
+from dataclasses import dataclass, replace
+from typing import Literal, NamedTuple
 
 from gspec.align.sketch import SKETCH_MARGIN
 from gspec.cluster.core import GeneCall
@@ -522,6 +522,66 @@ def _best_elsewhere(
     )
 
 
+class _DiscriminatorResult(NamedTuple):
+    """The O call after (or without) the SNP-level tie-break."""
+
+    family: _FamilyCall
+    notes: list[str]
+
+
+def _discriminate_o(
+    family_call: _FamilyCall,
+    calls: Mapping[str, GeneCall],
+    document: SerotypeDocumentV2,
+) -> _DiscriminatorResult | None:
+    """Break an A/D1-style O tie with a SNP-level marker, when the gap decides.
+
+    Returns None when the document carries no discriminator, when the tie does
+    not span the discriminator's names, or when the markers disagree too little to
+    speak — the last case is the common one on short-read assemblies, where a
+    partial locus shows a few tenths of a point and the honest answer stays
+    "ambiguous".
+    """
+    spec = document.o_discriminator
+    if spec is None or len(family_call.ties) < 2:
+        return None
+    contested = [name for name in family_call.ties if name in spec.favours]
+    if len(contested) < 2:
+        return None
+    scored: dict[str, float] = {}
+    thin: list[str] = []
+    for name in contested:
+        call = calls.get(spec.favours[name])
+        if call is None or call.coverage_pct < spec.min_coverage:
+            thin.append(name)
+            continue
+        scored[name] = call.identity_pct
+    if len(scored) < 2:
+        label = "/".join(contested)
+        reason = (
+            f"{label} not separated: the discriminator is present for"
+            f" {', '.join(sorted(scored)) or 'neither group'} only"
+        )
+        if thin:
+            reason += f" ({', '.join(thin)} marker under {spec.min_coverage:.0f} % coverage)"
+        return _DiscriminatorResult(family_call, [reason])
+    ranked = sorted(scored.items(), key=lambda item: item[1], reverse=True)
+    (best, best_identity), (runner_up, runner_identity) = ranked[0], ranked[1]
+    gap = best_identity - runner_identity
+    if gap < spec.min_gap_pct:
+        return _DiscriminatorResult(
+            family_call,
+            [
+                f"{best}/{runner_up} not separated: {spec.note or 'discriminator'}"
+                f" gap {gap:.2f} pp below {spec.min_gap_pct:.2f}"
+            ],
+        )
+    return _DiscriminatorResult(
+        replace(family_call, name=best, ties=(best,)),
+        [f"{best} over {runner_up}: {spec.note or 'discriminator'} gap {gap:.2f} pp"],
+    )
+
+
 def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:
     """Ranked antigen families, then the formula table."""
     control = _control_present(calls, document)
@@ -531,6 +591,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         family.key: _family_call(family, calls, document) for family in document.antigens
     }
     o = resolved.get("o", empty)
+    discriminator = _discriminate_o(o, calls, document)
     h1 = resolved.get("h1", empty)
     h2 = resolved.get("h2", empty)
     components = tuple(
@@ -555,6 +616,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             confidence="low",
             notes=("control gene absent",),
         )
+    if discriminator is not None:
+        o = discriminator.family
+        notes[0] = f"formula {o.name or '-'}:{h1.name or '-'}:{h2.name or '-'}"
+        notes.extend(discriminator.notes)
     o_names = tuple(
         entry.name for family in document.antigens if family.key == "o" for entry in family.entries
     )

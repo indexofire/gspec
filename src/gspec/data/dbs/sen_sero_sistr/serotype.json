@@ -11399,20 +11399,6 @@
         "[f],g,[t]"
       ],
       [
-        "f,g,m,t",
-        "m,t",
-        "g,t",
-        "g,m,t",
-        "g,m,[t]",
-        "g,m,[s],t",
-        "[g],m,t",
-        "g,[m],t",
-        "g,m,[s],t",
-        "g,m,[s],[t]",
-        "g,[m],[s],[t]",
-        "[f],g,[t]"
-      ],
-      [
         "g,m,s,t",
         "g,[m],[s],[t]",
         "g,[m],[s],t",
@@ -11426,37 +11412,6 @@
         "g,[m],s,t",
         "g,m,[s],[t]",
         "g,[m],t"
-      ],
-      [
-        "g,m",
-        "-",
-        "g,m,[p],s",
-        "g,m,[s]",
-        "g,m,[t]",
-        "g,[m],[s],[t]",
-        "g,[m],[s],t",
-        "g,m,[s],[t]",
-        "g,m,q",
-        "g,m,s",
-        "g,p,s",
-        "g,p,u",
-        "g,s,q",
-        "[f],g,[t]"
-      ],
-      [
-        "[f],g,[t]",
-        "f,g",
-        "f,g,[s]",
-        "f,g,s",
-        "f,g,[t]",
-        "[f],g,[t]",
-        "f,g,t",
-        "g,t",
-        "[f],g,[t]",
-        "f,g,[s]",
-        "f,g,[t]",
-        "f,g,s",
-        "g,m"
       ],
       [
         "[g,t]",
@@ -11481,6 +11436,44 @@
         "[e,n,x]",
         "e,n,x,[z15]",
         "[e,n,x,z15]"
+      ],
+      [
+        "-",
+        "[f],g,[t]",
+        "g,[m],[s],[t]",
+        "g,[m],[s],t",
+        "g,m",
+        "g,m,[p],s",
+        "g,m,[s]",
+        "g,m,[s],[t]",
+        "g,m,[t]",
+        "g,m,q",
+        "g,m,s",
+        "g,p",
+        "g,p,s",
+        "g,p,u",
+        "g,q",
+        "g,s,q"
+      ],
+      [
+        "[f],g,[t]",
+        "[g],m,t",
+        "f,g",
+        "f,g,[s]",
+        "f,g,[t]",
+        "f,g,m,t",
+        "f,g,s",
+        "f,g,t",
+        "g,[m],[s],[t]",
+        "g,[m],t",
+        "g,m",
+        "g,m,[s],[t]",
+        "g,m,[s],t",
+        "g,m,[t]",
+        "g,m,t",
+        "g,t",
+        "i",
+        "m,t"
       ]
     ],
     "h2": [
@@ -11522,8 +11515,21 @@
         "l,z28",
         "l,v",
         "l,w"
+      ],
+      [
+        "z35",
+        "z52"
       ]
     ]
+  },
+  "o_discriminator": {
+    "favours": {
+      "D1": "o_disc_D1",
+      "A": "o_disc_A"
+    },
+    "min_gap_pct": 0.5,
+    "min_coverage": 60.0,
+    "note": "The A (O:2) versus D1 (O:9) discriminator: rfbS, whose paratose/tyvelose polymorphism is the only sequence difference between the two serogroups' rfb clusters. A SNP-level marker, so the pair only decides when the identity gap is decisive."
   },
   "fallback": "Not Salmonella",
   "unresolved": "Salmonella subsp. enterica (no antigen set resolved)",

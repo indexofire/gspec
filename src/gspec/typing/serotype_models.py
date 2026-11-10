@@ -188,6 +188,25 @@ class SerotypeFormula(BaseModel, frozen=True):
     serovar: str = Field(min_length=1)
 
 
+class ODiscriminator(BaseModel, frozen=True):
+    """Optional SNP-level tie-breaker for the O family (``gspec.serotype/2``).
+
+    Some serogroups cannot be separated by their antigen references at all: A
+    (O:2) and D1 (O:9) share the rfb cluster and differ only in `rfbS`, whose
+    alleles are 99.3 % identical over the gene (a single SNP in the 5' 609 bp
+    SeqSero2 uses). Such a marker only speaks when the gap is decisive, so the
+    document carries the floor and the engine stays with the ambiguity below it.
+    """
+
+    #: O-family antigen name -> the gene id that supports it.
+    favours: dict[str, str]
+    #: Minimum identity gap, in percentage points, between the two markers.
+    min_gap_pct: float = Field(default=0.5, ge=0.0, le=100.0)
+    #: Both markers must be present at least this well for the gap to mean anything.
+    min_coverage: float = Field(default=60.0, ge=0.0, le=100.0)
+    note: str = ""
+
+
 class SerotypeDocumentV2(BaseModel, frozen=True):
     """gspec.serotype/2 — ranked antigen families plus the formula table."""
 
@@ -226,6 +245,9 @@ class SerotypeDocumentV2(BaseModel, frozen=True):
     similarity_groups: dict[Literal["o", "h1", "h2"], tuple[tuple[str, ...], ...]] = Field(
         default_factory=dict
     )
+    #: SNP-level tie-breaker between serogroups whose references cannot separate
+    #: them (see :class:`ODiscriminator`).
+    o_discriminator: ODiscriminator | None = None
     fallback: str = "Not Salmonella"
     unresolved: str = "Salmonella subsp. enterica (no antigen set resolved)"
     partial: str = "Salmonella {formula} (serovar not in the formula table)"
@@ -311,6 +333,7 @@ def validate_serotype_references(document: AnySerotypeDocument, gene_ids: frozen
 
 __all__ = [
     "SEROTYPE_FILENAME",
+    "ODiscriminator",
     "SerotypeDocument",
     "SerotypeRule",
     "load_serotype",

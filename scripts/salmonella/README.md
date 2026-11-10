@@ -226,7 +226,7 @@ Corpora, truth from `sistr_cmd` 1.1.3:
 
 | corpus | exact | contains truth | before this work |
 | --- | --- | --- | --- |
-| 304 in-house Salmonella assemblies (25/26SAL) | 26.6 % | **99.3 %** | 25 % (8 genomes) |
+| 304 in-house Salmonella assemblies (25/26SAL) | 25.7 % | **99.7 %** | 25 % (8 genomes) |
 | 8 RefSeq complete genomes | 0 | **7/8** | 2/8 |
 | 8 `26SAL` assemblies with hand-checked truth | 3/8 | **7/8** | 2/8 |
 
@@ -304,6 +304,51 @@ between flagellin alleles, not a duplicated reference. With the guard,
 `26SAL0084` reports `l,v` for H1 and `1,7` for H2 (the residual `1,2` vs `1,7` gap
 is the cross-labelled-reference problem, 2.8 points apart), and the 304-genome
 corpus stays at 99.3 %.
+
+## Curated O9/O2 discriminator (public-domain, own extraction)
+
+`wzx`/`wzy` cannot separate serogroup A (O:2) from D1 (O:9): the two share the rfb
+machinery and differ in `rfbS`, the paratose/tyvelose epimerase. Measured on the
+references: the alleles are 99.29 % identical over 840 bp, and SeqSero2's `tyr-O-9`
+marker turns out to be exactly the 5' 609 bp of `rfbS`, where the two differ by a
+single SNP (99.84 %).
+
+`build_o_discriminators.py` extracts that pair from two NCBI RefSeq annotations —
+`NC_003198.1` (Typhi CT18, O:9/D1) and `NC_006511.1` (Paratyphi A ATCC 9150,
+O:2/A), both public domain — records the provenance, and writes
+`scripts/salmonella/o_discriminators.json`. `import_upstream.py --o-discriminators`
+adds the two sequences as standalone records (never as antigen entries, so they
+cannot widen a candidate list) and writes an `o_discriminator` block into
+`serotype.json`.
+
+The engine only consults them when the O tie actually spans their names, and only
+when the gap is decisive: `min_gap_pct` is 0.5, because a partial locus shows a few
+tenths of a point (measured 0.3 on a 344 bp fragment) and that is noise. On
+`26SAL0084` the gap was 0.60 pp and the marker chose D1 over A — the same serogroup
+SeqSero2 reported.
+
+## Systematic cross-labelled references
+
+`audit_cross_labels.py` finds upstream references that carry two antigen labels by
+comparing each antigen's representative k-mer set (containment ≥ 0.98 of the
+shorter one). On the SISTR panel it reports five classes:
+
+```
+h1: g,m,q == g,q     g,p == g,p,s == g,p,u     g,t == i
+h2: z35 == z52
+```
+
+These are folded into the document's `similarity_groups`
+(`import_upstream.py --cross-labels`), so both names' rows stay reachable and the
+answer is an honest ambiguity instead of whichever label won on bitscore. The audit
+also flagged a record whose antigen name is empty (`h1__f_g_t`), which the merge
+skips.
+
+The `1,2` versus `1,7` case is **not** cross-labelling: k-mer containment between
+them is 0.80, i.e. genuinely different antigens. A genome whose `fljB` matches
+`1,7` at 99.61 % and `1,2` at 96.83 % is therefore a *reference diversity* gap — the
+`1,2` pool does not carry that allele — and the fix is more `1,2` references, not a
+merger.
 
 ## Case study: a serogroup lost to an assembly break (26SAL0084)
 

@@ -1,0 +1,76 @@
+{
+  "schema": "gspec.cross_labels/1",
+  "containment_floor": 0.98,
+  "min_shared_kmers": 200,
+  "groups": {
+    "h1": [
+      [
+        "",
+        ",f,g,t"
+      ],
+      [
+        "g,m,q",
+        "g,q"
+      ],
+      [
+        "g,p",
+        "g,p,s",
+        "g,p,u"
+      ],
+      [
+        "g,t",
+        "i"
+      ]
+    ],
+    "h2": [
+      [
+        "z35",
+        "z52"
+      ]
+    ]
+  },
+  "pairs": [
+    {
+      "family": "h1",
+      "first": "",
+      "second": ",f,g,t",
+      "containment": 1.0,
+      "shared_kmers": 1501
+    },
+    {
+      "family": "h2",
+      "first": "z35",
+      "second": "z52",
+      "containment": 1.0,
+      "shared_kmers": 1435
+    },
+    {
+      "family": "h1",
+      "first": "g,m,q",
+      "second": "g,q",
+      "containment": 0.9819,
+      "shared_kmers": 1465
+    },
+    {
+      "family": "h1",
+      "first": "g,p",
+      "second": "g,p,s",
+      "containment": 0.9819,
+      "shared_kmers": 1465
+    },
+    {
+      "family": "h1",
+      "first": "g,p",
+      "second": "g,p,u",
+      "containment": 0.9819,
+      "shared_kmers": 1465
+    },
+    {
+      "family": "h1",
+      "first": "g,t",
+      "second": "i",
+      "containment": 0.9819,
+      "shared_kmers": 1465
+    }
+  ]
+}

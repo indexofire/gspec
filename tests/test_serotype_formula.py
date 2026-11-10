@@ -521,3 +521,78 @@ def test_a_divergent_partial_hit_is_still_rejected() -> None:
     }
     call = evaluate_serotype(calls, _document())
     assert "formula -:g,m:-" in call.notes
+
+
+def test_the_discriminator_settles_a_serogroup_the_references_cannot() -> None:
+    """Given O:2 and O:9 at the same score, When rfbS separates them, Then the
+    call follows the marker (SeqSero2's `tyr` comparison, curated from RefSeq)."""
+    document = _document(
+        antigens=[
+            {
+                "key": "o",
+                "entries": [
+                    {"name": "A", "genes": ["o_A"]},
+                    {"name": "D1", "genes": ["o_D1"]},
+                ],
+            },
+            {"key": "h1", "entries": [{"name": "g,m", "genes": ["h1_gm"]}]},
+            {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+        ],
+        formulas=[
+            {"o": "A", "h1": "g,m", "h2": "-", "serovar": "Paratyphi A"},
+            {"o": "D1", "h1": "g,m", "h2": "-", "serovar": "Enteritidis"},
+        ],
+        o_discriminator={
+            "favours": {"A": "o_disc_A", "D1": "o_disc_D1"},
+            "min_gap_pct": 0.5,
+            "min_coverage": 60.0,
+        },
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_A": _call("o_A", identity=99.4),
+        "o_D1": _call("o_D1", identity=99.3),
+        "o_disc_A": _call("o_disc_A", identity=99.2),
+        "o_disc_D1": _call("o_disc_D1", identity=100.0),
+        "h1_gm": _call("h1_gm"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Enteritidis"
+    assert any("D1 over A" in note for note in call.notes)
+
+
+def test_a_snp_level_gap_without_a_marker_stays_ambiguous() -> None:
+    """A partial locus shows a few tenths of a point: that is noise, so the
+    marker abstains and the ambiguity stays visible."""
+    calls = {
+        "invA": _call("invA"),
+        "o_A": _call("o_A", identity=99.4),
+        "o_D1": _call("o_D1", identity=99.3),
+        "o_disc_A": _call("o_disc_A", identity=99.9, coverage=30.0),
+        "o_disc_D1": _call("o_disc_D1", identity=100.0, coverage=30.0),
+        "h1_gm": _call("h1_gm"),
+    }
+    document = _document(
+        antigens=[
+            {
+                "key": "o",
+                "entries": [
+                    {"name": "A", "genes": ["o_A"]},
+                    {"name": "D1", "genes": ["o_D1"]},
+                ],
+            },
+            {"key": "h1", "entries": [{"name": "g,m", "genes": ["h1_gm"]}]},
+            {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+        ],
+        formulas=[
+            {"o": "A", "h1": "g,m", "h2": "-", "serovar": "Paratyphi A"},
+            {"o": "D1", "h1": "g,m", "h2": "-", "serovar": "Enteritidis"},
+        ],
+        o_discriminator={
+            "favours": {"A": "o_disc_A", "D1": "o_disc_D1"},
+            "min_gap_pct": 0.5,
+            "min_coverage": 60.0,
+        },
+    )
+    call = evaluate_serotype(calls, document)
+    assert any("not separated" in note for note in call.notes)

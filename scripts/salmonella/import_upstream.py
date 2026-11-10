@@ -48,6 +48,7 @@ import sys
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
@@ -385,6 +386,63 @@ def _write_bundle_metadata(
     )
 
 
+def _merge_cross_labels(
+    groups: dict[str, list[list[str]]], cross_labels: Path
+) -> dict[str, list[list[str]]]:
+    """Fold audited cross-labelled classes into the similarity groups.
+
+    A pair of labels that cannot be told apart by k-mer containment (`g,q` versus
+    `g,m,q`, `i` versus `g,t`) must land in one widening class, otherwise the
+    top-scoring name's rows are the only ones reachable and a genome carrying the
+    sibling name loses its serovar rows entirely.
+    """
+    audited = json.loads(cross_labels.read_text(encoding="utf-8"))
+    added = 0
+    for family, classes in audited["groups"].items():
+        existing = [list(group) for group in groups.get(family, [])]
+        for component in classes:
+            members = [name for name in component if name]
+            if len(members) < 2:
+                continue
+            overlapped = [group for group in existing if set(group) & set(members)]
+            merged = set(members)
+            for group in overlapped:
+                merged.update(group)
+                existing.remove(group)
+            existing.append(sorted(merged))
+            added += 1
+        groups[family] = existing
+    print(f"  cross-labelled classes merged: {added}")
+    return groups
+
+
+def _add_o_discriminators(
+    document: Path,
+    markers: dict[str, dict[str, list[str]]],
+    pairs: list[tuple[str, str, str]],
+) -> dict[str, object]:
+    """Add the curated O9/O2 marker pair and return its ``serotype/2`` block.
+
+    The markers are NOT antigen entries: they must never widden the O family's
+    candidate list or be reported as an antigen. They live as standalone records
+    whose gene ids the document points at, and the engine only consults them when
+    the O tie actually spans their names.
+    """
+    spec = json.loads(document.read_text(encoding="utf-8"))
+    favours: dict[str, str] = {}
+    for reference in spec["references"]:
+        gene = f"o_disc_{reference['group']}"
+        pairs.append((gene, f"discriminator:{reference['group']}", reference["sequence"]))
+        for antigen in spec["favours"][reference["group"]]:
+            favours[antigen] = gene
+    return {
+        "favours": favours,
+        "min_gap_pct": spec["min_gap"],
+        "min_coverage": 60.0,
+        "note": spec["description"],
+    }
+
+
 def _write_database(
     *,
     name: str,
@@ -395,6 +453,7 @@ def _write_database(
     formulas: list[dict[str, str]],
     dest: Path,
     similarity_groups: dict[str, list[list[str]]] | None = None,
+    o_discriminator: dict[str, object] | None = None,
 ) -> None:
     """Write ``sequences`` + ``serotype.json`` + ``info.json`` for one database."""
     dest.mkdir(parents=True, exist_ok=True)
@@ -418,6 +477,7 @@ def _write_database(
         "antigens": families,
         "formulas": formulas,
         **({"similarity_groups": similarity_groups} if similarity_groups else {}),
+        **({"o_discriminator": o_discriminator} if o_discriminator else {}),
         "fallback": "Not Salmonella",
         "unresolved": "Salmonella subsp. enterica (no antigen set resolved)",
         "partial": "Salmonella {formula} (serovar not in the formula table)",
@@ -657,6 +717,8 @@ def import_sistr(
     extra_h_from: Path | None = None,
     kmer_k: int = 0,
     collapse_floor: float = REFERENCE_IDENTITY_FLOOR,
+    o_discriminators: Path | None = None,
+    cross_labels: Path | None = None,
 ) -> None:
     antigen_dir = source / "antigens" if (source / "antigens").is_dir() else source
     files = sorted(antigen_dir.glob("*.fasta"))
@@ -717,8 +779,22 @@ def import_sistr(
     sequences = {gene: sequence for gene, _, sequence in pairs}
     markers, kept = _collapse_references(markers, sequences, floor=collapse_floor)
     markers, pairs = _renumber(markers, kept)
+    # After the renumber: the discriminators are standalone records, not antigen
+    # alleles, so the collapse and the allele renumbering must not see them.
+    discriminator = (
+        _add_o_discriminators(o_discriminators, markers, pairs)
+        if o_discriminators is not None
+        else None
+    )
+    if discriminator is not None:
+        print(
+            f"  O discriminator: {len(cast(dict[str, str], discriminator['favours']))}"
+            f" group(s), min gap {discriminator['min_gap_pct']} pp"
+        )
     rows = _sistr_formulas(table, subspecies=subspecies)
     groups = json.loads(SIMILARITY_GROUPS.read_text(encoding="utf-8"))
+    if cross_labels is not None:
+        groups = _merge_cross_labels(groups, cross_labels)
     rows, dropped_serovars = _drop_unreachable(markers, rows, groups=groups)
     _report_reachability(markers, rows, groups=groups)
     if dropped_serovars:
@@ -736,6 +812,7 @@ def import_sistr(
         formulas=rows,
         dest=dest,
         similarity_groups=groups,
+        o_discriminator=discriminator,
     )
     if kmer_k:
         _write_kmerdb(
@@ -899,6 +976,23 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--cross-labels",
+        type=Path,
+        help=(
+            "SISTR only: gspec.cross_labels/1 document from audit_cross_labels.py;"
+            " its classes are merged into the document's similarity_groups"
+        ),
+    )
+    parser.add_argument(
+        "--o-discriminators",
+        type=Path,
+        help=(
+            "SISTR only: gspec.o_discriminators/1 document (built by"
+            " build_o_discriminators.py) whose marker pair separates serogroups the"
+            " antigen references cannot, e.g. A (O:2) from D1 (O:9)"
+        ),
+    )
+    parser.add_argument(
         "--collapse-identity",
         type=float,
         default=REFERENCE_IDENTITY_FLOOR,
@@ -930,6 +1024,8 @@ def main(argv: list[str] | None = None) -> int:
             extra_h_from=args.extra_h_from,
             kmer_k=args.kmerdb,
             collapse_floor=args.collapse_identity,
+            o_discriminators=args.o_discriminators,
+            cross_labels=args.cross_labels,
         )
     else:
         if args.formulas is None:
