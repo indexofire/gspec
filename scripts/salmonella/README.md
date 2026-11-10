@@ -279,6 +279,34 @@ above) and fewer wrong-antigen calls on genomes whose competing antigens lead to
 *disjoint* serovar sets — e.g. `fljB` `1,6` vs `1,7`, which now resolves
 (`24SAL0292` -> `London|Winterthur`, matching SISTR's own set).
 
+## Case study: a serogroup lost to an assembly break (26SAL0084)
+
+`26SAL0084` came out as `-:l,v:l,v` while SeqSero2 reported `9:l,v:1,2`
+(Mendoza). Both failures were checked against the references directly, and
+**neither needs extra database sequence**:
+
+- **O group absent.** Aligning SISTR's `wzx` D1 references to the genome gives
+  100 %/99.6 % identity — but in two blocks of 409 bp and 266 bp, on
+  `contig00348` and `contig00291`. The `rfb` cluster is repeat-rich and this
+  short-read assembly broke it in two, so the gene's union coverage is 52 % and
+  the panel's 60 % screen floor erased it. The reference is fine; the *assembly*
+  is fragmented. Fixes landed: the panel screens at `mincov 45` and lets the
+  serotype document decide presence, and `gspec.serotype/2` gained a
+  near-identity partial rule (`partial_coverage_floor` 45 /
+  `partial_identity_floor` 95) that accepts a truncated hit **and ranks it by the
+  identity it shows**, because truncation is an artefact rather than evidence of
+  absence. A partial hit can never be perfect.
+- **H2 near-miss, not a gap.** The genome matches the panel's `h2_1_2` alleles at
+  98.6 % over the full gene, so the right allele is already in the pool. It loses
+  to `l,v` at 99.67 % and `1,7` at 99.61 % — cross-labelled upstream references
+  one SNP apart, 1.07 points above the correct allele, i.e. just outside the
+  document's 0.01 `margin`. SISTR gets this genome wrong the same way (it also
+  reported `l,v`), which is what a margin calibration can and cannot fix.
+
+The lesson recorded here: before adding reference sequence, check whether the
+genome already matches one at high identity — an assembly break and a
+cross-labelled sibling both look like "no hit" from the outside.
+
 ## The union evidence model and paralogues
 
 `coverage: "union"` sums a reference's HSP blocks, which is what a divergent or

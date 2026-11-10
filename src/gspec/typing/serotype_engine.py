@@ -22,6 +22,21 @@ def _present(call: GeneCall | None, coverage: float, identity: float) -> bool:
     return call is not None and call.coverage_pct >= coverage and call.identity_pct >= identity
 
 
+def _partial_evidence(call: GeneCall, document: SerotypeDocumentV2) -> bool:
+    """A near-identical but truncated hit: the assembly broke the locus.
+
+    Only the second (weaker) acceptance rule qualifies, and only when the
+    document enables it; such a hit still ranks below a full-length one because
+    the score is identity x coverage, and it can never be perfect.
+    """
+    if document.partial_coverage_floor <= 0:
+        return False
+    return (
+        call.coverage_pct >= document.partial_coverage_floor
+        and call.identity_pct >= document.partial_identity_floor
+    )
+
+
 def _evidence(call: GeneCall) -> float:
     """The ranking score: identity x coverage, in [0, 1].
 
@@ -29,6 +44,22 @@ def _evidence(call: GeneCall) -> float:
     and a typing scheme order competing alleles identically.
     """
     return (call.identity_pct / 100.0) * (call.coverage_pct / 100.0)
+
+
+def _antigen_score(call: GeneCall, document: SerotypeDocumentV2) -> float:
+    """How strongly one allele supports its antigen.
+
+    Usually identity x coverage. A hit that only qualifies through the partial
+    rule is truncated by the assembly, not by nature, so it is ranked by the
+    identity it does show — otherwise a 99.85 %-identical 52 %-covered `wzx`
+    loses to a 95 %-identical full-length cross-reactive sibling and the
+    serogroup flips (measured on a real D1 genome). It still cannot be perfect.
+    """
+    if _partial_evidence(call, document) and not _present(
+        call, document.coverage_floor, document.identity_floor
+    ):
+        return call.identity_pct / 100.0
+    return _evidence(call)
 
 
 def _outranks(
@@ -131,6 +162,19 @@ def _most_specific(
 
 
 @dataclass(frozen=True)
+class _Ranked:
+    """One antigen's claim on a family: score, supporting alleles, sketch, length."""
+
+    name: str
+    score: float
+    genes: tuple[str, ...]
+    sketch: float | None
+    #: True when the supporting hit cleared the strict floors (a partial hit is
+    #: truncated by the assembly, and must not be trusted to the sketch).
+    full: bool
+
+
+@dataclass(frozen=True)
 class _FamilyCall:
     """One family's decision — the mirror of SISTR's prediction record.
 
@@ -164,53 +208,50 @@ def _family_call(
     family ambiguous (None), which is how near-identical alleles are pinned
     down — SeqSero2 compares two such scores by hand, gspec by the margin.
     """
-    scored: list[tuple[float, str, tuple[str, ...], float | None]] = []
+    scored: list[_Ranked] = []
     for entry in family.entries:
         best = 0.0
         winners: tuple[str, ...] = ()
         sketch: float | None = None
+        full_length = False
         for gene in entry.genes:
             call = calls.get(gene)
-            if not _present(call, document.coverage_floor, document.identity_floor):
+            if call is None:
                 continue
-            assert call is not None
-            score = _evidence(call)
+            complete = _present(call, document.coverage_floor, document.identity_floor)
+            if not (complete or _partial_evidence(call, document)):
+                continue
+            score = _antigen_score(call, document)
             if call.sketch_pct is not None and (sketch is None or call.sketch_pct > sketch):
                 sketch = call.sketch_pct
             if score > best:
-                best, winners = score, (gene,)
+                best, winners, full_length = score, (gene,), complete
             elif score == best:
                 winners += (gene,)
+                full_length = full_length or complete
         if best > 0.0:
-            scored.append((best, entry.name, winners, sketch))
+            scored.append(
+                _Ranked(name=entry.name, score=best, genes=winners, sketch=sketch, full=full_length)
+            )
     if not scored:
         return _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
-    scored.sort(key=lambda item: item[0], reverse=True)
-    names = {entry_name for _, entry_name, _, _ in scored}
-    cutoff = scored[0][0] - document.margin
-    tied: list[tuple[float, str, tuple[str, ...], float | None]] = [
-        item for item in scored if item[0] >= cutoff
-    ]
-    tied = _sketch_break(tied)
-    best_score, name, winners, _ = tied[0]
-    names_in_ties: list[str] = []
-    for _, entry_name, _, _ in tied:
-        if entry_name not in names_in_ties:
-            names_in_ties.append(entry_name)
-    ties = tuple(names_in_ties)
+    scored.sort(key=lambda item: item.score, reverse=True)
+    names = {item.name for item in scored}
+    cutoff = scored[0].score - document.margin
+    tied = _sketch_break([item for item in scored if item.score >= cutoff])
+    best = tied[0]
+    ties = tuple(dict.fromkeys(item.name for item in tied))
     return _FamilyCall(
-        name=name,
-        score=best_score,
-        genes=winners,
-        perfect=best_score >= 1.0 and len(names) == 1,
+        name=best.name,
+        score=best.score,
+        genes=best.genes,
+        perfect=best.score >= 1.0 and len(names) == 1,
         ambiguous=len(ties) > 1,
         ties=ties,
     )
 
 
-def _sketch_break(
-    tied: list[tuple[float, str, tuple[str, ...], float | None]],
-) -> list[tuple[float, str, tuple[str, ...], float | None]]:
+def _sketch_break(tied: list[_Ranked]) -> list[_Ranked]:
     """Narrow a margin tie with the anchored allele sketch, when it decides.
 
     Alignment cannot separate alleles that differ by a SNP under a gapped HSP
@@ -223,16 +264,23 @@ def _sketch_break(
     """
     if len(tied) < 2:
         return tied
-    sketches = [item[3] for item in tied]
+    if any(not item.full for item in tied):
+        # A truncated hit's window covers only part of the allele, so its
+        # containment tracks coverage, not allele identity: the sketch would
+        # reward whichever antigen the assembly happened to leave intact. Real
+        # case: `wzx` A and D1 both truncated at ~52 % of the same window, where
+        # a sketch decided A on a 0.15-point identity difference.
+        return tied
+    sketches = [item.sketch for item in tied]
     if any(sketch is None for sketch in sketches):
         return tied
     top = max(sketch for sketch in sketches if sketch is not None)
-    decided = [item for item in tied if (item[3] or 0.0) >= top - 100.0 * SKETCH_MARGIN]
+    decided = [item for item in tied if (item.sketch or 0.0) >= top - 100.0 * SKETCH_MARGIN]
     if not decided:
         return tied
     # The sketch winner leads, so it names the family even when alignment ranked
     # it second: that is the whole point of the tiebreak.
-    return sorted(decided, key=lambda item: (item[3] or 0.0, item[0]), reverse=True)
+    return sorted(decided, key=lambda item: (item.sketch or 0.0, item.score), reverse=True)
 
 
 def _formula_keys(o: str, h1: str | None, h2: str | None) -> list[tuple[str, str, str]]:

@@ -359,7 +359,15 @@ def _write_bundle_metadata(
                 # Union coverage drops culling and aggregates per subject.
                 "contigs": {
                     "minid": 80.0,
-                    "mincov": 60.0,
+                    # Screen LOW and let the serotype document decide presence:
+                    # antigen genes sit in repeat-rich regions, so short-read
+                    # assemblies break them across contigs. A real D1 genome held
+                    # wzx at 99.85 % identity over 52 % union coverage (split
+                    # across contig00291/contig00348) and a 60 % screen floor
+                    # silently erased the serogroup. `serotype.json` carries the
+                    # strict floor plus a near-identity partial rule
+                    # (partial_coverage_floor/partial_identity_floor).
+                    "mincov": 45.0,
                     "coverage": "union",
                     "merge_fragments": False,
                     "dedup": "subject",

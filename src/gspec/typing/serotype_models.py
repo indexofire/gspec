@@ -201,6 +201,17 @@ class SerotypeDocumentV2(BaseModel, frozen=True):
     #: A reference allele counts only when it clears both floors.
     identity_floor: float = Field(default=80.0, ge=0.0, le=100.0)
     coverage_floor: float = Field(default=60.0, ge=0.0, le=100.0)
+    #: A SECOND, weaker acceptance rule for a locus the assembly failed to close.
+    #: Antigen genes sit in repeat-rich regions (the rfb cluster especially), so
+    #: short-read assemblies break them across contigs: a real D1 genome showed
+    #: `wzx` at 99.85 % identity over only 52 % union coverage, which the
+    #: coverage floor then discarded as absent. A near-identical partial hit is
+    #: evidence of fragmentation, not of absence, so it is accepted here — it
+    #: still scores below a full-length hit (the ranker multiplies identity by
+    #: coverage) and can never be perfect. Set ``partial_coverage_floor`` to 0 to
+    #: disable the second rule.
+    partial_coverage_floor: float = Field(default=45.0, ge=0.0, le=100.0)
+    partial_identity_floor: float = Field(default=95.0, ge=0.0, le=100.0)
     #: Two antigen candidates closer than this (on identity x coverage) are
     #: ambiguous. It must sit below the measured gap between near-identical
     #: alleles (O:2 vs O:9 differ by 0.8-1.5 %): the calibration knob.

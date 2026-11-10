@@ -488,3 +488,36 @@ def test_a_near_tie_inside_the_margin_widens_every_name() -> None:
     assert call.phenotype == "Newport"
     assert call.confidence == "low"  # the observed formula is not in the table
     assert any("widening" in note for note in call.notes)
+
+
+def test_a_high_identity_partial_hit_counts_as_assembled_breakage() -> None:
+    """A locus the assembly failed to close is evidence, not absence.
+
+    Real case: a D1 genome carried `wzx` at 99.85 % identity over 52 % union
+    coverage because the rfb cluster was split across two contigs; the coverage
+    floor discarded it and the serogroup vanished (SeqSero2 called O:9).
+    """
+    document = _document()
+    calls = {
+        "invA": _call("invA"),
+        "o_9": _call("o_9", coverage=52.0, identity=99.85),
+        "h1_gm": _call("h1_gm"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Enteritidis"
+    assert call.confidence == "low"  # truncated evidence is never perfect
+
+
+def test_a_divergent_partial_hit_is_still_rejected() -> None:
+    """The weaker rule needs near-identity: a 52 %-covered 85 % hit is noise.
+
+    The serogroup then stays undecided — the formula records ``-`` and the
+    lookup widens, which is the honest answer — instead of being pinned to 9.
+    """
+    calls = {
+        "invA": _call("invA"),
+        "o_9": _call("o_9", coverage=52.0, identity=85.0),
+        "h1_gm": _call("h1_gm"),
+    }
+    call = evaluate_serotype(calls, _document())
+    assert "formula -:g,m:-" in call.notes

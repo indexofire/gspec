@@ -57,6 +57,15 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **A truncated antigen hit is evidence, not absence.** Antigen genes sit in
+  repeat-rich regions, so short-read assemblies break them across contigs — a
+  real D1 genome carried `wzx` at 99.85 % identity over 52 % union coverage (split
+  over two contigs) and the panel's coverage floor erased the serogroup. Antigen
+  panels now screen at `mincov 45` and `gspec.serotype/2` carries a second,
+  near-identity acceptance rule (`partial_coverage_floor` 45,
+  `partial_identity_floor` 95) that ranks a truncated hit by the identity it
+  shows. A partial hit can never be perfect and never outranks a full-length
+  perfect one; set `partial_coverage_floor: 0` to disable the rule.
 - **Antigen panels break near-ties with an anchored allele sketch.** Antigen
   references are near-identical by design, so a family's alignment scores can sit
   inside the document's `margin` with the right allele second (measured: `fliC`

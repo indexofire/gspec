@@ -2,7 +2,7 @@
   "schema": "gspec.screen/2",
   "contigs": {
     "minid": 80.0,
-    "mincov": 60.0,
+    "mincov": 45.0,
     "coverage": "union",
     "merge_fragments": false,
     "dedup": "subject",
