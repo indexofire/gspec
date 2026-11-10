@@ -372,7 +372,7 @@ _PHASE_FAMILIES = ("h1", "h2")
 
 def _separate_phases(
     calls: Mapping[str, GeneCall], document: SerotypeDocumentV2
-) -> dict[str, GeneCall]:
+) -> tuple[dict[str, GeneCall], dict[str, tuple[str, ...]]]:
     """Keep one physical flagellin gene out of both phase families.
 
     SISTR's `fliC` and `fljB` pools both carry an `l,v` allele and the two are
@@ -390,45 +390,50 @@ def _separate_phases(
     costs 0.03).
     """
     if not any(family.key in _PHASE_FAMILIES for family in document.antigens):
-        return dict(calls)
+        return dict(calls), {}
     loci, _spans = _loci(calls, document)
     kept = dict(calls)
+    demoted: dict[str, list[str]] = {}
     for key, families in loci.items():
-        if family_a := families.get("h1"):
-            family_a_score, family_a_genes = family_a
-        else:
+        if "h1" not in families or "h2" not in families:
             continue
-        family_b = families.get("h2")
-        if family_b is None:
-            continue
-        family_b_score, family_b_genes = family_b
-        if not _same_antigen(calls, family_a_genes, family_b_genes):
+        family_a_score, family_a_genes, phase_a = families["h1"]
+        family_b_score, family_b_genes, phase_b = families["h2"]
+        if not _same_antigen(family_a_genes, family_b_genes):
             # Different antigens matched at one locus is ordinary cross-reactivity
             # between flagellin alleles, not a duplicated reference: leave it.
             continue
-        loser = _phase_loser(loci, key, ("h1", family_a_score), ("h2", family_b_score))
+        loser = _phase_by_ends(phase_a, phase_b) or _phase_loser(
+            loci, key, ("h1", family_a_score), ("h2", family_b_score)
+        )
         if loser is None:
             continue
         for gene in family_a_genes if loser == "h1" else family_b_genes:
             kept.pop(gene, None)
-    return kept
+            # The locus may only be one phase, but the antigen it named is still
+            # a lead: keep it as a low-confidence candidate instead of erasing it
+            # (measured: Braenderup's `e,h` references fit the `fljB` locus better
+            # than its own `fliC`, and deleting that name lost the serovar).
+            demoted.setdefault(loser, []).append(_antigen_name(gene))
+    return kept, {family: tuple(dict.fromkeys(names)) for family, names in demoted.items()}
 
 
 def _loci(
     calls: Mapping[str, GeneCall], document: SerotypeDocumentV2
 ) -> tuple[
-    dict[tuple[str, int], dict[str, tuple[float, list[str]]]],
+    dict[tuple[str, int], dict[str, tuple[float, list[str], float | None]]],
     dict[tuple[str, int], tuple[int, int]],
 ]:
     """Group each family's hits into loci.
 
     Returns ``(groups, spans)`` where a group is
-    ``(contig, first_start) -> family -> (best score, gene ids)`` and ``spans``
+    ``(contig, first_start) -> family -> (best score, gene ids, best phase)`` and
+    ``spans``
     maps the same key to the locus' interval. Two intervals on one contig that
     share more than ``SAME_LOCUS`` of the shorter one are the same physical gene.
     Hits without a locus (a frozen table source) are ignored.
     """
-    groups: dict[tuple[str, int], dict[str, tuple[float, list[str]]]] = {}
+    groups: dict[tuple[str, int], dict[str, tuple[float, list[str], float | None]]] = {}
     spans: dict[tuple[str, int], tuple[int, int]] = {}
     for gene, call in sorted(
         calls.items(), key=lambda item: (item[1].contig or "", item[1].start, item[1].end)
@@ -441,8 +446,10 @@ def _loci(
         spans[key] = (min(span_start, call.start), max(span_end, call.end))
         score = _antigen_score(call, document)
         bucket = groups.setdefault(key, {})
-        best, genes = bucket.get(family, (0.0, []))
-        bucket[family] = (max(best, score), [*genes, gene])
+        best, genes, phase = bucket.get(family, (0.0, [], None))
+        if call.phase_pct is not None and (phase is None or call.phase_pct > phase):
+            phase = call.phase_pct
+        bucket[family] = (max(best, score), [*genes, gene], phase)
     return groups, spans
 
 
@@ -459,8 +466,33 @@ def _locus_key(call: GeneCall, spans: Mapping[tuple[str, int], tuple[int, int]])
     return (call.contig, call.start)
 
 
+#: Below this score a family's surviving locus is too weak to justify erasing a
+#: phase-demoted antigen name (see `_evaluate_v2`).
+DEMOTED_SCORE_FLOOR = 0.9
+
+#: The end-based phase call needs this much separation (percentage points) to
+#: overrule the score ordering; below it the ends are as ambiguous as the middle.
+PHASE_END_GAP = 5.0
+
+
+def _phase_by_ends(phase_a: float | None, phase_b: float | None) -> str | None:
+    """Which family a contested locus really is, from the ends of the window.
+
+    `fliC` and `fljB` `l,v` alleles share ~99 % of their middle — which is why one
+    gene scores in both families — but differ at the 5'/3' ends (the head/tail
+    markers SeqSero2 uses). Each family's hits carry how well the locus' ends match
+    that family's own alleles, so the comparison is direct evidence rather than the
+    score ordering the marginal-gain rule has to infer from.
+    """
+    if phase_a is None or phase_b is None:
+        return None
+    if abs(phase_a - phase_b) < PHASE_END_GAP:
+        return None
+    return "h2" if phase_a > phase_b else "h1"
+
+
 def _phase_loser(
-    loci: Mapping[tuple[str, int], dict[str, tuple[float, list[str]]]],
+    loci: Mapping[tuple[str, int], dict[str, tuple[float, list[str], float | None]]],
     key: tuple[str, int],
     mine: tuple[str, float],
     theirs: tuple[str, float],
@@ -485,7 +517,7 @@ def _phase_loser(
     return my_family if mine_covered else their_family
 
 
-def _same_antigen(calls: Mapping[str, GeneCall], first: list[str], second: list[str]) -> bool:
+def _same_antigen(first: list[str], second: list[str]) -> bool:
     """Do both families name the SAME antigen at this locus?
 
     The guard exists for one duplication: SISTR's `fliC` and `fljB` pools both
@@ -494,20 +526,19 @@ def _same_antigen(calls: Mapping[str, GeneCall], first: list[str], second: list[
     `h2 e,n,z15`) are genuine cross-reactivity between flagellin alleles — the
     ranker handles that, and dropping either would lose the right name.
     """
-    mine = {_antigen_name(calls, gene) for gene in first}
-    theirs = {_antigen_name(calls, gene) for gene in second}
+    mine = {_antigen_name(gene) for gene in first}
+    theirs = {_antigen_name(gene) for gene in second}
     return bool(mine & theirs)
 
 
-def _antigen_name(calls: Mapping[str, GeneCall], gene: str) -> str:
+def _antigen_name(gene: str) -> str:
     """``h1_l_v__3`` -> ``l,v``."""
-    del calls  # the name lives in the gene id
     antigen = gene.rsplit("__", 1)[0]
     return antigen.partition("_")[2].replace("_", ",")
 
 
 def _best_elsewhere(
-    loci: Mapping[tuple[str, int], dict[str, tuple[float, list[str]]]],
+    loci: Mapping[tuple[str, int], dict[str, tuple[float, list[str], float | None]]],
     key: tuple[str, int],
     family: str,
 ) -> float:
@@ -585,11 +616,21 @@ def _discriminate_o(
 def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:
     """Ranked antigen families, then the formula table."""
     control = _control_present(calls, document)
-    calls = _separate_phases(calls, document)
+    calls, demoted = _separate_phases(calls, document)
     empty = _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
     resolved: dict[str, _FamilyCall] = {
         family.key: _family_call(family, calls, document) for family in document.antigens
     }
+    for family_key, extra in demoted.items():
+        call = resolved.get(family_key)
+        if call is None or not extra or call.score >= DEMOTED_SCORE_FLOOR:
+            continue
+        # The phase assignment is solid, but the family's own locus is weak: this
+        # is where erasing the demoted name loses the serovar (Braenderup's `e,h`
+        # references fit its fljB locus better than its own fliC, at 0.86). Keep the
+        # name as a candidate only while the remaining evidence is poor.
+        merged = tuple(dict.fromkeys((*call.ties, *extra)))
+        resolved[family_key] = replace(call, ties=merged, ambiguous=len(merged) > 1)
     o = resolved.get("o", empty)
     discriminator = _discriminate_o(o, calls, document)
     h1 = resolved.get("h1", empty)

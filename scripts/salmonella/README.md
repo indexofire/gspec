@@ -240,6 +240,17 @@ falls back to the formula: `C1:e,h:-` -> Braenderup and `F:f,g:-` -> Rissen. Bot
 look like SISTR failing to name (Rissen *is* `6,7:f,g:-`); they are recorded here
 rather than counted as wins.
 
+## Scripts
+
+| script | what it does |
+| --- | --- |
+| `import_upstream.py` | build a panel from SISTR/SeqSero2 (`--bundle`, `--kmerdb`, `--o-discriminators`, `--cross-labels`, `--extra-refs`) |
+| `build_o_discriminators.py` | extract the O9/O2 `rfbS` pair from RefSeq annotations |
+| `audit_cross_labels.py` | find references whose k-mer sets overlap across antigen labels |
+| `build_h_diversity.py` | extract novel H alleles from local assemblies |
+| `regress_serovar.py` | measure accuracy against `sistr --no-cgmlst -f tab` |
+| `sketch_tiebreak.py` | measure the anchored-sketch signal itself |
+
 ## Sketch tiebreak: shipped
 
 SISTR separates near-identical antigen evidence with cgMLST (330 core genes).
@@ -304,6 +315,45 @@ between flagellin alleles, not a duplicated reference. With the guard,
 `26SAL0084` reports `l,v` for H1 and `1,7` for H2 (the residual `1,2` vs `1,7` gap
 is the cross-labelled-reference problem, 2.8 points apart), and the 304-genome
 corpus stays at 99.3 %.
+
+## Phase affinity: which flagellin is in this locus
+
+The phase guard (see "Phase cross-talk" below) used to infer the phase from score
+ordering. The direct evidence is in the ends: `fliC` and `fljB` share ~99 % of their
+middle — that is why one gene scores in both pools — but their 5'/3' head and tail
+are conserved *within* a phase, which is exactly what SeqSero2's head/tail markers
+exploit.
+
+Screen now anchors a `phase_pct` on every H hit: the fraction of the locus' end
+k-mers (150 bp each side) found in **any** allele of that family. Measured on a real
+phase conflict (one locus, both pools): `fliC` 86.1 % against `fljB` 74.2 %, a
+12-point gap that names phase 1 outright. A same-antigen comparison gave only 5
+points — the family-wide comparison is the one that works, because the ends are
+shared across antigens of a phase.
+
+When a contested locus is reassigned, the losing family keeps the antigen **name**
+as a low-confidence candidate instead of erasing it, and only while its surviving
+locus is weak (< 0.9). That matters: Braenderup's `e,h` references fit its `fljB`
+locus at 91 % and its own `fliC` at 86 %, so deleting the demoted name dropped the
+correct serovar from the candidate list entirely.
+
+## Reference diversity: extracting new alleles (`--extra-refs`)
+
+A pool can be complete enough for rows to be reachable and still miss the variant a
+genome carries: one Mendoza genome's `fljB` matched `1,7` at 99.61 % and `1,2` at
+96.83 %, so the call landed on `1,7` while SeqSero2 (with its own reference set)
+said `1,2`. `build_h_diversity.py` extracts candidate alleles from assemblies by
+homology (no annotation), keeps only alleles not already represented (k-mer
+containment < 0.99 of an existing one), and writes `gspec.extra_refs/1`;
+`import_upstream.py --extra-refs` appends them. Measured on the 304-genome corpus:
+26 novel `1,2` alleles, panel 1435 -> 1461. `--bundle` is refused — an extracted
+allele is neither gspec-curated nor a redistributable dataset.
+
+That specific genome still reports `1,7`: its `fljB` is 99.61 % identical to a
+genuine `1,7` reference (verified 100 % against the upstream `1,7` record that
+produced it), so no `1,2` allele from this corpus outranks it. With SeqSero2 saying
+`1,2` and SISTR saying `l,v`, that genome's H2 is genuinely contested — recorded
+here rather than tuned away.
 
 ## Curated O9/O2 discriminator (public-domain, own extraction)
 

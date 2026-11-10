@@ -719,6 +719,7 @@ def import_sistr(
     collapse_floor: float = REFERENCE_IDENTITY_FLOOR,
     o_discriminators: Path | None = None,
     cross_labels: Path | None = None,
+    extra_refs: Path | None = None,
 ) -> None:
     antigen_dir = source / "antigens" if (source / "antigens").is_dir() else source
     files = sorted(antigen_dir.glob("*.fasta"))
@@ -776,6 +777,29 @@ def import_sistr(
             pairs.append((gene, antigen, sequence))
             added += 1
         print(f"  extra H references from {extra_h_from.name}: {added}")
+    if extra_refs is not None:
+        # Locally extracted alleles (build_h_diversity.py): they widen one
+        # antigen's reference diversity when upstream lacks the variant a genome
+        # carries. Never bundled — an extracted allele is neither gspec-curated
+        # nor a redistributable dataset, so `--bundle` is refused with them.
+        if bundle:
+            raise SystemExit(
+                "extracted alleles (--extra-refs) are local-only: they are neither"
+                " gspec-curated nor a redistributable upstream dataset (AGENTS.md §6)"
+            )
+        document = json.loads(extra_refs.read_text(encoding="utf-8"))
+        for reference in document["references"]:
+            family = str(reference["family"])
+            antigen = str(reference["antigen"])
+            genes = markers[family].setdefault(antigen, [])
+            gene = (
+                _gene_id(f"{family}_{antigen}")
+                if not genes
+                else f"{_gene_id(f'{family}_{antigen}')}__{len(genes) + 1}"
+            )
+            genes.append(gene)
+            pairs.append((gene, antigen, str(reference["sequence"])))
+        print(f"  extra references from {extra_refs.name}: {len(document['references'])}")
     sequences = {gene: sequence for gene, _, sequence in pairs}
     markers, kept = _collapse_references(markers, sequences, floor=collapse_floor)
     markers, pairs = _renumber(markers, kept)
@@ -976,6 +1000,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--extra-refs",
+        type=Path,
+        help=(
+            "gspec.extra_refs/1 document from build_h_diversity.py: additional"
+            " alleles for one antigen, extracted from local assemblies (local use"
+            " only; --bundle is refused)"
+        ),
+    )
+    parser.add_argument(
         "--cross-labels",
         type=Path,
         help=(
@@ -1026,6 +1059,7 @@ def main(argv: list[str] | None = None) -> int:
             collapse_floor=args.collapse_identity,
             o_discriminators=args.o_discriminators,
             cross_labels=args.cross_labels,
+            extra_refs=args.extra_refs,
         )
     else:
         if args.formulas is None:

@@ -97,6 +97,7 @@ def _rows_from_screen_json(label: str, text: str) -> list[ScreenRow]:
                     alignment_start_pct=None,
                     subject_len=subject_len,
                     sketch_pct=hit.sketch_pct,
+                    phase_pct=hit.phase_pct,
                     contig=hit.sequence,
                     start=hit.start,
                     end=hit.end,
@@ -177,6 +178,7 @@ def read_typing_input(paths: list[Path], stdin_text: str | None = None) -> Typin
                         alignment_start_pct=row.alignment_start_pct,
                         subject_len=row.subject_len,
                         sketch_pct=row.sketch_pct,
+                        phase_pct=row.phase_pct,
                         contig=row.contig,
                     )
                     for gene, row in per_gene.items()

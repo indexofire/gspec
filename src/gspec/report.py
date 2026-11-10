@@ -111,6 +111,11 @@ class Hit(BaseModel, frozen=True):
     # when the database ships k-mer sketches and the caller asked for it, so
     # every existing report stays byte-identical.
     sketch_pct: float | None = None
+    # phase affinity: how well this hit's window ENDS match its own family's
+    # alleles of the same antigen. `fliC` and `fljB` `l,v` alleles are ~99 %
+    # identical in the middle and differ at the ends, so comparing the two
+    # families' values tells which phase a contested locus is.
+    phase_pct: float | None = None
 
 
 def swap_dedup(

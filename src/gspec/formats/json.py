@@ -56,6 +56,8 @@ class HitDocument(BaseModel, frozen=True):
     # Anchored allele-sketch score (percent) — present only when the database
     # ships k-mer sketches and the screen defaults asked for it.
     sketch_pct: float | None = None
+    # Phase affinity (percent) — same opt-in as `sketch_pct`.
+    phase_pct: float | None = None
 
 
 class FileDocument(BaseModel, frozen=True):
@@ -131,6 +133,7 @@ def _hit_document(hit: Hit) -> HitDocument:
         product=hit.product,
         resistance=hit.function,
         sketch_pct=None if hit.sketch_pct is None else round(hit.sketch_pct, 2),
+        phase_pct=None if hit.phase_pct is None else round(hit.phase_pct, 2),
         merged=True if hit.merged else None,
         fragments=(
             [

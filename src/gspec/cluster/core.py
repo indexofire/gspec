@@ -84,6 +84,10 @@ class GeneCall(BaseModel, frozen=True):
     # that ship k-mer sketches produce it; it breaks near-ties that alignment
     # cannot (see `serotype_engine._family_call`).
     sketch_pct: float | None = None
+    # Phase affinity (0-100): how well a locus' ENDS match this family's alleles
+    # of the same antigen. `fliC` and `fljB` share the middle and differ at the
+    # ends, which is how a contested locus is assigned to its real phase.
+    phase_pct: float | None = None
     # The hit's locus, when the source knows it (screen JSON does): one physical
     # gene cannot be both fliC and fljB, so the phase families must not both
     # score the same interval (`serotype_engine._separate_phases`).

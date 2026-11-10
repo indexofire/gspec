@@ -44,6 +44,8 @@ class ScreenRow(NamedTuple):
     # Anchored allele-sketch score when the source carries one (a screen JSON
     # document does; a table cannot, the 15 columns are frozen).
     sketch_pct: float | None = None
+    # Wire the phase affinity alongside the sketch score (screen JSON only).
+    phase_pct: float | None = None
     # The hit's locus (screen JSON only; the frozen table has no coordinates).
     # Needed to keep one physical flagellin gene out of BOTH phase families.
     contig: str | None = None

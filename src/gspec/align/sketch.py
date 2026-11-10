@@ -36,6 +36,12 @@ from gspec.fasta import iter_fasta
 #: inside the gene; the padding keeps the k-mers that straddle it.
 WINDOW_PAD = 60
 
+#: Bases at each end of a hit's window used to classify its phase. `fliC` and
+#: `fljB` share their central region (that is why one gene can score in both
+#: families) but differ at the 5' and 3' ends, which is what SeqSero2's head/tail
+#: markers exploit.
+PHASE_END_BASES = 150
+
 #: How far apart two sketch scores must be before the sketch is allowed to
 #: decide a margin tie. 100 % containment of one allele against 95 % of another
 #: is a real call; two alleles both at ~100 % are indistinguishable by k-mers.
@@ -145,6 +151,40 @@ def window_kmers(
     return frozenset(codes)
 
 
+def end_kmers(
+    contigs: Mapping[str, str], sequence_field: str, start: int, end: int, k: int
+) -> frozenset[int]:
+    """The k-mers of a window's two ends, where the phase signal lives."""
+    codes: set[int] = set()
+    for contig in sequence_field.split(","):
+        sequence = contigs.get(contig)
+        if not sequence or end - start < 2 * PHASE_END_BASES:
+            continue
+        head = sequence[max(0, start) : start + PHASE_END_BASES + k]
+        tail = sequence[max(0, end - PHASE_END_BASES - k) : end]
+        codes |= count_sequence_kmers(head, k)
+        codes |= count_sequence_kmers(tail, k)
+    return frozenset(codes)
+
+
+def phase_affinity(ends: frozenset[int], sketches: Iterable[AlleleSketch]) -> float | None:
+    """How well a locus' ends look like ANY allele of this family.
+
+    The head and tail of a flagellin gene are conserved *within* a phase and differ
+    *between* phases, which is what SeqSero2's head/tail markers exploit — so the
+    comparison is family-wide, not antigen-specific. Measured on a real phase
+    conflict: one locus' ends matched the `fliC` pool at 0.861 (antigen `k`) and the
+    `fljB` pool at 0.742 (`l,v`), a 12-point gap that says phase 1 outright, while a
+    same-antigen comparison gave a 5-point gap.
+    """
+    if not ends:
+        return None
+    return max(
+        (len(ends & sketch.codes) / len(ends) for sketch in sketches),
+        default=None,
+    )
+
+
 def antigen_scores(
     window: frozenset[int],
     sketches: Iterable[AlleleSketch],
@@ -170,11 +210,14 @@ def antigen_scores(
 
 __all__ = [
     "MIN_SKETCH",
+    "PHASE_END_BASES",
     "SKETCH_MARGIN",
     "WINDOW_PAD",
     "AlleleSketch",
     "SketchIndex",
     "allele_sketches",
     "antigen_scores",
+    "end_kmers",
+    "phase_affinity",
     "window_kmers",
 ]

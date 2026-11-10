@@ -11,7 +11,13 @@ from pydantic import BaseModel
 
 from gspec.align.fragments import merge_fragment_hits, union_coverage_map, union_coverage_pct
 from gspec.align.gseek import engine, run_blast_gseek
-from gspec.align.sketch import allele_sketches, antigen_scores, window_kmers
+from gspec.align.sketch import (
+    allele_sketches,
+    antigen_scores,
+    end_kmers,
+    phase_affinity,
+    window_kmers,
+)
 from gspec.db.core import Database
 from gspec.errors import DependencyError, GspecError, InputError
 from gspec.fasta import iter_fasta
@@ -409,9 +415,17 @@ def _annotate_sketch(hits: list[Hit], query: Path, database: Database) -> list[H
         window = window_kmers(contigs, hit.sequence, hit.start, hit.end, index.k)
         antigen = hit.gene[len(family) + 1 :].replace("_", ",")
         score = antigen_scores(window, sketches).get(antigen)
-        annotated.append(
-            hit if score is None else hit.model_copy(update={"sketch_pct": 100 * score})
-        )
+        update: dict[str, float] = {}
+        if score is not None:
+            update["sketch_pct"] = 100 * score
+        if family in {"h1", "h2"}:
+            # Only the phase families need the end signal: `l,v` exists in both
+            # pools, and a locus's ends say which one it really belongs to.
+            ends = end_kmers(contigs, hit.sequence, hit.start, hit.end, index.k)
+            affinity = phase_affinity(ends, sketches)
+            if affinity is not None:
+                update["phase_pct"] = 100 * affinity
+        annotated.append(hit.model_copy(update=update) if update else hit)
     return annotated
 
 
