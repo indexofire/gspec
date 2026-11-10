@@ -51,7 +51,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1195
   },
   "o_K": {
    "of": "gspec|db=sen_sero_sistr|gene=o_K|acc=upstream:K|func=antigen",
@@ -102,7 +102,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1297
   },
   "o_D1": {
    "of": "gspec|db=sen_sero_sistr|gene=o_D1|acc=upstream:D1|func=antigen",
@@ -153,7 +153,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 108
   },
   "o_L": {
    "of": "gspec|db=sen_sero_sistr|gene=o_L|acc=upstream:L|func=antigen",
@@ -204,7 +204,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1195
   },
   "o_M": {
    "of": "gspec|db=sen_sero_sistr|gene=o_M|acc=upstream:M|func=antigen",
@@ -255,7 +255,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1291
   },
   "o_O": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O|acc=upstream:O|func=antigen",
@@ -306,7 +306,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1228
   },
   "o_O:58": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:58|acc=upstream:O:58|func=antigen",
@@ -357,7 +357,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1426
   },
   "o_E1": {
    "of": "gspec|db=sen_sero_sistr|gene=o_E1|acc=upstream:E1|func=antigen",
@@ -408,7 +408,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 512
   },
   "o_P": {
    "of": "gspec|db=sen_sero_sistr|gene=o_P|acc=upstream:P|func=antigen",
@@ -459,7 +459,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1216
   },
   "o_O:57": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:57|acc=upstream:O:57|func=antigen",
@@ -510,7 +510,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1534
   },
   "o_R": {
    "of": "gspec|db=sen_sero_sistr|gene=o_R|acc=upstream:R|func=antigen",
@@ -561,7 +561,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1399
   },
   "o_O:59": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:59|acc=upstream:O:59|func=antigen",
@@ -612,7 +612,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1522
   },
   "o_T": {
    "of": "gspec|db=sen_sero_sistr|gene=o_T|acc=upstream:T|func=antigen",
@@ -663,7 +663,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1233
   },
   "o_B": {
    "of": "gspec|db=sen_sero_sistr|gene=o_B|acc=upstream:B|func=antigen",
@@ -714,7 +714,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1267
   },
   "o_U": {
    "of": "gspec|db=sen_sero_sistr|gene=o_U|acc=upstream:U|func=antigen",
@@ -765,7 +765,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1318
   },
   "o_Z": {
    "of": "gspec|db=sen_sero_sistr|gene=o_Z|acc=upstream:Z|func=antigen",
@@ -816,7 +816,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1246
   },
   "o_O:51": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:51|acc=upstream:O:51|func=antigen",
@@ -867,7 +867,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1177
   },
   "o_O:55": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:55|acc=upstream:O:55|func=antigen",
@@ -918,7 +918,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1255
   },
   "o_C1": {
    "of": "gspec|db=sen_sero_sistr|gene=o_C1|acc=upstream:C1|func=antigen",
@@ -969,7 +969,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 665
   },
   "o_A": {
    "of": "gspec|db=sen_sero_sistr|gene=o_A|acc=upstream:A|func=antigen",
@@ -1020,7 +1020,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 165
   },
   "o_G": {
    "of": "gspec|db=sen_sero_sistr|gene=o_G|acc=upstream:G|func=antigen",
@@ -1071,7 +1071,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1213
   },
   "o_O:62": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:62|acc=upstream:O:62|func=antigen",
@@ -1122,7 +1122,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1180
   },
   "o_O:63": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:63|acc=upstream:O:63|func=antigen",
@@ -1173,7 +1173,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 919
   },
   "o_O:66": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:66|acc=upstream:O:66|func=antigen",
@@ -1224,7 +1224,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1231
   },
   "o_C2-C3": {
    "of": "gspec|db=sen_sero_sistr|gene=o_C2-C3|acc=upstream:C2-C3|func=antigen",
@@ -1275,7 +1275,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1315
   },
   "o_H": {
    "of": "gspec|db=sen_sero_sistr|gene=o_H|acc=upstream:H|func=antigen",
@@ -1326,7 +1326,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1318
   },
   "o_N": {
    "of": "gspec|db=sen_sero_sistr|gene=o_N|acc=upstream:N|func=antigen",
@@ -1377,7 +1377,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1366
   },
   "o_F": {
    "of": "gspec|db=sen_sero_sistr|gene=o_F|acc=upstream:F|func=antigen",
@@ -1428,7 +1428,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 747
   },
   "o_S": {
    "of": "gspec|db=sen_sero_sistr|gene=o_S|acc=upstream:S|func=antigen",
@@ -1479,7 +1479,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1261
   },
   "o_O:56": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:56|acc=upstream:O:56|func=antigen",
@@ -1530,7 +1530,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1465
   },
   "o_Y": {
    "of": "gspec|db=sen_sero_sistr|gene=o_Y|acc=upstream:Y|func=antigen",
@@ -1581,7 +1581,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1219
   },
   "o_I": {
    "of": "gspec|db=sen_sero_sistr|gene=o_I|acc=upstream:I|func=antigen",
@@ -1632,7 +1632,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1210
   },
   "o_O:61": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:61|acc=upstream:O:61|func=antigen",
@@ -1683,7 +1683,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1300
   },
   "o_O:65": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:65|acc=upstream:O:65|func=antigen",
@@ -1734,7 +1734,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1402
   },
   "o_Q": {
    "of": "gspec|db=sen_sero_sistr|gene=o_Q|acc=upstream:Q|func=antigen",
@@ -1785,7 +1785,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1315
   },
   "o_W": {
    "of": "gspec|db=sen_sero_sistr|gene=o_W|acc=upstream:W|func=antigen",
@@ -1836,7 +1836,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1279
   },
   "o_O63": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O63|acc=upstream:O63|func=antigen",
@@ -1887,7 +1887,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1255
   },
   "o_O:67": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:67|acc=upstream:O:67|func=antigen",
@@ -1938,7 +1938,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1867
   },
   "o_O:52": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:52|acc=upstream:O:52|func=antigen",
@@ -1989,7 +1989,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1165
   },
   "o_V": {
    "of": "gspec|db=sen_sero_sistr|gene=o_V|acc=upstream:V|func=antigen",
@@ -2040,7 +2040,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1108
   },
   "o_O:53": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:53|acc=upstream:O:53|func=antigen",
@@ -2091,7 +2091,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1210
   },
   "o_O:60": {
    "of": "gspec|db=sen_sero_sistr|gene=o_O:60|acc=upstream:O:60|func=antigen",
@@ -2142,7 +2142,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1240
   },
   "o_X": {
    "of": "gspec|db=sen_sero_sistr|gene=o_X|acc=upstream:X|func=antigen",
@@ -2193,7 +2193,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 1195
   },
   "o_E4": {
    "of": "gspec|db=sen_sero_sistr|gene=o_E4|acc=upstream:E4|func=antigen",
@@ -2244,7 +2244,7 @@
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 410
   },
   "o_D3": {
    "of": "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen",
@@ -2295,7 +2295,7 @@
     "gspec|db=sen_sero_sistr|gene=o_E4|acc=upstream:E4|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen"
    ],
-   "n": 0
+   "n": 918
   },
   "o_D2": {
    "of": "gspec|db=sen_sero_sistr|gene=o_D2|acc=upstream:D2|func=antigen",
@@ -2346,7 +2346,7 @@
     "gspec|db=sen_sero_sistr|gene=o_E4|acc=upstream:E4|func=antigen",
     "gspec|db=sen_sero_sistr|gene=o_D3|acc=upstream:D3|func=antigen"
    ],
-   "n": 0
+   "n": 92
   },
   "h1_e,n,x,z15": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_e_n_x_z15|acc=upstream:e,n,x,z15|func=antigen",
@@ -2413,7 +2413,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 119
   },
   "h1_e,n,x": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_e_n_x|acc=upstream:e,n,x|func=antigen",
@@ -2480,7 +2480,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 250
   },
   "h1_z39": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z39|acc=upstream:z39|func=antigen",
@@ -2547,7 +2547,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 388
   },
   "h1_z": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z|acc=upstream:z|func=antigen",
@@ -2614,7 +2614,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 647
   },
   "h1_e,h": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_e_h|acc=upstream:e,h|func=antigen",
@@ -2681,7 +2681,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 694
   },
   "h1_y": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_y|acc=upstream:y|func=antigen",
@@ -2748,7 +2748,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 597
   },
   "h1_k": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_k|acc=upstream:k|func=antigen",
@@ -2815,7 +2815,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 549
   },
   "h1_z6": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z6|acc=upstream:z6|func=antigen",
@@ -2882,7 +2882,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 684
   },
   "h1_z69": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z69|acc=upstream:z69|func=antigen",
@@ -2949,7 +2949,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 850
   },
   "h1_z41": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z41|acc=upstream:z41|func=antigen",
@@ -3016,7 +3016,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 589
   },
   "h1_z10": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z10|acc=upstream:z10|func=antigen",
@@ -3083,7 +3083,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 589
   },
   "h1_a": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_a|acc=upstream:a|func=antigen",
@@ -3150,7 +3150,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 471
   },
   "h1_z35": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z35|acc=upstream:z35|func=antigen",
@@ -3217,7 +3217,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 692
   },
   "h1_l,v": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_l_v|acc=upstream:l,v|func=antigen",
@@ -3418,7 +3418,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 206
   },
   "h1_l,z13,z28": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_l_z13_z28|acc=upstream:l,z13,z28|func=antigen",
@@ -3485,7 +3485,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 133
   },
   "h1_l,z28": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_l_z28|acc=upstream:l,z28|func=antigen",
@@ -3552,7 +3552,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 181
   },
   "h1_l,z38": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_l_z38|acc=upstream:l,z38|func=antigen",
@@ -3619,7 +3619,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 504
   },
   "h1_z52": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z52|acc=upstream:z52|func=antigen",
@@ -3686,7 +3686,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 588
   },
   "h1_z81": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z81|acc=upstream:z81|func=antigen",
@@ -3753,7 +3753,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 715
   },
   "h1_i": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_i|acc=upstream:i|func=antigen",
@@ -3820,7 +3820,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 80
   },
   "h1_r": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_r|acc=upstream:r|func=antigen",
@@ -3887,7 +3887,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 117
   },
   "h1_r,[i]": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_r_i|acc=upstream:r,[i]|func=antigen",
@@ -3954,7 +3954,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 133
   },
   "h1_c": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_c|acc=upstream:c|func=antigen",
@@ -4021,7 +4021,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 704
   },
   "h1_b": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_b|acc=upstream:b|func=antigen",
@@ -4088,7 +4088,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 813
   },
   "h1_d": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_d|acc=upstream:d|func=antigen",
@@ -4155,7 +4155,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 867
   },
   "h1_j": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_j|acc=upstream:j|func=antigen",
@@ -4222,7 +4222,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 648
   },
   "h1_z65": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z65|acc=upstream:z65|func=antigen",
@@ -4289,7 +4289,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 769
   },
   "h1_g,m": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_m|acc=upstream:g,m|func=antigen",
@@ -4356,7 +4356,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 27
   },
   "h1_g,m,q": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_m_q|acc=upstream:g,m,q|func=antigen",
@@ -4423,7 +4423,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 27
   },
   "h1_g,q": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_q|acc=upstream:g,q|func=antigen",
@@ -4624,7 +4624,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 46
   },
   "h1_g,p,s": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_p_s|acc=upstream:g,p,s|func=antigen",
@@ -4691,7 +4691,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 34
   },
   "h1_g,p,u": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_p_u|acc=upstream:g,p,u|func=antigen",
@@ -4758,7 +4758,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 27
   },
   "h1_[f],g,[t]": {
    "of": "gspec|db=sen_sero_sistr|gene=h1__f_g_t|acc=upstream:[f],g,[t]|func=antigen",
@@ -4825,7 +4825,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 83
   },
   "h1_f,g,s": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_f_g_s|acc=upstream:f,g,s|func=antigen",
@@ -4959,7 +4959,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 54
   },
   "h1_f,g,[s]": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_f_g_s__u2|acc=upstream:f,g,[s]|func=antigen",
@@ -5227,7 +5227,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 47
   },
   "h1_g,m,s": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_m_s|acc=upstream:g,m,s|func=antigen",
@@ -5361,7 +5361,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 27
   },
   "h1_f,g,t": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_f_g_t|acc=upstream:f,g,t|func=antigen",
@@ -5562,7 +5562,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 197
   },
   "h1_g,m,s,t": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_m_s_t|acc=upstream:g,m,s,t|func=antigen",
@@ -5629,7 +5629,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 132
   },
   "h1_f,g,m,t": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_f_g_m_t|acc=upstream:f,g,m,t|func=antigen",
@@ -5696,7 +5696,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 369
   },
   "h1_g,m,t": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_m_t__u2|acc=upstream:g,m,t|func=antigen",
@@ -5897,7 +5897,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 184
   },
   "h1_g,z51": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_g_z51|acc=upstream:g,z51|func=antigen",
@@ -5964,7 +5964,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 1193
   },
   "h1_z29": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z29|acc=upstream:z29|func=antigen",
@@ -6031,7 +6031,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 1145
   },
   "h1_z36": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z36|acc=upstream:z36|func=antigen",
@@ -6098,7 +6098,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 247
   },
   "h1_z36,z38": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z36_z38|acc=upstream:z36,z38|func=antigen",
@@ -6165,7 +6165,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 184
   },
   "h1_z38": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z38|acc=upstream:z38|func=antigen",
@@ -6232,7 +6232,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 507
   },
   "h1_z4,z23": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z4_z23|acc=upstream:z4,z23|func=antigen",
@@ -6299,7 +6299,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 253
   },
   "h1_z4,z32": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z4_z32|acc=upstream:z4,z32|func=antigen",
@@ -6366,7 +6366,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 36
   },
   "h1_z4,z23,z32": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen",
@@ -6433,7 +6433,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z32|acc=upstream:z4,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen"
    ],
-   "n": 0
+   "n": 192
   },
   "h1_z4,z24": {
    "of": "gspec|db=sen_sero_sistr|gene=h1_z4_z24|acc=upstream:z4,z24|func=antigen",
@@ -6500,7 +6500,7 @@
     "gspec|db=sen_sero_sistr|gene=h1_z4_z32|acc=upstream:z4,z32|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h1_z4_z23_z32|acc=upstream:z4,z23,z32|func=antigen"
    ],
-   "n": 0
+   "n": 494
   },
   "h2_z53": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z53|acc=upstream:z53|func=antigen",
@@ -6530,7 +6530,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 37
   },
   "h2_z57": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z57|acc=upstream:z57|func=antigen",
@@ -6560,7 +6560,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 72
   },
   "h2_z": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z|acc=upstream:z|func=antigen",
@@ -6590,7 +6590,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 471
   },
   "h2_z35": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z35|acc=upstream:z35|func=antigen",
@@ -6650,7 +6650,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 6
   },
   "h2_z10": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z10|acc=upstream:z10|func=antigen",
@@ -6680,7 +6680,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 439
   },
   "h2_k": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_k|acc=upstream:k|func=antigen",
@@ -6710,7 +6710,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 475
   },
   "h2_z6": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z6|acc=upstream:z6|func=antigen",
@@ -6740,7 +6740,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 802
   },
   "h2_1,2": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_1_2|acc=upstream:1,2|func=antigen",
@@ -6770,7 +6770,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 49
   },
   "h2_1,2,7": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_1_2_7|acc=upstream:1,2,7|func=antigen",
@@ -6800,7 +6800,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 27
   },
   "h2_1,5": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_1_5|acc=upstream:1,5|func=antigen",
@@ -6830,7 +6830,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 92
   },
   "h2_1,7": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_1_7|acc=upstream:1,7|func=antigen",
@@ -6860,7 +6860,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 145
   },
   "h2_1,6": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_1_6|acc=upstream:1,6|func=antigen",
@@ -6890,7 +6890,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 308
   },
   "h2_1,5,7": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_1_5_7|acc=upstream:1,5,7|func=antigen",
@@ -6920,7 +6920,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 211
   },
   "h2_1,16": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_1_16|acc=upstream:1,16|func=antigen",
@@ -6950,7 +6950,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 370
   },
   "h2_e,n,x": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_e_n_x|acc=upstream:e,n,x|func=antigen",
@@ -6980,7 +6980,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 145
   },
   "h2_e,n,z15": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_e_n_z15|acc=upstream:e,n,z15|func=antigen",
@@ -7010,7 +7010,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 174
   },
   "h2_e,n,x,z15": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_e_n_x_z15|acc=upstream:e,n,x,z15|func=antigen",
@@ -7040,7 +7040,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 339
   },
   "h2_l,w": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_l_w|acc=upstream:l,w|func=antigen",
@@ -7070,7 +7070,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 153
   },
   "h2_l,z13,z28": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_l_z13_z28|acc=upstream:l,z13,z28|func=antigen",
@@ -7100,7 +7100,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 312
   },
   "h2_z39": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z39|acc=upstream:z39|func=antigen",
@@ -7130,7 +7130,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 789
   },
   "h2_z65": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_z65|acc=upstream:z65|func=antigen",
@@ -7160,7 +7160,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 871
   },
   "h2_l,v": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_l_v|acc=upstream:l,v|func=antigen",
@@ -7190,7 +7190,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 103
   },
   "h2_l,z13": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen",
@@ -7220,7 +7220,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_v|acc=upstream:l,v|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen"
    ],
-   "n": 0
+   "n": 274
   },
   "h2_l,z28": {
    "of": "gspec|db=sen_sero_sistr|gene=h2_l_z28|acc=upstream:l,z28|func=antigen",
@@ -7250,7 +7250,7 @@
     "gspec|db=sen_sero_sistr|gene=h2_l_v|acc=upstream:l,v|func=antigen",
     "gspec|db=sen_sero_sistr|gene=h2_l_z13|acc=upstream:l,z13|func=antigen"
    ],
-   "n": 0
+   "n": 308
   }
  }
 }

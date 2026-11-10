@@ -223,7 +223,7 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "pau_sero": 14,
         "sag_sero": 14,
         "sen_sero": 13,
-        "sen_sero_sistr": 621,
+        "sen_sero_sistr": 1441,
         "shi_sero": 96,
         "str_lancefield": 29,
         "vch_oagc": 191,

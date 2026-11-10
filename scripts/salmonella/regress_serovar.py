@@ -66,14 +66,21 @@ def _designate(
     """``path str -> phenotype`` for one batch (screen to a table, then type)."""
     from gspec.engines import OutputFormat
     from gspec.screening.contigs import run_screen
+    from gspec.screening.defaults import ContigScreenDefaults, screen_defaults_for
     from gspec.typing.ops import run_typing
 
+    # The panel's evidence model lives in its screen.json: a hard-coded call
+    # would screen with the parity defaults (``best_hsp`` + per-query dedup and
+    # the ``-culling_limit 1`` blastn flag) and report a single antigen per
+    # locus, which is exactly the collapse this measurement has to avoid.
+    resolved = screen_defaults_for(database, datadir)
+    contigs = resolved.contigs if resolved is not None else ContigScreenDefaults()
     table = run_screen(
         files,
         database,
         datadir,
-        80.0,
-        80.0,
+        contigs.minid if contigs.minid is not None else 80.0,
+        contigs.mincov if contigs.mincov is not None else 80.0,
         1,
         1,
         None,
@@ -82,6 +89,9 @@ def _designate(
         False,  # nopath: the table must carry the path we key the result by
         False,
         OutputFormat.tsv,
+        merge_fragments=bool(contigs.merge_fragments),
+        coverage=contigs.coverage or "best_hsp",
+        dedup=contigs.dedup or "query",
     )
     rendered = run_typing([], datadir, OutputFormat.json, True, stdin_text=table)
     document = json.loads(rendered)
@@ -125,6 +135,14 @@ def main(argv: list[str] | None = None) -> int:
     for name, path in pairs:
         phenotype, candidates = calls.get(str(path), ("", ()))
         truth = expected[name]
+        if truth.startswith("-") or ":" in truth:
+            # Truth carries no serovar name (SISTR also only reported an antigenic
+            # formula): agreeing with it means not naming a serovar either.
+            if not phenotype:
+                hits += 1
+            else:
+                confusion[(truth, phenotype)] += 1
+            continue
         if phenotype == truth:
             hits += 1
         elif truth in candidates:

@@ -20,7 +20,9 @@ The sets are materialized on first use under the database directory
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -40,27 +42,54 @@ from gspec.cluster.kmerdb import (
 MIN_FRACTION = 0.2
 
 
-def _ensure_sets(db_dir: Path, *, k: int) -> tuple[dict[str, float], int]:
-    """Materialize the declared sets (once) and return ``{set: fraction}``."""
-    document = read_kmerdb(db_dir)
+#: Per-source scratch dirs holding materialized sets. A bundle is read-only data:
+#: writing ``kmers/`` into it would ship 8 MiB of packed arrays inside the wheel
+#: (and made the source tree fail the bundled-size budget test).
+_SCRATCH: dict[Path, Path] = {}
+
+
+def _substrate(db_dir: Path) -> Path:
+    """The directory that actually carries the packed sets.
+
+    An installed database has them already. A source bundle does not (the bundle
+    ships only ``kmer.json``, so ``db setup`` computes them at install time), so
+    materialize a scratch copy instead of mutating the source.
+    """
+    if (db_dir / "kmers").is_dir():
+        return db_dir
+    cached = _SCRATCH.get(db_dir)
+    if cached is not None:
+        return cached
+    scratch = Path(tempfile.mkdtemp(prefix="gspec-kmers-"))
+    shutil.copyfile(db_dir / "kmer.json", scratch / "kmer.json")
+    shutil.copyfile(db_dir / "sequences", scratch / "sequences")
+    document = read_kmerdb(scratch)
     if document is None:
         raise SystemExit(f"{db_dir}: no kmer.json (run import_upstream.py --kmerdb)")
-    if not (db_dir / "kmers").is_dir():
-        materialize_kmer_sets(db_dir, document, db_dir / "sequences")
-        document = read_kmerdb(db_dir) or document
-    return {}, document.k
+    materialize_kmer_sets(scratch, document, scratch / "sequences")
+    _SCRATCH[db_dir] = scratch
+    return scratch
+
+
+def _ensure_sets(db_dir: Path) -> int:
+    """Materialize the declared sets (once) and return ``k``."""
+    document = read_kmerdb(_substrate(db_dir))
+    if document is None:
+        raise SystemExit(f"{db_dir}: no kmer.json (run import_upstream.py --kmerdb)")
+    return document.k
 
 
 def call(db_dir: Path, fastq: list[Path], *, min_fraction: float = MIN_FRACTION) -> dict[str, str]:
     """Best antigen per family, from the reads' k-mer containment."""
-    _, k = _ensure_sets(db_dir, k=0)
+    k = _ensure_sets(db_dir)
+    substrate = _substrate(db_dir)
     query = count_fastq_kmers(*fastq, k=k)
     families: dict[str, list[tuple[float, str]]] = {}
-    document = read_kmerdb(db_dir)
+    document = read_kmerdb(substrate)
     assert document is not None
     for name in document.sets:
         family = name.split("_", 1)[0]
-        fraction = set_hit_fraction(query, load_kmer_set(db_dir, name))
+        fraction = set_hit_fraction(query, load_kmer_set(substrate, name))
         families.setdefault(family, []).append((fraction, name))
     calls: dict[str, str] = {}
     for family, scored in sorted(families.items()):

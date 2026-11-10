@@ -57,6 +57,25 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **The Salmonella panel now sees every antigen reference.** Two defaults had
+  been discarding the allele a genome carries, and together they cost most of the
+  real-genome accuracy:
+  - the panel's `screen.json` sets `coverage: "union"`; the parity path's
+    `-culling_limit 1` keeps one HSP per *query interval*, which on an antigen
+    locus (dozens of ~1.5 kb references over the same coordinates) reduced 1552
+    HSPs to 1;
+  - `import_upstream.py` collapses only exact duplicates (was 99 % same-antigen),
+    so the carried allele survives and a sibling antigen one SNP away can no
+    longer win on bitscore noise: 621 → 1435 references.
+
+  Measured against `sistr_cmd` 1.1.3 on 16 genomes (8 RefSeq + 8 local
+  assemblies), the right serovar is now delivered — exact or among the reported
+  candidates — for 14/16 (was 4/16).
+- **The bundled Salmonella panel is 7 MiB smaller.** The packed k-mer sets are
+  computed by `db setup` as documented, but `scripts/salmonella/kmers_call_reads.py`
+  materialized them into the source bundle, so 8.2 MiB of arrays were committed
+  and counted against the wheel budget. The script now uses a scratch directory;
+  `sen_sero_sistr` ships 2.9 MiB and the bundled root sits at 20.6 of 30 MiB.
 - **Salmonella serotype lookup follows SISTR's order.** A family call is marked
   `perfect` only when a full-score hit exists and every hit names one antigen
   (`BlastReader.top_result()`); otherwise the serovar is still named but with

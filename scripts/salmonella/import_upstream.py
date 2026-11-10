@@ -59,7 +59,14 @@ FALLBACK_PHASE = "-"
 #: Reference alleles of one antigen that are at least this identical are the same
 #: evidence: keeping them all makes a reads table split its reads across several
 #: references (each then misses the breadth floor) without adding resolution.
-REFERENCE_IDENTITY_FLOOR = 99.0
+# Exact duplicates only. Collapsing at 99 % used to keep one representative per
+# antigen, which silently deleted the allele a genome actually carries: the top
+# hit then fell to a *sibling* antigen one SNP away (Enteritidis' fliC `g,m` lost
+# to `g,q` at 99.93 %), and with `top_result()`-style scoring that sibling wins on
+# bitscore noise. An exact allele must survive so the call can be perfect and the
+# sibling cannot outrank it. The reads path is unaffected: the k-mer substrate
+# already reduces each antigen to one representative.
+REFERENCE_IDENTITY_FLOOR = 100.0
 #: SISTR's ``{SEROGROUP,H1,H2}_*_SIMILARITY_GROUPS``, ported verbatim from
 #: ``sistr/src/serovar_prediction/constants.py`` (SISTR is Apache-2.0; the
 #: attribution in ``bundled.json`` names it). They are the upstream answer to
@@ -342,10 +349,19 @@ def _write_bundle_metadata(
                 # one name (measured on real genomes: H2 vanished and group-B
                 # calls landed on monophasic rows). Subject dedup keeps every
                 # reference's own HSPs, which is what the ranking step needs.
+                #
+                # ``coverage: union`` is not optional either. The parity path
+                # passes ``-culling_limit 1``, which keeps one HSP per *query
+                # interval*; on a panel where dozens of references align to one
+                # locus that silently reduced 1552 HSPs to 1 (measured on
+                # Enteritidis: only ``h1_g_q`` survived and ``g,m`` -- the allele
+                # the genome actually carries at 100 % identity -- was dropped).
+                # Union coverage drops culling and aggregates per subject.
                 "contigs": {
                     "minid": 80.0,
                     "mincov": 60.0,
-                    "merge_fragments": True,
+                    "coverage": "union",
+                    "merge_fragments": False,
                     "dedup": "subject",
                 },
                 "reads": {"min_breadth": 60.0, "min_identity": 80.0},
@@ -440,10 +456,11 @@ def _collapse_references(
 ) -> tuple[dict[str, dict[str, list[str]]], dict[str, str]]:
     """Drop near-identical references of the same antigen (keep the longest).
 
-    Contig screening is unaffected (any of them would hit), but the *reads* path
-    aggregates per gene: with ~10 near-identical fliC references per antigen the
-    reads spread out and every reference falls under the breadth floor. One
-    representative per 99 %-identity cluster keeps both paths working.
+    The floor defaults to 100 %, i.e. only exact duplicates of one antigen are
+    dropped. Anything looser deletes the allele a genome carries and hands the
+    call to a sibling antigen that differs by a SNP (see the floor constant); the
+    *reads* path is not a reason to collapse, because the k-mer substrate already
+    keeps one representative per antigen.
     """
     import difflib
 
@@ -627,6 +644,7 @@ def import_sistr(
     subspecies: str | None = "enterica",
     extra_h_from: Path | None = None,
     kmer_k: int = 0,
+    collapse_floor: float = REFERENCE_IDENTITY_FLOOR,
 ) -> None:
     antigen_dir = source / "antigens" if (source / "antigens").is_dir() else source
     files = sorted(antigen_dir.glob("*.fasta"))
@@ -685,7 +703,7 @@ def import_sistr(
             added += 1
         print(f"  extra H references from {extra_h_from.name}: {added}")
     sequences = {gene: sequence for gene, _, sequence in pairs}
-    markers, kept = _collapse_references(markers, sequences)
+    markers, kept = _collapse_references(markers, sequences, floor=collapse_floor)
     markers, pairs = _renumber(markers, kept)
     rows = _sistr_formulas(table, subspecies=subspecies)
     groups = json.loads(SIMILARITY_GROUPS.read_text(encoding="utf-8"))
@@ -733,7 +751,13 @@ def import_sistr(
 
 
 def import_seqsero2(
-    source: Path, dest: Path, *, name: str, formulas: Path, bundle: bool = False
+    source: Path,
+    dest: Path,
+    *,
+    name: str,
+    formulas: Path,
+    bundle: bool = False,
+    collapse_floor: float = REFERENCE_IDENTITY_FLOOR,
 ) -> None:
     if not source.is_file():
         raise SystemExit(f"{source}: not a file")
@@ -753,7 +777,7 @@ def import_seqsero2(
         genes.append(gene)
         pairs.append((gene, antigen, sequence))
     sequences = {gene: sequence for gene, _, sequence in pairs}
-    markers, kept = _collapse_references(markers, sequences)
+    markers, kept = _collapse_references(markers, sequences, floor=collapse_floor)
     markers, pairs = _renumber(markers, kept)
     _write_fasta(dest, name, pairs)
     _write_database(
@@ -863,6 +887,17 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--collapse-identity",
+        type=float,
+        default=REFERENCE_IDENTITY_FLOOR,
+        metavar="PCT",
+        help=(
+            "drop same-antigen references at or above this identity (default"
+            " 100, i.e. exact duplicates only; a looser floor deletes the allele"
+            " a genome carries and lets a sibling antigen win)"
+        ),
+    )
+    parser.add_argument(
         "--bundle",
         action="store_true",
         help=(
@@ -882,12 +917,18 @@ def main(argv: list[str] | None = None) -> int:
             subspecies=None if args.subspecies == "any" else args.subspecies,
             extra_h_from=args.extra_h_from,
             kmer_k=args.kmerdb,
+            collapse_floor=args.collapse_identity,
         )
     else:
         if args.formulas is None:
             raise SystemExit("seqsero2 import needs --formulas (SeqSero2 names serovars in code)")
         import_seqsero2(
-            args.source, args.dest, name=args.name, formulas=args.formulas, bundle=args.bundle
+            args.source,
+            args.dest,
+            name=args.name,
+            formulas=args.formulas,
+            bundle=args.bundle,
+            collapse_floor=args.collapse_identity,
         )
     return 0
 

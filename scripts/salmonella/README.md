@@ -181,54 +181,60 @@ Researched (source read, no data copied):
   and the O:2/O:9 pair is settled by comparing the two `tyr` hit scores (strict
   `>`, O:9 on a tie), as documented above.
 
-The faithful implementation is two-fold and neither half is a candidate-set
-explosion: (a) mark a family call *perfect* only when all its hits agree on one
-antigen, and (b) widen the chosen name to its similarity class **before** the
-lookup. Both are now landed:
+The faithful implementation is three-fold, and all three are landed:
 
-- `_FamilyCall.perfect` / `.ambiguous` record SISTR's `top_result()` rule, and a
-  serovar found from a non-perfect family set is named with `confidence: low` and
-  a `(not a perfect match)` note instead of pretending to be exact;
-- `_lookup_formula` widens each resolved name to its class before matching, so
-  `1,2` also reaches the `1,2,7` / `1,5` rows. A missing O group still widens to
-  every serogroup, while a missing H phase stays `"-"` (the monophasic alias).
+1. **Per-family agreement.** `_FamilyCall.perfect`/`.ambiguous` record SISTR's
+   `top_result()` rule: a call is perfect only when a hit scores full marks *and*
+   every hit names the same antigen. A serovar found from a non-perfect family set
+   is still named, but with `confidence: low` and a `(not a perfect match)` note.
+2. **Widening before the lookup.** Every resolved name is expanded to its
+   `similarity_groups` class *before* the table match (SISTR's `isin`), so
+   `1,2` also reaches the `1,2,7` / `1,5` rows. A missing O group still widens to
+   every serogroup; a missing H phase stays `"-"` (the monophasic alias). Several
+   matches produce an `ambiguous` call with the candidate list — the structured
+   form of SISTR's pipe-joined `Typhimurium|Lagos`.
+3. **The evidence model of the panel, not the parity default.** Two settings had
+   been silently discarding the answer:
 
-Consequence, measured on the same eight assemblies: the panel now reports the
-right serovar among its candidates for **4 of 8** (Typhimurium, Goldcoast twice,
-Schwarzengrund; Ohio is exact) instead of 2, i.e. `contains-truth: 50 %` versus
-`exact: 12.5 %`. Two assemblies stay partial (`Braenderup`, the other Goldcoast)
-and `D1:l,v` explodes into 23 candidates because its H phase is unresolved and
-`l,v` sits in a large class; `26SAL0020` has no antigen hits at all (SISTR also
-returns `-:-:-`). `regress_serovar.py` now prints both numbers, because an
-ambiguous-but-correct answer is what SISTR's pipe-joined strings deliver.
+   - **`coverage: "union"`** (screen.json). The parity path passes
+     `-culling_limit 1`, which keeps one HSP per *query interval*. Around a
+     single ~1.5 kb antigen locus dozens of references align, so 1552 HSPs became
+     1: Enteritidis screening reported only `h1_g,q` at 99.93 % and dropped
+     `h1_g,m` — the allele its genome actually carries — entirely. Union coverage
+     drops the culling flag and aggregates per subject.
+   - **collapse only exact duplicates** (`import_upstream.py`, floor 100 %). The
+     old 99 % same-antigen collapse kept one representative per antigen and
+     deleted the carried allele; the top hit then fell to a sibling antigen one
+     SNP away and won on bitscore noise. 1549 upstream references are now 1435
+     instead of 621.
 
-**Still open, with the measurements that block a naive fix:**
+## Accuracy, measured
 
-1. **Several predicted antigens per family (`isin`) — SISTR's other half.** The
-   panel's `1,2` and `1,2,7` H2 antigens share a sequence (99.54 %); real LT2
-   fljB matches the `1,2,7` copy at 100 %, so the H2 family commits to that name
-   and the monophasic row wins. Two prototypes were written and reverted: keeping
-   the top candidate only (confident call out of a tie) and keeping the whole
-   candidate set (six tests destabilised, because a margin that admits `1,2,7`
-   also admits unrelated siblings). The next attempt must decide the margin per
-   family from data, and must keep `ambiguous` visible.
-2. **Representative selection.** Choosing an antigen's k-mer representative by
-   identity to its own alleles (medoid over 15-mer containment) was implemented
-   and reverted: it exposed an upstream cross-labelling — the medoid of the H1
-   `i` antigen is ≥99 % identical to the `r,[i]` antigen's representative, so the
-   k-mer set for `i` then calls `r,[i]` on reads built from the `i` reference
-   itself. The data, not the selector, is the limitation; the H panels need an
-   allele-level audit before either fix can be trusted.
+`regress_serovar.py` runs the same pipeline the CLI runs (it resolves the panel's
+own `screen.json`; a hard-coded `run_screen` call screens with the parity defaults
+and would measure the collapse above, not the panel). Two corpora, truth from
+`sistr_cmd` 1.1.3:
 
-Cross-check against `sistr_cmd` 1.1.3 on eight assemblies from `~/data`
-(`--no-cgmlst`): SISTR returns `Typhimurium|Lagos`, `Goldcoast|Brikama`,
-`Schwarzengrund`, `Ohio`, `Braenderup`, `D1:l,v`, `-:-:-`; gspec agrees on the two
-unambiguous ones (25 %), calls the two monophasic formulas where SISTR lists the
-diphasic serovar, and returns partials where SISTR has no O group either. `tests/test_salmonella_regression.py` proves the
-harness on assemblies generated from the panel (100 % when the truth matches,
-a reported `Dublin -> Typhimurium` confusion when it does not). The truth table
-ships with SISTR but the genome FASTAs do not, so the real accuracy run needs
-those assemblies.
+| corpus | exact | contains truth | before |
+| --- | --- | --- | --- |
+| 8 RefSeq complete genomes | 0 | **7/8** | 2/8 exact |
+| 8 local `26SAL` assemblies | **3/8** | **7/8** | 2/8 exact |
+
+"contains truth" counts an `ambiguous` call whose candidate list holds the right
+serovar, which is the information SISTR's `Typhimurium|Lagos` strings deliver.
+
+The two remaining misses are both cases where the upstream tools also refuse to
+name a serovar: `26SAL0084` (`D1:l,v:l,v` — SISTR prints the formula with no
+serovar) and Newport (`C2-C3:e,n,x:1,2,7`; its fliC is one SNP closer to an
+`e,n,x` reference than to the `e,h` pool, and that formula has no name).
+
+## Bundle size
+
+`sen_sero_sistr` ships 2.9 MiB (sequences + `serotype.json` + `kmer.json` +
+`bundled.json`); the packed k-mer sets are computed by `db setup`. They used to be
+committed (8.2 MiB, the largest single item in the wheel) because
+`scripts/salmonella/kmers_call_reads.py` materialized them into the source bundle
+— it now uses a scratch directory. Bundled root: 20.6 MiB of the 30 MiB budget.
 
 ## Reads by k-mer (no alignment)
 

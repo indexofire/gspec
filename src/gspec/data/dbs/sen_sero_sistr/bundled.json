@@ -4,10 +4,10 @@
   "vendor": "converted from SISTR antigen database",
   "dbtype": "nucl",
   "kind": "gene",
-  "snapshotted": "2026-11-09",
+  "snapshotted": "2026-11-10",
   "license": "Apache-2.0",
   "attribution": "SISTR (Salmonella In Silico Typing Resource), PHAC-NML (https://github.com/phac-nml/sistr_cmd), database SISTR_V_1.1.3_db (Zenodo record 15078586, Apache-2.0). Converted to gspec format.",
-  "note": "Converted by gspec's scripts/salmonella/import_upstream.py from https://zenodo.org/records/15078586 (retrieved 2026-11-09). The antigen references and the O:H1:H2 formula table are the upstream project's data, converted to gspec/v1 records and gspec.serotype/2; gspec claims no authorship of the content and does not imply upstream endorsement of this conversion.",
+  "note": "Converted by gspec's scripts/salmonella/import_upstream.py from https://zenodo.org/records/15078586 (retrieved 2026-11-10). The antigen references and the O:H1:H2 formula table are the upstream project's data, converted to gspec/v1 records and gspec.serotype/2; gspec claims no authorship of the content and does not imply upstream endorsement of this conversion.",
   "guidance": {
     "references": [
       {
