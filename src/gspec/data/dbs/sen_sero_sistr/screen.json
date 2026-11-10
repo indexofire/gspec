@@ -5,7 +5,8 @@
     "mincov": 60.0,
     "coverage": "union",
     "merge_fragments": false,
-    "dedup": "subject"
+    "dedup": "subject",
+    "allele_sketch": true
   },
   "reads": {
     "min_breadth": 60.0,

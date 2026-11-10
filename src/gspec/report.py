@@ -49,6 +49,9 @@ class ScreeningParams(BaseModel, frozen=True):
       interval) or ``subject`` (per-subject HSPs survive).
     - ``min_aligned_len`` — drop aggregated hits whose total ungapped aligned
       length is below this many bases (a spurious-HSP guard for union mode).
+    - ``allele_sketch`` — annotate each hit with its anchored allele-sketch score
+      (``align/sketch.py``), the alignment-free evidence the serotype ranker uses
+      to break near-ties. Off by default: it costs one k-mer count per hit.
     """
 
     db: str
@@ -62,6 +65,7 @@ class ScreeningParams(BaseModel, frozen=True):
     coverage: Literal["best_hsp", "union"] = "best_hsp"
     dedup: Literal["query", "subject"] = "query"
     min_aligned_len: int | None = Field(default=None, ge=1)
+    allele_sketch: bool = False
 
 
 class Fragment(BaseModel, frozen=True):
@@ -102,6 +106,11 @@ class Hit(BaseModel, frozen=True):
     # fragments; default-path hits never do (parity output is unchanged).
     merged: bool = False
     fragments: tuple[Fragment, ...] = ()
+    # anchored allele sketch (align/sketch.py): the best containment of this
+    # hit's genomic window in one reference allele of its antigen. Present only
+    # when the database ships k-mer sketches and the caller asked for it, so
+    # every existing report stays byte-identical.
+    sketch_pct: float | None = None
 
 
 def swap_dedup(

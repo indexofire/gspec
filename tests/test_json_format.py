@@ -86,6 +86,7 @@ def test_hit_key_order_is_documented(reports: list[Report]) -> None:
         "resistance",
         "merged",
         "fragments",
+        "sketch_pct",
     ]
     # merged/fragments are merge-mode-only optionals: absent from default
     # documents (exclude_none), so order is asserted over present keys only.

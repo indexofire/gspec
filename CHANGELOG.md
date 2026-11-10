@@ -57,6 +57,23 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **Antigen panels break near-ties with an anchored allele sketch.** Antigen
+  references are near-identical by design, so a family's alignment scores can sit
+  inside the document's `margin` with the right allele second (measured: `fliC`
+  `e,h` 0.9103 against `e,n,x` 0.9152). Panels whose `screen.json` sets
+  `contigs.allele_sketch: true` now anchor an alignment-free score on every hit —
+  the k-mers of the hit's genomic window against each reference *allele* — carried
+  as `sketch_pct` in the `gspec.report/1` document; `gspec typing` accepts that
+  JSON and uses the sketch to decide a margin tie instead of widening it into a
+  candidate list. A tie the sketch cannot separate stays a tie, and a database
+  without k-mer sketches keeps the previous behaviour exactly. Measured against
+  `sistr_cmd` on 60 genomes: agreement with SISTR's H1/H2 antigen tokens 78.7 %
+  (alignment only) -> 94.7 %.
+- **`gspec typing` reads `gspec screen --format json` documents.** A screen report
+  is accepted wherever a screen table is (paths, stdin, `-`); the 15-column table
+  cannot carry per-hit evidence, so JSON input is the way to type a panel with
+  its sketch scores. Cluster documents (`cluster/2`, `locus_map/1`) keep their own
+  path, and a JSON file with an unknown schema is still a typed error.
 - **Antigen panels can tell a paralogue from a fragment.** With
   `coverage: "union"` a subject that hit perfectly at one site and weakly at a
   second (paralogous remnant, common in short-read assemblies) had its blocks

@@ -320,6 +320,7 @@ def screen_command(
         eff_coverage = contigs_db.coverage if contigs_db else None
         eff_dedup = contigs_db.dedup if contigs_db else None
         eff_min_aligned = contigs_db.min_aligned_len if contigs_db else None
+        eff_sketch = bool(contigs_db.allele_sketch) if contigs_db else False
         if (
             (min_identity > 0 or min_mapq > 0)
             and r1 is None
@@ -452,6 +453,7 @@ def screen_command(
                     coverage=eff_coverage or "best_hsp",
                     dedup=eff_dedup or "query",
                     min_aligned_len=eff_min_aligned,
+                    allele_sketch=eff_sketch,
                     aligner=aligner,
                     min_gene_cov=min_gene_cov,
                     min_gene_id=min_gene_id,

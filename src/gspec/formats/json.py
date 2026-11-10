@@ -53,6 +53,9 @@ class HitDocument(BaseModel, frozen=True):
     # default-mode documents stay byte-identical.
     merged: bool | None = None
     fragments: list[FragmentDocument] | None = None
+    # Anchored allele-sketch score (percent) — present only when the database
+    # ships k-mer sketches and the screen defaults asked for it.
+    sketch_pct: float | None = None
 
 
 class FileDocument(BaseModel, frozen=True):
@@ -127,6 +130,7 @@ def _hit_document(hit: Hit) -> HitDocument:
         accession=hit.accession,
         product=hit.product,
         resistance=hit.function,
+        sketch_pct=None if hit.sketch_pct is None else round(hit.sketch_pct, 2),
         merged=True if hit.merged else None,
         fragments=(
             [

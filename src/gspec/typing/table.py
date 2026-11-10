@@ -41,6 +41,9 @@ class ScreenRow(NamedTuple):
     coverage_pct: float
     alignment_start_pct: float | None
     subject_len: int | None = None
+    # Anchored allele-sketch score when the source carries one (a screen JSON
+    # document does; a table cannot, the 15 columns are frozen).
+    sketch_pct: float | None = None
 
 
 class _Columns(NamedTuple):

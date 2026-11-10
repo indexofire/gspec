@@ -51,6 +51,28 @@ def _read_text(path: Path) -> str:
         ) from exc
 
 
+#: Screen documents that the gene-table path owns (they carry per-hit evidence
+#: such as the anchored allele sketch, so they must reach `read_typing_input`).
+_SCREEN_SCHEMAS = frozenset({"gspec.report/1"})
+
+
+class _SchemaProbe(BaseModel):
+    """Just enough of a document to read its ``schema`` tag."""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    schema_name: str = Field(alias="schema")
+
+
+def _is_screen_document(text: str) -> bool:
+    """True for a gspec screen report, which is gene-table input, not a cluster one."""
+    try:
+        probe = _SchemaProbe.model_validate_json(text)
+    except ValidationError:
+        return False
+    return probe.schema_name in _SCREEN_SCHEMAS
+
+
 def _looks_like_json(paths: list[Path], stdin_text: str | None) -> bool:
     if stdin_text is not None:
         return stdin_text.lstrip().startswith("{")
@@ -98,6 +120,9 @@ def read_cluster_typing_input(
     documents: list[tuple[str, str]] = [(str(path), _read_text(path)) for path in paths]
     if stdin_text is not None:
         documents.append(("-", stdin_text))
+    if any(_is_screen_document(text) for _, text in documents):
+        # A screen report: the gene-table parser reads its per-hit evidence.
+        return None
     databases: list[str] = []
     results: list[TypingFileResult] = []
     for label, text in documents:

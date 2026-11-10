@@ -83,6 +83,9 @@ class ContigScreenDefaults(BaseModel, frozen=True):
     coverage: Literal["best_hsp", "union"] | None = None
     dedup: Literal["query", "subject"] | None = None
     min_aligned_len: int | None = Field(default=None, ge=1)
+    # Anchor an allele-sketch score on every hit (align/sketch.py). Needs the
+    # database's k-mer substrate; a database without one ignores it.
+    allele_sketch: bool | None = None
 
 
 class ScreenDefaults(BaseModel, frozen=True):

@@ -206,6 +206,7 @@ def run_screen(
     merge_fragments: bool = False,
     database: db.Database | None = None,
     coverage: Literal["best_hsp", "union"] = "best_hsp",
+    allele_sketch: bool = False,
     dedup: Literal["query", "subject"] = "query",
     min_aligned_len: int | None = None,
     aligner: AlignerEnum | None = None,
@@ -307,6 +308,7 @@ def run_screen(
         coverage=coverage,
         dedup=dedup,
         min_aligned_len=min_aligned_len,
+        allele_sketch=allele_sketch,
     )
     ensure_blast()
     dbtype = db.blast_db_info(database.sequences_path).dbtype

@@ -120,7 +120,11 @@ def _designate(
         False,  # noheader
         False,  # nopath: the table must carry the path we key the result by
         False,
-        OutputFormat.tsv,
+        # JSON, not TSV: the screen document carries the anchored allele-sketch
+        # evidence, and typing reads it back from there. A table cannot (its 15
+        # columns are frozen), so a TSV run measures the panel without the
+        # tiebreak.
+        OutputFormat.json,
         merge_fragments=bool(contigs.merge_fragments),
         coverage=contigs.coverage or "best_hsp",
         dedup=contigs.dedup or "query",

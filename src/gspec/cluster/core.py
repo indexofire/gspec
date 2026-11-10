@@ -80,6 +80,10 @@ class GeneCall(BaseModel, frozen=True):
     # screen table's COVERAGE cell (`sstart-send/slen`) does, the cluster path
     # knows its loci. Feeds `best_hit.rank` length-aware ordering.
     subject_len: int | None = None
+    # Anchored allele-sketch score (align/sketch.py), 0-100. Only antigen panels
+    # that ship k-mer sketches produce it; it breaks near-ties that alignment
+    # cannot (see `serotype_engine._family_call`).
+    sketch_pct: float | None = None
 
 
 class LocusCall(BaseModel, frozen=True):

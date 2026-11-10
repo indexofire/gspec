@@ -11,8 +11,10 @@ from pydantic import BaseModel
 
 from gspec.align.fragments import merge_fragment_hits, union_coverage_map, union_coverage_pct
 from gspec.align.gseek import engine, run_blast_gseek
+from gspec.align.sketch import allele_sketches, antigen_scores, window_kmers
 from gspec.db.core import Database
 from gspec.errors import DependencyError, GspecError, InputError
+from gspec.fasta import iter_fasta
 from gspec.proctools import run_tool
 from gspec.report import (
     Hit,
@@ -381,8 +383,36 @@ def report_from_rows(
         hits = process_rows(rows, mincov=params.mincov, default_db=params.db, dedup=params.dedup)
         if floors is not None:
             hits = apply_hit_floors(hits, floors)
+    if params.allele_sketch:
+        hits = _annotate_sketch(hits, query, database)
     ordered = sorted(hits, key=lambda hit: (hit.sequence, hit.start))
     return Report(file=str(query), hits=tuple(ordered))
+
+
+def _annotate_sketch(hits: list[Hit], query: Path, database: Database) -> list[Hit]:
+    """Attach each hit's anchored allele-sketch score (``align/sketch.py``).
+
+    A database without the k-mer substrate (every parity database) leaves the
+    hits untouched, so the flag is a no-op unless the panel asked for it.
+    """
+    index = allele_sketches(database.path)
+    if index is None:
+        return hits
+    contigs = {record.id.split()[0]: record.sequence for record in iter_fasta(query)}
+    annotated: list[Hit] = []
+    for hit in hits:
+        family = hit.gene.partition("_")[0]
+        sketches = index.of(family)
+        if not sketches:
+            annotated.append(hit)
+            continue
+        window = window_kmers(contigs, hit.sequence, hit.start, hit.end, index.k)
+        antigen = hit.gene[len(family) + 1 :].replace("_", ",")
+        score = antigen_scores(window, sketches).get(antigen)
+        annotated.append(
+            hit if score is None else hit.model_copy(update={"sketch_pct": 100 * score})
+        )
+    return annotated
 
 
 def screen_file(

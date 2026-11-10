@@ -363,6 +363,10 @@ def _write_bundle_metadata(
                     "coverage": "union",
                     "merge_fragments": False,
                     "dedup": "subject",
+                    # Anchored allele sketches: the alignment-free evidence the
+                    # serotype ranker uses to break near-ties. Measured on 60
+                    # genomes: 78.7 % -> 94.7 % agreement with SISTR's H tokens.
+                    "allele_sketch": True,
                 },
                 "reads": {"min_breadth": 60.0, "min_identity": 80.0},
             },

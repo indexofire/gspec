@@ -31,6 +31,17 @@ rows' shared `DATABASE` column, folds every `(FILE, GENE)` to its best row by
 `(%IDENTITY, %COVERAGE)` (first row wins ties — the same per-gene fold the report hits
 got), and evaluates the database's `typing.json` over each FILE's genes.
 
+A `gspec screen --format json` document is accepted as input as well, and it is the
+input to use for **antigen panels**. Antigen references are near-identical by design
+(`fliC` `e,h` against `e,n,x`, `fljB` `1,2` against `1,2,7`), so a family's alignment
+scores can sit inside the document's `margin` with the right allele second. The panel's
+screen defaults set `allele_sketch: true`, which anchors an alignment-free score on every
+hit — the k-mers of the hit's genomic window against each reference *allele* — and the
+JSON report carries it as `sketch_pct`. Typing a screen table cannot see that score (its
+15 columns are frozen), so `gspec typing results.json` decides a margin tie with the
+sketch while `gspec typing results.tsv` still widens it into a candidate list. A tie the
+sketch cannot separate stays a tie: the candidates remain visible.
+
 Reads-mode tables are accepted too: `gspec screen --r1/--r2 ... | gspec typing` folds the
 `#SAMPLE`/`BREADTH%` table with `#SAMPLE` as the FILE key and breadth as coverage, skipping
 the `PRESENT=no` rows `--all-genes` adds. Reads/1 does not carry identity, so its identity

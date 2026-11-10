@@ -60,6 +60,53 @@ def _reject_cluster_table(label: str, text: str) -> None:
         )
 
 
+def _rows_from_screen_json(label: str, text: str) -> list[ScreenRow]:
+    """Rows from a ``gspec.report/1`` screen document.
+
+    The document carries the anchored allele-sketch score per hit, which the
+    15-column table cannot: typing a screen JSON is therefore how the sketch
+    tiebreak reaches the decision stage. The document is parsed with its own
+    model, so a malformed file fails with the schema's own message.
+    """
+    from pydantic import ValidationError
+
+    from gspec.formats.json import ReportDocument
+
+    try:
+        document = ReportDocument.model_validate_json(text)
+    except ValidationError as exc:
+        raise InputError(
+            f"screen result JSON does not match gspec.report/1: {exc.error_count()} problem(s)",
+            code="SCREEN_TABLE_MALFORMED",
+            context={"file": label},
+        ) from exc
+    rows: list[ScreenRow] = []
+    for entry in document.files:
+        for hit in entry.hits:
+            subject_len: int | None = None
+            _, _, length_field = hit.coverage.rpartition("/")
+            if length_field.isdigit():
+                subject_len = int(length_field)
+            rows.append(
+                ScreenRow(
+                    file=entry.file,
+                    gene=hit.gene,
+                    database=hit.database,
+                    identity_pct=hit.identity_pct,
+                    coverage_pct=hit.coverage_pct,
+                    alignment_start_pct=None,
+                    subject_len=subject_len,
+                    sketch_pct=hit.sketch_pct,
+                )
+            )
+    return rows
+
+
+def _looks_like_json(text: str) -> bool:
+    """A screen JSON document starts with ``{`` once whitespace is stripped."""
+    return text.lstrip().startswith("{")
+
+
 def read_typing_input(paths: list[Path], stdin_text: str | None = None) -> TypingInput:
     """Parse and validate the designation input: every table's rows (the
     listed files plus, when ``stdin_text`` is given, the already-read stdin
@@ -69,13 +116,19 @@ def read_typing_input(paths: list[Path], stdin_text: str | None = None) -> Typin
     labels: list[str] = []
     for path in paths:
         text = _read_table(path)
-        _reject_cluster_table(str(path), text)
         labels.append(str(path))
+        if _looks_like_json(text):
+            rows.extend(_rows_from_screen_json(str(path), text))
+            continue
+        _reject_cluster_table(str(path), text)
         rows.extend(parse_table(str(path), text))
     if stdin_text is not None:
-        _reject_cluster_table(STDIN_LABEL, stdin_text)
         labels.append(STDIN_LABEL)
-        rows.extend(parse_table(STDIN_LABEL, stdin_text))
+        if _looks_like_json(stdin_text):
+            rows.extend(_rows_from_screen_json(STDIN_LABEL, stdin_text))
+        else:
+            _reject_cluster_table(STDIN_LABEL, stdin_text)
+            rows.extend(parse_table(STDIN_LABEL, stdin_text))
     if not rows:
         listing = ", ".join(labels)
         raise InputError(
@@ -118,6 +171,7 @@ def read_typing_input(paths: list[Path], stdin_text: str | None = None) -> Typin
                         verdict="present",
                         alignment_start_pct=row.alignment_start_pct,
                         subject_len=row.subject_len,
+                        sketch_pct=row.sketch_pct,
                     )
                     for gene, row in per_gene.items()
                 },

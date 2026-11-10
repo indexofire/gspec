@@ -26,6 +26,15 @@ contigs.fa	risk_monitoring	EHEC	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
 为其 `(%IDENTITY, %COVERAGE)` 最佳的行（并列时首行获胜——与报告命中原有的逐基因
 折叠一致），再对该 FILE 的基因评估数据库的 `typing.json`。
 
+`gspec screen --format json` 生成的文档同样可以直接输入，而且这是**抗原面板**推荐
+的输入形态。抗原参考序列按设计就高度相似（`fliC` 的 `e,h` 与 `e,n,x`、`fljB` 的 `1,2`
+与 `1,2,7`），因此某个族的比对分可能落在文档的 `margin` 之内，而正确的等位是第二名。
+面板的 screen 默认值打开了 `allele_sketch: true`：为每条命中锚定一个与比对无关的分数
+——该命中基因组窗口的 k-mer 与每个参考**等位**的包含度——JSON 报告以 `sketch_pct` 携带。
+TSV 表格看不到这个分数（15 列已冻结），所以 `gspec typing results.json` 会用 sketch
+裁决 margin 内的平手，而 `gspec typing results.tsv` 仍会将其放宽为候选列表。sketch
+也无法分开的平手仍然是平手：候选保持可见。
+
 reads 模式的表也可以直接输入：`gspec screen --r1/--r2 ... | gspec typing` 会折叠
 `#SAMPLE`/`BREADTH%` 表，以 `#SAMPLE` 作为 FILE 键、breadth 作为覆盖度，并跳过
 `--all-genes` 加入的 `PRESENT=no` 行。reads/1 不携带一致性，因此无法检查 identity

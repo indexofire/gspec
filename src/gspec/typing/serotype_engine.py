@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
+from gspec.align.sketch import SKETCH_MARGIN
 from gspec.cluster.core import GeneCall
 from gspec.typing.results import PhenotypeScore, SchemeCall, ScoreComponent
 from gspec.typing.serotype_models import (
@@ -163,40 +164,75 @@ def _family_call(
     family ambiguous (None), which is how near-identical alleles are pinned
     down — SeqSero2 compares two such scores by hand, gspec by the margin.
     """
-    scored: list[tuple[float, str, tuple[str, ...]]] = []
+    scored: list[tuple[float, str, tuple[str, ...], float | None]] = []
     for entry in family.entries:
         best = 0.0
         winners: tuple[str, ...] = ()
+        sketch: float | None = None
         for gene in entry.genes:
             call = calls.get(gene)
             if not _present(call, document.coverage_floor, document.identity_floor):
                 continue
             assert call is not None
             score = _evidence(call)
+            if call.sketch_pct is not None and (sketch is None or call.sketch_pct > sketch):
+                sketch = call.sketch_pct
             if score > best:
                 best, winners = score, (gene,)
             elif score == best:
                 winners += (gene,)
         if best > 0.0:
-            scored.append((best, entry.name, winners))
+            scored.append((best, entry.name, winners, sketch))
     if not scored:
         return _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
     scored.sort(key=lambda item: item[0], reverse=True)
-    best_score, name, winners = scored[0]
-    names = {entry_name for _, entry_name, _ in scored}
-    cutoff = best_score - document.margin
-    ties: list[str] = []
-    for score, entry_name, _ in scored:
-        if score >= cutoff and entry_name not in ties:
-            ties.append(entry_name)
+    names = {entry_name for _, entry_name, _, _ in scored}
+    cutoff = scored[0][0] - document.margin
+    tied: list[tuple[float, str, tuple[str, ...], float | None]] = [
+        item for item in scored if item[0] >= cutoff
+    ]
+    tied = _sketch_break(tied)
+    best_score, name, winners, _ = tied[0]
+    names_in_ties: list[str] = []
+    for _, entry_name, _, _ in tied:
+        if entry_name not in names_in_ties:
+            names_in_ties.append(entry_name)
+    ties = tuple(names_in_ties)
     return _FamilyCall(
         name=name,
         score=best_score,
         genes=winners,
         perfect=best_score >= 1.0 and len(names) == 1,
         ambiguous=len(ties) > 1,
-        ties=tuple(ties),
+        ties=ties,
     )
+
+
+def _sketch_break(
+    tied: list[tuple[float, str, tuple[str, ...], float | None]],
+) -> list[tuple[float, str, tuple[str, ...], float | None]]:
+    """Narrow a margin tie with the anchored allele sketch, when it decides.
+
+    Alignment cannot separate alleles that differ by a SNP under a gapped HSP
+    (measured: `fliC` `e,h` vs `e,n,x` scored 0.9103 vs 0.9152), which is why the
+    tie is normally widened and reported as candidates. When every tied antigen
+    carries a sketch score, the sketch decides the order of magnitude that
+    matters — whole-allele k-mer containment — so a clear sketch winner (a gap
+    wider than ``SKETCH_MARGIN``) collapses the tie to that antigen. A tie the
+    sketch cannot separate stays a tie: the candidates remain visible.
+    """
+    if len(tied) < 2:
+        return tied
+    sketches = [item[3] for item in tied]
+    if any(sketch is None for sketch in sketches):
+        return tied
+    top = max(sketch for sketch in sketches if sketch is not None)
+    decided = [item for item in tied if (item[3] or 0.0) >= top - 100.0 * SKETCH_MARGIN]
+    if not decided:
+        return tied
+    # The sketch winner leads, so it names the family even when alignment ranked
+    # it second: that is the whole point of the tiebreak.
+    return sorted(decided, key=lambda item: (item[3] or 0.0, item[0]), reverse=True)
 
 
 def _formula_keys(o: str, h1: str | None, h2: str | None) -> list[tuple[str, str, str]]:
