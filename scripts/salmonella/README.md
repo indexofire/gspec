@@ -240,6 +240,41 @@ falls back to the formula: `C1:e,h:-` -> Braenderup and `F:f,g:-` -> Rissen. Bot
 look like SISTR failing to name (Rissen *is* `6,7:f,g:-`); they are recorded here
 rather than counted as wins.
 
+## Sketch tiebreak: measured, not shipped
+
+SISTR separates near-identical antigen evidence with cgMLST (330 core genes).
+gspec does not do allele calling and will not grow an MLST engine, but it already
+owns k-mer machinery (`cluster/kmerdb.py`), so the question is whether a sketch
+can decide a family whose alignment scores sit inside the margin. Measured with
+`sketch_tiebreak.py` over 60 in-house genomes (94 H1/H2 antigen tokens, truth =
+SISTR's `antigenic_formula`):
+
+| method | agrees with SISTR |
+| --- | --- |
+| alignment, identity x coverage (what ships) | 78.7 % |
+| whole-genome k-mers vs each antigen's set | 53.2 % |
+| **anchored window k-mers, per allele** | **94.7 %** |
+
+The middle row is the trap: comparing a 4.8 Mb genome against a 1.5 kb antigen's
+k-mer set saturates, and the winner is decided by how large that antigen's
+reference pool happens to be — it is *worse* than alignment (it also picks
+`r,[i]` over `i`). What works is anchoring: take the genomic window the alignment
+already found, count its k-mers, and score each reference **allele** by
+`|window ∩ allele| / |allele|`, then let the best allele name the antigen. That is
+an allele-level sketch question, and it beats BLAST's HSP granularity because it
+ignores gapped/extended alignments and asks only "whose k-mers are here".
+
+Two of the remaining anchored misses are the panel's known cross-labelled
+references (`r` vs `r,[i]`, `1,6` vs `l,v` in fljB).
+
+**Why it is not wired in yet.** `gspec typing` runs on the screen *table* by
+contract (AGENTS.md §5): it has no genome. Anchored scoring therefore has to be
+produced at screen time and carried to typing — i.e. `gspec.screen/2` documents
+gain a per-hit allele-sketch score and `typing` learns to read that JSON (a schema
+bump, both directions). Screens already materialize the k-mer substrate for the
+reads path, so the cost is one k-mer count per hit window (~30 s per genome for 900
+hits), not a new dependency.
+
 ## The union evidence model and paralogues
 
 `coverage: "union"` sums a reference's HSP blocks, which is what a divergent or
