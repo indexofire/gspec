@@ -450,3 +450,41 @@ def test_a_single_perfect_allele_keeps_high_confidence() -> None:
         ),
     )
     assert call.confidence == "high"
+
+
+def test_a_near_tie_inside_the_margin_widens_every_name() -> None:
+    """Given two antigens within the document's margin, When the lookup runs,
+    Then both names' rows are reported.
+
+    Committing to the winner discards the right name: on real data Newport's
+    `e,h` scored 0.9103 against `e,n,x`'s 0.9152, and the winner's rows have no
+    serovar, so the serovar the upstream tool reports was unreachable.
+    """
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "C2", "genes": ["o_C2"]}]},
+            {
+                "key": "h1",
+                "entries": [
+                    {"name": "e,h", "genes": ["h1_eh"]},
+                    {"name": "e,n,x", "genes": ["h1_enx"]},
+                ],
+            },
+            {"key": "h2", "entries": [{"name": "1,2,7", "genes": ["h2_127"]}]},
+        ],
+        formulas=[
+            {"o": "C2", "h1": "e,h", "h2": "1,2,7", "serovar": "Newport"},
+            # `e,n,x` with `1,2,7` is not a tabulated serovar.
+        ],
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_C2": _call("o_C2"),
+        "h1_eh": _call("h1_eh", identity=99.5),
+        "h1_enx": _call("h1_enx", identity=100.0),  # the winner, by 0.005
+        "h2_127": _call("h2_127"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Newport"
+    assert call.confidence == "low"  # the observed formula is not in the table
+    assert any("widening" in note for note in call.notes)

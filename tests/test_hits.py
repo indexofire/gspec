@@ -276,3 +276,57 @@ def test_malformed_header_raises_database_error() -> None:
     assert error.code == "HEADER_MALFORMED"
     assert error.exit_code == 4
     assert error.context["reason"] == "invalid_percent_escape:gene"
+
+
+def test_union_ignores_a_paralogous_duplicate_of_the_same_reference() -> None:
+    """Given one reference hit perfectly at one site and weakly at a second,
+    When union coverage folds the subject, Then the identity comes from the
+    better placement only.
+
+    A reference that is a perfect full-length gene at locus A and a paralogous
+    remnant at locus B used to be averaged into a mediocre identity (measured on
+    real data: a 98.9 % fljB block merged with an 80.6 % remnant reported 90.6 %
+    and the antigen was lost), because union breadth is additive while identity
+    must come from one locus.
+    """
+    from gspec.align.blast import union_hits
+
+    rows = [
+        row(
+            qseqid="contig1",
+            qstart=1000,
+            qend=2499,
+            sstart=1,
+            send=1500,
+            slen=1500,
+            length=1500,
+        ),
+        row(
+            qseqid="contig2",
+            qstart=500,
+            qend=1999,
+            sstart=1,
+            send=1500,
+            slen=1500,
+            pident=80.6,
+            length=1500,
+        ),
+    ]
+    (hit,) = union_hits(rows, mincov=60.0, min_aligned_len=None, default_db="panel")
+    assert hit.identity_pct == 100.0
+    assert hit.sequence == "contig1"
+
+
+def test_union_still_adds_disjoint_blocks_of_one_split_locus() -> None:
+    """Given two blocks covering different halves of one reference, When union
+    coverage folds them, Then both count (a split assembly still reads 100 %)."""
+    from gspec.align.blast import union_hits
+
+    rows = [
+        row(qseqid="ctg1", qstart=1, qend=500, sstart=1, send=500, slen=1000, length=500),
+        row(qseqid="ctg2", qstart=1, qend=500, sstart=501, send=1000, slen=1000, length=500),
+    ]
+    (hit,) = union_hits(rows, mincov=60.0, min_aligned_len=None, default_db="panel")
+    assert hit.coverage_pct == 100.0
+    assert hit.identity_pct == 100.0
+    assert hit.sequence == "ctg1,ctg2"

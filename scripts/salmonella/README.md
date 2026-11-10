@@ -212,21 +212,49 @@ The faithful implementation is three-fold, and all three are landed:
 
 `regress_serovar.py` runs the same pipeline the CLI runs (it resolves the panel's
 own `screen.json`; a hard-coded `run_screen` call screens with the parity defaults
-and would measure the collapse above, not the panel). Two corpora, truth from
-`sistr_cmd` 1.1.3:
+and would measure the collapse above, not the panel). It also reads
+`sistr --no-cgmlst -f tab` output directly, because SISTR reports a formula's whole
+serovar set in one `|`-joined cell.
 
-| corpus | exact | contains truth | before |
+```bash
+sistr --no-cgmlst -t 4 -f tab -o sistr_all.tab assemblies/*.fna
+python scripts/salmonella/regress_serovar.py --db sen_sero_sistr \
+    --assemblies assemblies --sistr-tab sistr_all.tab --datadir <datadir>
+```
+
+Corpora, truth from `sistr_cmd` 1.1.3:
+
+| corpus | exact | contains truth | before this work |
 | --- | --- | --- | --- |
-| 8 RefSeq complete genomes | 0 | **7/8** | 2/8 exact |
-| 8 local `26SAL` assemblies | **3/8** | **7/8** | 2/8 exact |
+| 304 in-house Salmonella assemblies (25/26SAL) | 26.6 % | **99.3 %** | 25 % (8 genomes) |
+| 8 RefSeq complete genomes | 0 | **7/8** | 2/8 |
+| 8 `26SAL` assemblies with hand-checked truth | 3/8 | **7/8** | 2/8 |
 
 "contains truth" counts an `ambiguous` call whose candidate list holds the right
-serovar, which is the information SISTR's `Typhimurium|Lagos` strings deliver.
+serovar, which is the information SISTR's `Typhimurium|Lagos` strings deliver —
+and SISTR itself names a *single* serovar for only about a quarter of this corpus
+(the rest are pipe-joined sets), so `exact` understates both tools equally.
 
-The two remaining misses are both cases where the upstream tools also refuse to
-name a serovar: `26SAL0084` (`D1:l,v:l,v` — SISTR prints the formula with no
-serovar) and Newport (`C2-C3:e,n,x:1,2,7`; its fliC is one SNP closer to an
-`e,n,x` reference than to the `e,h` pool, and that formula has no name).
+Two genomes out of 304 disagree, and in both gspec names a serovar where SISTR
+falls back to the formula: `C1:e,h:-` -> Braenderup and `F:f,g:-` -> Rissen. Both
+look like SISTR failing to name (Rissen *is* `6,7:f,g:-`); they are recorded here
+rather than counted as wins.
+
+## The union evidence model and paralogues
+
+`coverage: "union"` sums a reference's HSP blocks, which is what a divergent or
+split locus needs. But a subject hit perfectly at one site *and* weakly at a
+second (a paralogous remnant, common in these assemblies) used to average into a
+mediocre identity — a 98.9 % fljB block merged with an 80.6 % remnant reported
+90.6 % and the antigen was lost. Blocks whose reference spans overlap by more than
+half of the shorter one are now treated as alternate placements of one locus and
+only the better is kept (`align/blast._distinct_loci`), so identity comes from one
+locus while disjoint blocks (a locus split across contigs) still add up.
+
+Additionally, a family name is no longer committed to when a sibling antigen is
+within the document's `margin` (0.01): every name inside the margin is widened and
+looked up (`_FamilyCall.ties`), and a serovar whose *observed* formula is absent
+from the table carries a "matched after widening" note plus `confidence: low`.
 
 ## Bundle size
 

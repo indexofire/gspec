@@ -135,9 +135,9 @@ class _FamilyCall:
 
     ``perfect`` reproduces ``BlastReader.top_result()``: the call is perfect only
     when a 100 %-identity/100 %-coverage hit exists **and every hit for that gene
-    names the same antigen**. ``ambiguous`` records the other half of that rule —
-    hits disagreeing on the antigen name — which is what a cross-labelled
-    reference looks like (`1,2` vs `1,2,7` are 99.54 % identical in the panel).
+    names the same antigen**. ``ambiguous`` is the document's own ``margin`` rule —
+    another antigen scored within it — which is what a cross-labelled reference
+    looks like (`1,2` vs `1,2,7` are 99.54 % identical in the panel).
     """
 
     name: str | None
@@ -145,6 +145,12 @@ class _FamilyCall:
     genes: tuple[str, ...]
     perfect: bool
     ambiguous: bool
+    #: Every name within the document's ``margin`` of the winner, best first. The
+    #: lookup widens all of them: a score gap inside the margin is the measured
+    #: noise between sibling antigens (Newport's `e,h` scored 0.9103 against
+    #: `e,n,x`'s 0.9152 on a real genome), so committing to one discards the name
+    #: the upstream tool reports.
+    ties: tuple[str, ...] = ()
 
 
 def _family_call(
@@ -178,12 +184,18 @@ def _family_call(
     scored.sort(key=lambda item: item[0], reverse=True)
     best_score, name, winners = scored[0]
     names = {entry_name for _, entry_name, _ in scored}
+    cutoff = best_score - document.margin
+    ties: list[str] = []
+    for score, entry_name, _ in scored:
+        if score >= cutoff and entry_name not in ties:
+            ties.append(entry_name)
     return _FamilyCall(
         name=name,
         score=best_score,
         genes=winners,
         perfect=best_score >= 1.0 and len(names) == 1,
-        ambiguous=len(names) > 1,
+        ambiguous=len(ties) > 1,
+        ties=tuple(ties),
     )
 
 
@@ -202,9 +214,9 @@ FALLBACK_PHASE = "-"
 
 def _lookup_formula(
     document: SerotypeDocumentV2,
-    o: str | None,
-    h1: str | None,
-    h2: str | None,
+    o: tuple[str, ...],
+    h1: tuple[str, ...],
+    h2: tuple[str, ...],
     *,
     o_names: tuple[str, ...] = (),
 ) -> tuple[str, ...]:
@@ -225,7 +237,7 @@ def _lookup_formula(
     # The H phases are NOT widened: their absence is a real monophasic signal and
     # the `"-"` alias rows already encode it.
     def tokens(
-        family: Literal["o", "h1", "h2"], name: str | None, *, missing_all: bool
+        family: Literal["o", "h1", "h2"], names: tuple[str, ...], *, missing_all: bool
     ) -> tuple[str, ...]:
         """The names a family's call stands for.
 
@@ -236,15 +248,18 @@ def _lookup_formula(
         widens to every serogroup instead; a missing H phase stays "-" because the
         `can_h2_be_missing` alias rows already encode that case.
         """
-        if name is None:
+        if not names:
             if missing_all:
                 return o_names or (FALLBACK_PHASE,)
             return (FALLBACK_PHASE,)
-        members = [name]
-        for group in document.similarity_groups.get(family, ()):
-            if name in group:
-                members.extend(member for member in group if member not in members)
-                break
+        members: list[str] = []
+        for name in names:
+            if name not in members:
+                members.append(name)
+            for group in document.similarity_groups.get(family, ()):
+                if name in group:
+                    members.extend(member for member in group if member not in members)
+                    break
         return tuple(members)
 
     found: set[str] = set()
@@ -292,14 +307,21 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         entry.name for family in document.antigens if family.key == "o" for entry in family.entries
     )
     serovars = (
-        _lookup_formula(document, o.name, h1.name, h2.name, o_names=o_names) if control else ()
+        _lookup_formula(document, o.ties, h1.ties, h2.ties, o_names=o_names) if control else ()
     )
+    observed = (o.name, h1.name or FALLBACK_PHASE, h2.name or FALLBACK_PHASE)
+    exact_row = any((row.o, row.h1, row.h2) == observed for row in document.formulas)
     score = max(o.score, h1.score, h2.score)
+    if not exact_row and serovars:
+        # The observed formula is not in the table: the name came from widening a
+        # sibling's class (a cross-labelled reference) or from another reference
+        # covering the phase, which is weaker evidence than reading the formula.
+        notes.append("matched after widening the antigen names to their class")
     if len(serovars) == 1:
         return SchemeCall(
             phenotype=serovars[0],
             score=round(score, 4),
-            confidence="high" if exact else "low",
+            confidence="high" if exact and exact_row else "low",
             components=components,
             notes=tuple(notes),
         )

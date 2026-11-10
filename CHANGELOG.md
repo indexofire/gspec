@@ -57,6 +57,20 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **Antigen panels can tell a paralogue from a fragment.** With
+  `coverage: "union"` a subject that hit perfectly at one site and weakly at a
+  second (paralogous remnant, common in short-read assemblies) had its blocks
+  averaged: a 98.9 % `fljB` block merged with an 80.6 % remnant reported 90.6 %
+  and the antigen was lost. Blocks whose reference spans overlap by more than half
+  of the shorter one are now one locus, best block wins; disjoint blocks (a locus
+  split across contigs) still add up.
+- **A near-tie no longer commits to one antigen name.** Antigens within the
+  document's `margin` (0.01) are all widened and looked up, and a serovar matched
+  only after widening now says so and reports `confidence: low`. Measured on 304
+  in-house Salmonella assemblies against `sistr_cmd` 1.1.3, the right serovar is
+  delivered — exactly or among the reported candidates — for 99.3 % of them, up
+  from 90.5 % before these two changes (SISTR itself names a single serovar for
+  only ~27 %; the rest are `|`-joined sets).
 - **The Salmonella panel now sees every antigen reference.** Two defaults had
   been discarding the allele a genome carries, and together they cost most of the
   real-genome accuracy:

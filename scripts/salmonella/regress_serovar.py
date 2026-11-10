@@ -34,18 +34,50 @@ from pathlib import Path
 FASTA_SUFFIXES = (".fna", ".fa", ".fasta", ".fas", ".fna.gz", ".fa.gz", ".fasta.gz")
 
 
-def _expected_map(path: Path) -> dict[str, str]:
-    """``assembly_id -> serovar`` (the SISTR truth table's two columns)."""
-    expected: dict[str, str] = {}
+def _expected_map(path: Path) -> dict[str, tuple[str, ...]]:
+    """``assembly_id -> expected serovar names`` (two columns, ``|``-joined)."""
+    expected: dict[str, tuple[str, ...]] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         parts = line.rstrip("\n").split("\t")
         if len(parts) < 2 or not parts[0] or parts[0].startswith("#"):
             continue
-        expected[parts[0].strip()] = parts[1].strip()
+        expected[parts[0].strip()] = tuple(
+            name.strip() for name in parts[1].split("|") if name.strip()
+        )
     return expected
 
 
-def _assemblies(root: Path, expected: dict[str, str]) -> list[tuple[str, Path]]:
+def _sistr_tab(path: Path) -> dict[str, tuple[str, ...]]:
+    """Truth straight from ``sistr --no-cgmlst -f tab`` (``serovar`` column).
+
+    SISTR reports every serovar its formula hits as one ``|``-joined cell, so
+    the truth of a genome is a *set*: ``Typhimurium|Lagos`` does not mean either
+    name alone is wrong.
+    """
+    import csv
+
+    expected: dict[str, tuple[str, ...]] = {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle, delimiter="\t"):
+            filepath = row.get("fasta_filepath") or ""
+            serovar = (row.get("serovar") or "").strip()
+            if not filepath:
+                continue
+            stem = Path(filepath).name
+            for suffix in FASTA_SUFFIXES:
+                if stem.lower().endswith(suffix):
+                    stem = stem[: -len(suffix)]
+                    break
+            names = tuple(name for name in serovar.split("|") if name)
+            if names:
+                expected[stem] = names
+            else:
+                # An unnamed formula: "-:i:1,2" or "-:-:-" carries no serovar.
+                expected[stem] = (row.get("antigenic_formula") or "-",)
+    return expected
+
+
+def _assemblies(root: Path, expected: dict[str, tuple[str, ...]]) -> list[tuple[str, Path]]:
     """The files whose stem is in the truth table, in truth-table order."""
     found: dict[str, Path] = {}
     for path in sorted(root.rglob("*")):
@@ -112,7 +144,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", required=True, help="database name to screen against")
     parser.add_argument("--assemblies", type=Path, required=True)
-    parser.add_argument("--expected", type=Path, required=True)
+    parser.add_argument(
+        "--expected",
+        type=Path,
+        help="two-column truth table (assembly_id<TAB>serovar, '|' allowed)",
+    )
+    parser.add_argument(
+        "--sistr-tab",
+        type=Path,
+        help="read the truth from `sistr --no-cgmlst -f tab` output instead",
+    )
     parser.add_argument("--datadir", type=Path)
     parser.add_argument(
         "--min-accuracy",
@@ -121,38 +162,46 @@ def main(argv: list[str] | None = None) -> int:
         help="exit non-zero when accuracy falls below this fraction",
     )
     args = parser.parse_args(argv)
+    if (args.expected is None) == (args.sistr_tab is None):
+        parser.error("pass exactly one of --expected / --sistr-tab")
 
-    expected = _expected_map(args.expected)
+    expected = (
+        _expected_map(args.expected) if args.expected is not None else _sistr_tab(args.sistr_tab)
+    )
     pairs = _assemblies(args.assemblies, expected)
     if not pairs:
-        raise SystemExit(f"no assembly in {args.assemblies} matches a stem in {args.expected}")
+        raise SystemExit(f"no assembly in {args.assemblies} matches a truth-table stem")
     calls = _designate(args.db, args.datadir, [path for _, path in pairs])
 
     hits = 0
     listed = 0
     confusion: Counter[tuple[str, str]] = Counter()
     missing: list[str] = []
+    disagreed_set: list[str] = []
     for name, path in pairs:
         phenotype, candidates = calls.get(str(path), ("", ()))
         truth = expected[name]
-        if truth.startswith("-") or ":" in truth:
-            # Truth carries no serovar name (SISTR also only reported an antigenic
-            # formula): agreeing with it means not naming a serovar either.
-            if not phenotype:
+        if len(truth) == 1 and (truth[0].startswith("-") or ":" in truth[0]):
+            # Truth carries no serovar name (SISTR fell back to the antigenic
+            # formula): agreeing with it means not naming a serovar either, and
+            # reporting that same formula is agreement too.
+            if not phenotype or truth[0].split(":", 1)[1] in phenotype.replace("-:", ":"):
                 hits += 1
             else:
-                confusion[(truth, phenotype)] += 1
+                confusion[(truth[0], phenotype)] += 1
             continue
-        if phenotype == truth:
+        ours = {phenotype, *candidates} - {""}
+        if len(truth) == 1 and phenotype == truth[0]:
             hits += 1
-        elif truth in candidates:
+        elif ours & set(truth):
             # Ambiguous but right: the upstream tools pipe-join these names, so a
-            # truth inside the candidate set is information actually delivered.
+            # truth inside what we report is information actually delivered.
             listed += 1
-        elif not phenotype and not candidates:
+        elif not ours:
             missing.append(name)
         else:
-            confusion[(truth, phenotype or "|".join(candidates))] += 1
+            disagreed_set.append(name)
+            confusion[("|".join(truth), phenotype or "|".join(sorted(ours)))] += 1
 
     total = len(pairs)
     print(
@@ -167,6 +216,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {count:5d}  {truth} -> {call}")
     if missing:
         print(f"\nno-call examples: {', '.join(missing[:10])}")
+    if disagreed_set:
+        print(f"\ndisagreeing genomes: {', '.join(disagreed_set[:10])}")
     accuracy = (hits + listed) / total
     if accuracy < args.min_accuracy:
         print(f"FAIL: accuracy {accuracy:.3f} < --min-accuracy {args.min_accuracy}")

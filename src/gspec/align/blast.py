@@ -243,6 +243,36 @@ def run_blastn(
     return switch.run(legacy_rows, gseek_rows)
 
 
+#: Two blocks of one reference whose reference spans overlap by more than this
+#: fraction of the shorter span are alternate placements of the same locus, so
+#: only the better one is kept. Disjoint spans (a locus split across contigs)
+#: stay additive.
+_SAME_LOCUS_OVERLAP = 0.5
+
+
+def _distinct_loci(blocks: list[tuple["BlastRow", int, int]]) -> list[tuple["BlastRow", int, int]]:
+    """Drop blocks that re-cover an already accepted block of the same reference."""
+    ranked = sorted(
+        blocks,
+        key=lambda block: (block[0].length - block[0].gaps) * block[0].pident,
+        reverse=True,
+    )
+    kept: list[tuple[BlastRow, int, int]] = []
+    for block in ranked:
+        _, start, end = block
+        width = end - start + 1
+        covered = False
+        for _, other_start, other_end in kept:
+            other_width = other_end - other_start + 1
+            overlap = min(end, other_end) - max(start, other_start) + 1
+            if overlap > 0 and overlap >= _SAME_LOCUS_OVERLAP * min(width, other_width):
+                covered = True
+                break
+        if not covered:
+            kept.append(block)
+    return kept
+
+
 def union_hits(
     rows: Iterable[BlastRow],
     *,
@@ -266,12 +296,19 @@ def union_hits(
     so a split assembly reaches the same figure as a finished one.
     ``min_aligned_len`` drops subjects whose total ungapped aligned length is
     too small to be a real locus (spurious short-HSP guard).
+
+    Two blocks that cover the SAME part of the reference are alternative loci,
+    not fragments of one locus: a subject that is a perfect full-length gene at
+    one site and a paralogous remnant at another would otherwise average to a
+    mediocre identity (measured: a 98.9 % fljB block merged with an 80.6 %
+    remnant reported 90.6 % and lost the antigen). Such overlaps are resolved by
+    keeping the better block, so the union only ever sums disjoint spans.
     """
     groups: dict[str, list[tuple[BlastRow, int, int]]] = {}
     for row, s_start, s_end in swap_dedup(rows, dedup="subject"):
         groups.setdefault(row.sseqid, []).append((row, s_start, s_end))
     hits: list[Hit] = []
-    for blocks in groups.values():
+    for blocks in (_distinct_loci(group) for group in groups.values()):
         slen = blocks[0][0].slen
         if slen <= 0:
             continue
