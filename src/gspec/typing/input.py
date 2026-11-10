@@ -97,6 +97,9 @@ def _rows_from_screen_json(label: str, text: str) -> list[ScreenRow]:
                     alignment_start_pct=None,
                     subject_len=subject_len,
                     sketch_pct=hit.sketch_pct,
+                    contig=hit.sequence,
+                    start=hit.start,
+                    end=hit.end,
                 )
             )
     return rows
@@ -163,8 +166,10 @@ def read_typing_input(paths: list[Path], stdin_text: str | None = None) -> Typin
                 calls={
                     gene: GeneCall(
                         gene_id=gene,
-                        start=0,
-                        end=0,
+                        # Coordinates when the source knows them (screen JSON):
+                        # the phase guard needs the locus, not the offsets.
+                        start=row.start or 0,
+                        end=row.end or 0,
                         strand="+",
                         coverage_pct=row.coverage_pct,
                         identity_pct=row.identity_pct,
@@ -172,6 +177,7 @@ def read_typing_input(paths: list[Path], stdin_text: str | None = None) -> Typin
                         alignment_start_pct=row.alignment_start_pct,
                         subject_len=row.subject_len,
                         sketch_pct=row.sketch_pct,
+                        contig=row.contig,
                     )
                     for gene, row in per_gene.items()
                 },

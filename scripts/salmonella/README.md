@@ -279,6 +279,32 @@ above) and fewer wrong-antigen calls on genomes whose competing antigens lead to
 *disjoint* serovar sets — e.g. `fljB` `1,6` vs `1,7`, which now resolves
 (`24SAL0292` -> `London|Winterthur`, matching SISTR's own set).
 
+## Phase cross-talk: `fliC` and `fljB` share `l,v`
+
+SISTR's antigen pools are labelled per gene family, but the same antigen name can
+appear in both: `l,v` is a phase-1 antigen in `fliC.fasta` (30 records) and a
+phase-2 antigen in `fljB.fasta` (34 records), and the alleles are ~99 % identical.
+A genome's single `fliC` gene therefore scores in *both* families, and the
+phase-2 score can outrank the genome's real `fljB`.
+
+Measured on `26SAL0084` (Mendoza, `9:l,v:1,2`): one contig hit `h1 l,v` at 97.14 %
+and `h2 l,v` at 99.53 %, while the actual `fljB` on another contig matched `1,2`
+at 96.83 %. The phase-2 pool's copy won, so gspec reported `l,v` for H2 — and so
+does SISTR, which has no guard either.
+
+`_separate_phases` now keeps one physical gene out of both families. Hits are
+grouped into loci (same contig, overlapping interval) and a locus claimed by both
+phases is handed to the family that owns a *competitive* locus elsewhere — within
+2 % of the contested score, because alleles of one antigen sit inside ~1 %. Both
+conditions are deliberately narrow, and each was calibrated against a regression:
+a 10 % band let a stray 0.86 hit stand in for Braenderup's real `e,h` gene (0.913)
+and the call fell to `z39`, and an earlier version that ignored the antigen name
+deleted `e,h` even though the locus's second name was `e,n,z15` — cross-reactivity
+between flagellin alleles, not a duplicated reference. With the guard,
+`26SAL0084` reports `l,v` for H1 and `1,7` for H2 (the residual `1,2` vs `1,7` gap
+is the cross-labelled-reference problem, 2.8 points apart), and the 304-genome
+corpus stays at 99.3 %.
+
 ## Case study: a serogroup lost to an assembly break (26SAL0084)
 
 `26SAL0084` came out as `-:l,v:l,v` while SeqSero2 reported `9:l,v:1,2`
@@ -302,6 +328,24 @@ above) and fewer wrong-antigen calls on genomes whose competing antigens lead to
   one SNP apart, 1.07 points above the correct allele, i.e. just outside the
   document's 0.01 `margin`. SISTR gets this genome wrong the same way (it also
   reported `l,v`), which is what a margin calibration can and cannot fix.
+
+### Why SeqSero2 called O9 where gspec and SISTR did not
+
+SeqSero2 does not simply align a full-length `wzx`. Its O decision uses
+
+1. **purpose-built, sometimes partial markers** (`O-9,46_wbaV` at 1002 bp,
+   `O-9,46_wzy_partial` at 216 bp, `tyr-O-9` at 609 bp) instead of full genes, so a
+   fragmented locus still matches at high coverage — measured on this genome:
+   `O-9,46_wbaV` 77 %, `tyr-O-9` 56 %;
+2. a **relative** coverage gate (`> 15 % of the highest O hit`) rather than an
+   absolute floor; and
+3. a dedicated **functional test** to split O9 from O2, comparing `tyr-O-9` with
+   `tyr-O-2` — the two are allelic, so the wzx/wzy references cannot separate them.
+
+Items 1–2 are why the truncated locus still counted; item 3 is why the A/D1
+ambiguity resolves upstream and cannot here (SISTR ships no `tyr` reference, and
+SeqSero2's database is GPL-2.0). Extracting a `tyr`/`prt` pair from public-domain
+genomes would be a legitimate curated addition if this class of error matters.
 
 The lesson recorded here: before adding reference sequence, check whether the
 genome already matches one at high identity — an assembly break and a

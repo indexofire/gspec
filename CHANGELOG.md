@@ -57,6 +57,16 @@
   project, version, URL, conversion date) which `gspec db info` surfaces.
   Copyleft and non-commercial content stays out: `import_upstream.py ... --bundle`
   refuses SeqSero2 (GPL-2.0) outright.
+- **One flagellin gene can no longer serve both phases.** SISTR's `fliC` and
+  `fljB` pools both carry an `l,v` allele and the two are ~99 % identical, so a
+  genome's phase-1 gene scored in the phase-2 family too and its spurious hit
+  outranked the real `fljB` (measured: `h1 l,v` 97.14 % against `h2 l,v` 99.53 %
+  on the same contig, while the true `fljB` matched `1,2` elsewhere). Antigen
+  panels now group hits into loci and let each locus support one phase: a
+  contested locus goes to the family that owns a competitive locus elsewhere, and
+  when neither does, both keep it (monophasic or fragmented genomes keep the old
+  behaviour). Requires a source with coordinates — `gspec screen --format json`
+  has them, the frozen 15-column table does not.
 - **A truncated antigen hit is evidence, not absence.** Antigen genes sit in
   repeat-rich regions, so short-read assemblies break them across contigs — a
   real D1 genome carried `wzx` at 99.85 % identity over 52 % union coverage (split

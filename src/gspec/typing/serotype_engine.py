@@ -355,9 +355,177 @@ def _lookup_formula(
     return tuple(sorted(found))
 
 
+#: Two hits on one contig whose intervals overlap by more than this fraction of
+#: the shorter one are the same physical gene.
+SAME_LOCUS = 0.5
+
+#: A family's other locus counts as an alternative only when it scores at least
+#: this fraction of the contested one. Alleles of one antigen within a phase sit
+#: inside ~1 %, so 2 % is the band: a wider one lets a weaker stray hit stand in
+#: for a real gene (measured: a 10 % band cost Braenderup its `e,h` call, whose
+#: own locus scored 0.86 against a 0.913 contested one).
+_PHASE_ALTERNATIVE = 0.98
+
+
+_PHASE_FAMILIES = ("h1", "h2")
+
+
+def _separate_phases(
+    calls: Mapping[str, GeneCall], document: SerotypeDocumentV2
+) -> dict[str, GeneCall]:
+    """Keep one physical flagellin gene out of both phase families.
+
+    SISTR's `fliC` and `fljB` pools both carry an `l,v` allele and the two are
+    ~99 % identical, so a genome's phase-1 gene is scored by the phase-2 pool as
+    well (measured: one contig hit `h1 l,v` and `h2 l,v` at the same coordinates).
+    That spurious phase-2 hit can outrank the real fljB and the serotype flips —
+    SISTR reports `l,v` for the same genome.
+
+    A gene is one phase or the other, so each *locus* may support one family. The
+    locus is scored by its best allele in each family, and a shared locus goes to
+    the family that would lose more by losing it (score here minus the best it
+    reaches anywhere else). Real case — a Mendoza genome scores `l,v` 0.997 on its
+    phase-1 gene and `1,2` 0.968 on its real `fljB`: phase 1 keeps `l,v` (losing
+    it costs 0.1) and phase 2 moves to its own locus (giving up the spurious hit
+    costs 0.03).
+    """
+    if not any(family.key in _PHASE_FAMILIES for family in document.antigens):
+        return dict(calls)
+    loci, _spans = _loci(calls, document)
+    kept = dict(calls)
+    for key, families in loci.items():
+        if family_a := families.get("h1"):
+            family_a_score, family_a_genes = family_a
+        else:
+            continue
+        family_b = families.get("h2")
+        if family_b is None:
+            continue
+        family_b_score, family_b_genes = family_b
+        if not _same_antigen(calls, family_a_genes, family_b_genes):
+            # Different antigens matched at one locus is ordinary cross-reactivity
+            # between flagellin alleles, not a duplicated reference: leave it.
+            continue
+        loser = _phase_loser(loci, key, ("h1", family_a_score), ("h2", family_b_score))
+        if loser is None:
+            continue
+        for gene in family_a_genes if loser == "h1" else family_b_genes:
+            kept.pop(gene, None)
+    return kept
+
+
+def _loci(
+    calls: Mapping[str, GeneCall], document: SerotypeDocumentV2
+) -> tuple[
+    dict[tuple[str, int], dict[str, tuple[float, list[str]]]],
+    dict[tuple[str, int], tuple[int, int]],
+]:
+    """Group each family's hits into loci.
+
+    Returns ``(groups, spans)`` where a group is
+    ``(contig, first_start) -> family -> (best score, gene ids)`` and ``spans``
+    maps the same key to the locus' interval. Two intervals on one contig that
+    share more than ``SAME_LOCUS`` of the shorter one are the same physical gene.
+    Hits without a locus (a frozen table source) are ignored.
+    """
+    groups: dict[tuple[str, int], dict[str, tuple[float, list[str]]]] = {}
+    spans: dict[tuple[str, int], tuple[int, int]] = {}
+    for gene, call in sorted(
+        calls.items(), key=lambda item: (item[1].contig or "", item[1].start, item[1].end)
+    ):
+        family = gene.partition("_")[0]
+        if family not in _PHASE_FAMILIES or call.contig is None:
+            continue
+        key = _locus_key(call, spans)
+        span_start, span_end = spans.get(key, (call.start, call.end))
+        spans[key] = (min(span_start, call.start), max(span_end, call.end))
+        score = _antigen_score(call, document)
+        bucket = groups.setdefault(key, {})
+        best, genes = bucket.get(family, (0.0, []))
+        bucket[family] = (max(best, score), [*genes, gene])
+    return groups, spans
+
+
+def _locus_key(call: GeneCall, spans: Mapping[tuple[str, int], tuple[int, int]]) -> tuple[str, int]:
+    """The existing locus this hit overlaps, or a new key for it."""
+    assert call.contig is not None
+    width = call.end - call.start or 1
+    for key, (start, end) in spans.items():
+        if key[0] != call.contig:
+            continue
+        overlap = min(end, call.end) - max(start, call.start)
+        if overlap > 0 and overlap / min(end - start or 1, width) > SAME_LOCUS:
+            return key
+    return (call.contig, call.start)
+
+
+def _phase_loser(
+    loci: Mapping[tuple[str, int], dict[str, tuple[float, list[str]]]],
+    key: tuple[str, int],
+    mine: tuple[str, float],
+    theirs: tuple[str, float],
+) -> str | None:
+    """Which family gives up a contested locus, or None to leave both alone.
+
+    Only a family with a *competitive* locus elsewhere yields (``_PHASE_ALTERNATIVE``
+    of the contested score): without that guard the correct family's evidence is
+    deleted whenever its best other hit is junk — measured on the 304-genome
+    corpus, an unguarded version cost 0.6 points. When both families have one, the
+    higher score keeps the locus; when neither does, both keep it (a monophasic or
+    fragmented genome, where the evidence cannot be separated).
+    """
+    my_family, my_score = mine
+    their_family, their_score = theirs
+    mine_covered = _best_elsewhere(loci, key, my_family) >= _PHASE_ALTERNATIVE * my_score
+    theirs_covered = _best_elsewhere(loci, key, their_family) >= _PHASE_ALTERNATIVE * their_score
+    if mine_covered == theirs_covered:
+        if not mine_covered:
+            return None
+        return my_family if my_score < their_score else their_family
+    return my_family if mine_covered else their_family
+
+
+def _same_antigen(calls: Mapping[str, GeneCall], first: list[str], second: list[str]) -> bool:
+    """Do both families name the SAME antigen at this locus?
+
+    The guard exists for one duplication: SISTR's `fliC` and `fljB` pools both
+    carry an `l,v` allele, so one physical gene is scored as `h1 l,v` and
+    `h2 l,v`. Two *different* names at one locus (`h1 e,h` against
+    `h2 e,n,z15`) are genuine cross-reactivity between flagellin alleles — the
+    ranker handles that, and dropping either would lose the right name.
+    """
+    mine = {_antigen_name(calls, gene) for gene in first}
+    theirs = {_antigen_name(calls, gene) for gene in second}
+    return bool(mine & theirs)
+
+
+def _antigen_name(calls: Mapping[str, GeneCall], gene: str) -> str:
+    """``h1_l_v__3`` -> ``l,v``."""
+    del calls  # the name lives in the gene id
+    antigen = gene.rsplit("__", 1)[0]
+    return antigen.partition("_")[2].replace("_", ",")
+
+
+def _best_elsewhere(
+    loci: Mapping[tuple[str, int], dict[str, tuple[float, list[str]]]],
+    key: tuple[str, int],
+    family: str,
+) -> float:
+    """A family's best locus score other than the contested one."""
+    return max(
+        (
+            families[family][0]
+            for other, families in loci.items()
+            if other != key and family in families
+        ),
+        default=0.0,
+    )
+
+
 def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:
     """Ranked antigen families, then the formula table."""
     control = _control_present(calls, document)
+    calls = _separate_phases(calls, document)
     empty = _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
     resolved: dict[str, _FamilyCall] = {
         family.key: _family_call(family, calls, document) for family in document.antigens

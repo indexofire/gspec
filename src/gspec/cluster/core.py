@@ -84,6 +84,10 @@ class GeneCall(BaseModel, frozen=True):
     # that ship k-mer sketches produce it; it breaks near-ties that alignment
     # cannot (see `serotype_engine._family_call`).
     sketch_pct: float | None = None
+    # The hit's locus, when the source knows it (screen JSON does): one physical
+    # gene cannot be both fliC and fljB, so the phase families must not both
+    # score the same interval (`serotype_engine._separate_phases`).
+    contig: str | None = None
 
 
 class LocusCall(BaseModel, frozen=True):

@@ -204,3 +204,67 @@ def test_typing_reads_the_sketch_from_a_screen_document(tmp_path: Path) -> None:
     (calls,) = parsed.files
     assert calls.calls["h1_e_h"].sketch_pct == 100.0
     assert calls.calls["h1_e_h"].subject_len == 1500
+
+
+def _phase_document() -> SerotypeDocumentV2:
+    """H1 `l,v`; H2 `l,v` (the cross-pool allele) versus `1,2` (the real fljB)."""
+    return SerotypeDocumentV2(
+        name="panel",
+        control_gene=None,
+        identity_floor=80.0,
+        coverage_floor=60.0,
+        margin=0.01,
+        antigens=(
+            AntigenFamily(key="o", entries=(AntigenEntry(name="C2", genes=("o_C2",)),)),
+            AntigenFamily(key="h1", entries=(AntigenEntry(name="l,v", genes=("h1_l_v",)),)),
+            AntigenFamily(
+                key="h2",
+                entries=(
+                    AntigenEntry(name="l,v", genes=("h2_l_v",)),
+                    AntigenEntry(name="1,2", genes=("h2_1_2",)),
+                ),
+            ),
+        ),
+        formulas=(
+            SerotypeFormula(o="C2", h1="l,v", h2="l,v", serovar="CrossPhase"),
+            SerotypeFormula(o="C2", h1="l,v", h2="1,2", serovar="TwoPhases"),
+        ),
+    )
+
+
+def _phase_call(identity: float, contig: str | None, start: int, end: int) -> GeneCall:
+    return GeneCall(
+        gene_id="g",
+        start=start,
+        end=end,
+        strand="+",
+        coverage_pct=100.0,
+        identity_pct=identity,
+        verdict="present",
+        contig=contig,
+    )
+
+
+def test_a_shared_phase_locus_goes_to_the_family_with_no_alternative() -> None:
+    """Both pools score the same physical gene (SISTR ships `l,v` in `fliC` and
+    `fljB`), and phase 2 has a gene of its own: phase 2 must use it."""
+    calls = {
+        "o_C2": _phase_call(99.9, "ctgC", 1, 1299),
+        "h1_l_v": _phase_call(97.0, "ctgA", 6510, 8012),  # phase-1 gene
+        "h2_l_v": _phase_call(99.5, "ctgA", 6510, 8012),  # same gene, phase-2 pool
+        "h2_1_2": _phase_call(98.8, "ctgB", 13392, 14912),  # the real fljB
+    }
+    call = evaluate_serotype(calls, _phase_document())
+    assert call.phenotype == "TwoPhases"
+    assert "formula C2:l,v:1,2" in call.notes
+
+
+def test_without_loci_the_phase_guard_does_nothing() -> None:
+    """A frozen 15-column table carries no coordinates, so nothing is dropped."""
+    calls = {
+        "o_C2": _phase_call(99.9, None, 0, 0),
+        "h1_l_v": _phase_call(97.0, None, 0, 0),
+        "h2_l_v": _phase_call(99.5, None, 0, 0),
+    }
+    call = evaluate_serotype(calls, _phase_document())
+    assert call.phenotype == "CrossPhase"
