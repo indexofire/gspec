@@ -231,6 +231,14 @@ class SerotypeDocumentV2(BaseModel, frozen=True):
     #: disable the second rule.
     partial_coverage_floor: float = Field(default=45.0, ge=0.0, le=100.0)
     partial_identity_floor: float = Field(default=95.0, ge=0.0, le=100.0)
+    #: A phase family whose best hit scores below this (identity x coverage) is
+    #: reported as absent rather than named. Monophasic serovars are common
+    #: (`I 1,4,[5],12:i:-` is a fifth of the in-house corpus) and their genomes
+    #: still carry weak `fljB` cross-reactions: on one of them a 0.69 `l,z13` hit
+    #: turned a single-phase call into `B:i:l,z13`, and 11 unrelated serovars
+    #: replaced the correct one. Presence floors are lower by design — this is the
+    #: bar for NAMING a phase.
+    phase_floor: float = Field(default=0.75, ge=0.0, le=1.0)
     #: Two antigen candidates closer than this (on identity x coverage) are
     #: ambiguous. It must sit below the measured gap between near-identical
     #: alleles (O:2 vs O:9 differ by 0.8-1.5 %): the calibration knob.

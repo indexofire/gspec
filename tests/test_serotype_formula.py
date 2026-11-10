@@ -596,3 +596,53 @@ def test_a_snp_level_gap_without_a_marker_stays_ambiguous() -> None:
     )
     call = evaluate_serotype(calls, document)
     assert any("not separated" in note for note in call.notes)
+
+
+def test_a_monophasic_call_does_not_borrow_the_other_phase() -> None:
+    """Given h1 `i` and no h2 at all, When the table is searched, Then only the
+    `i:-` row matches.
+
+    Substituting "-" for a phase that WAS resolved matched every `B:-:-` serovar:
+    on the in-house corpus `I 1,4,[5],12:i:-` (a fifth of the genomes) arrived with
+    11 unrelated candidates and never as a single call.
+    """
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "B", "genes": ["o_B"]}]},
+            {"key": "h1", "entries": [{"name": "i", "genes": ["h1_i"]}]},
+            {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+        ],
+        formulas=[
+            {"o": "B", "h1": "i", "h2": "-", "serovar": "I 1,4,[5],12:i:-"},
+            {"o": "B", "h1": "i", "h2": "1,2", "serovar": "Typhimurium"},
+        ],
+    )
+    calls = {"invA": _call("invA"), "o_B": _call("o_B"), "h1_i": _call("h1_i")}
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "I 1,4,[5],12:i:-"
+    assert call.confidence == "low"
+
+
+def test_a_weak_phase_hit_is_absent_not_named() -> None:
+    """Below the naming bar a phase is absent: monophasic genomes still carry
+    weak `fljB` cross-reactions (a 0.69 `l,z13` hit invented a second phase)."""
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "B", "genes": ["o_B"]}]},
+            {"key": "h1", "entries": [{"name": "i", "genes": ["h1_i"]}]},
+            {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+        ],
+        formulas=[
+            {"o": "B", "h1": "i", "h2": "-", "serovar": "I 1,4,[5],12:i:-"},
+            {"o": "B", "h1": "i", "h2": "1,2", "serovar": "Typhimurium"},
+        ],
+        phase_floor=0.75,
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_B": _call("o_B"),
+        "h1_i": _call("h1_i"),
+        "h2_12": _call("h2_12", identity=92.0, coverage=75.0),  # 0.69
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "I 1,4,[5],12:i:-"

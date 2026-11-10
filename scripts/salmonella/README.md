@@ -208,6 +208,52 @@ The faithful implementation is three-fold, and all three are landed:
      SNP away and won on bitscore noise. 1549 upstream references are now 1435
      instead of 621.
 
+## Three defects a three-way comparison exposed
+
+Running the whole `26SAL` corpus against **both** references at once (not just
+SISTR) found three real bugs that the SISTR-only regression had hidden:
+
+1. **`_formula_keys` substituted `"-"` for a phase that WAS resolved.** A
+   monophasic genome (`h1 i`, no `h2`) therefore also matched every `B:-:-` row:
+   `I 1,4,[5],12:i:-` — a fifth of the corpus — arrived as 11 unrelated candidates
+   and never as a single call. The exact key already covers a missing phase,
+   because the caller passes `"-"` for it.
+2. **No naming bar for a phase.** A monophasic genome still carries weak `fljB`
+   cross-reactions; a 0.69 `l,z13` hit invented a second phase. `serotype/2`
+   gained `phase_floor` (0.75): below it a phase is *absent*, not weak. Presence
+   floors stay lower — this is the bar for NAMING a phase.
+3. **The cross-label merge was harmful where it mattered.** `audit_cross_labels.py`
+   had merged `i` with `g,t`, which pulled it into an 18-member class; SISTR's own
+   H1 groups contain no `i` at all. The audit stays as a report, `--cross-labels`
+   is optional and **not** part of the shipped bundle.
+
+The harness was also silently measuring a different engine: `regress_serovar.py`
+never passed `allele_sketch` from the panel's screen defaults, so every corpus run
+ran without the sketch/phase evidence. That is why the earlier ablation showed "no
+difference" — both arms were the same engine.
+
+## Three-way comparison: gspec, SISTR, SeqSero2 (125 `26SAL` genomes)
+
+Absolute numbers (SeqSero2 calls `-m k -t 4`, SISTR `--no-cgmlst -f tab`):
+
+| metric | value |
+| --- | --- |
+| SISTR ∩ SeqSero2 | 92.0 % |
+| SISTR ∩ gspec | **97.6 %** |
+| SeqSero2 ∩ gspec | 92.8 % |
+| all three agree | 92.0 % |
+| gspec single nomination | 26 % (SISTR: 30 %) |
+| gspec misses the two-reference consensus | **5 genomes** |
+
+Normalised for naming convention (subspecies prefix, `1,4,[5],12` versus
+`4,[5],12`) — without that normalisation SISTR∩SeqSero2 reads 79 %, which is a
+formatting artefact, not a disagreement.
+
+The five real misses: one H2 reference-diversity case (`26SAL0084`, `1,7` vs
+`1,2`), one "no call at all" (`26SAL0087`, O:8), and three where gspec's candidate
+set is disjoint from both references (`26SAL0172`, `0501`, `0511`). Everything else
+is either exact agreement or a superset of SISTR's set.
+
 ## Accuracy, measured
 
 `regress_serovar.py` runs the same pipeline the CLI runs (it resolves the panel's
@@ -226,7 +272,7 @@ Corpora, truth from `sistr_cmd` 1.1.3:
 
 | corpus | exact | contains truth | before this work |
 | --- | --- | --- | --- |
-| 304 in-house Salmonella assemblies (25/26SAL) | 25.7 % | **99.7 %** | 25 % (8 genomes) |
+| 304 in-house Salmonella assemblies (25/26SAL) | 26 % | **99.7 %** | 25 % (8 genomes) |
 | 8 RefSeq complete genomes | 0 | **7/8** | 2/8 |
 | 8 `26SAL` assemblies with hand-checked truth | 3/8 | **7/8** | 2/8 |
 

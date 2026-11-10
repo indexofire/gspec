@@ -236,6 +236,12 @@ def _family_call(
     if not scored:
         return _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
     scored.sort(key=lambda item: item.score, reverse=True)
+    if family.key in _PHASE_FAMILIES and scored[0].score < document.phase_floor:
+        # Below the naming bar a phase is absent, not weak: monophasic genomes
+        # carry cross-reactions that would otherwise invent a second phase.
+        return _FamilyCall(
+            name=None, score=scored[0].score, genes=(), perfect=False, ambiguous=False
+        )
     names = {item.name for item in scored}
     cutoff = scored[0].score - document.margin
     tied = _sketch_break([item for item in scored if item.score >= cutoff])
@@ -283,14 +289,23 @@ def _sketch_break(tied: list[_Ranked]) -> list[_Ranked]:
     return sorted(decided, key=lambda item: (item.sketch or 0.0, item.score), reverse=True)
 
 
-def _formula_keys(o: str, h1: str | None, h2: str | None) -> list[tuple[str, str, str]]:
-    """The phase combinations a table may hold for this call.
+def _formula_keys(
+    o: str, h1: str | None, h2: str | None, *, alias_h2_absent: bool = False
+) -> list[tuple[str, str, str]]:
+    """The one formula a call stands for.
 
-    Monophasic serovars are tabulated with ``"-"``, so an unresolved phase is
-    looked up as ``"-"`` before the call is called partial.
+    Monophasic serovars are tabulated with ``"-"``, and an unresolved phase is
+    already passed in as ``"-"``, so the exact key covers both cases. Substituting
+    ``"-"`` for a phase that WAS resolved is wrong and expensive: a monophasic
+    `i:-` genome then also matched every `B:-:-` serovar (measured on the in-house
+    corpus, `I 1,4,[5],12:i:-` arrived with 15 unrelated candidates).
     """
-    first, second = h1 or "-", h2 or "-"
-    return [(o, first, second), (o, first, "-"), (o, "-", second), (o, "-", "-")]
+    keys = [(o, h1 or "-", h2 or "-")]
+    if alias_h2_absent and h2 and h2 != "-":
+        # A weak h2 may be cross-reaction rather than a real phase: monophasic
+        # serovars are tabulated with `-`, so the h2-absent row is the fallback.
+        keys.append((o, h1 or "-", "-"))
+    return keys
 
 
 FALLBACK_PHASE = "-"
@@ -303,6 +318,7 @@ def _lookup_formula(
     h2: tuple[str, ...],
     *,
     o_names: tuple[str, ...] = (),
+    alias_h2_absent: bool = False,
 ) -> tuple[str, ...]:
     """The serovar(s) for a formula: exact first, then similarity widening.
 
@@ -350,7 +366,9 @@ def _lookup_formula(
     for o_token in tokens("o", o, missing_all=True):
         for h1_token in tokens("h1", h1, missing_all=False):
             for h2_token in tokens("h2", h2, missing_all=False):
-                for key in _formula_keys(o_token, h1_token, h2_token):
+                for key in _formula_keys(
+                    o_token, h1_token, h2_token, alias_h2_absent=alias_h2_absent
+                ):
                     found.update(index.get(key, ()))
     return tuple(sorted(found))
 
@@ -625,6 +643,11 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         call = resolved.get(family_key)
         if call is None or not extra or call.score >= DEMOTED_SCORE_FLOOR:
             continue
+        if call.name is None:
+            # The phase floor already said this family is absent (a monophasic
+            # genome): resurrecting the demoted name would invent a second phase
+            # and pull in every serovar sharing the first one.
+            continue
         # The phase assignment is solid, but the family's own locus is weak: this
         # is where erasing the demoted name loses the serovar (Braenderup's `e,h`
         # references fit its fljB locus better than its own fliC, at 0.86). Keep the
@@ -665,7 +688,16 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         entry.name for family in document.antigens if family.key == "o" for entry in family.entries
     )
     serovars = (
-        _lookup_formula(document, o.ties, h1.ties, h2.ties, o_names=o_names) if control else ()
+        _lookup_formula(
+            document,
+            o.ties,
+            h1.ties,
+            h2.ties,
+            o_names=o_names,
+            alias_h2_absent=not h2.perfect,
+        )
+        if control
+        else ()
     )
     observed = (o.name, h1.name or FALLBACK_PHASE, h2.name or FALLBACK_PHASE)
     exact_row = any((row.o, row.h1, row.h2) == observed for row in document.formulas)

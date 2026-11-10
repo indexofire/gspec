@@ -128,6 +128,10 @@ def _designate(
         merge_fragments=bool(contigs.merge_fragments),
         coverage=contigs.coverage or "best_hsp",
         dedup=contigs.dedup or "query",
+        # The panel's own switch: without it the hits carry no allele-sketch or
+        # phase evidence, so the harness would measure a different engine than the
+        # CLI runs (it did, silently, until this was plumbed through).
+        allele_sketch=bool(contigs.allele_sketch),
     )
     rendered = run_typing([], datadir, OutputFormat.json, True, stdin_text=table)
     document = json.loads(rendered)
