@@ -362,14 +362,22 @@ def _lookup_formula(
                     break
         return tuple(members)
 
-    found: set[str] = set()
-    for o_token in tokens("o", o, missing_all=True):
-        for h1_token in tokens("h1", h1, missing_all=False):
-            for h2_token in tokens("h2", h2, missing_all=False):
-                for key in _formula_keys(
-                    o_token, h1_token, h2_token, alias_h2_absent=alias_h2_absent
-                ):
-                    found.update(index.get(key, ()))
+    def search(keys_alias: bool) -> set[str]:
+        found: set[str] = set()
+        for o_token in tokens("o", o, missing_all=True):
+            for h1_token in tokens("h1", h1, missing_all=False):
+                for h2_token in tokens("h2", h2, missing_all=False):
+                    keys = _formula_keys(o_token, h1_token, h2_token, alias_h2_absent=keys_alias)
+                    for key in keys:
+                        found.update(index.get(key, ()))
+        return found
+
+    found = search(keys_alias=False)
+    if not found and alias_h2_absent:
+        # The exact formula has no row: only then does a weak h2 fall back to the
+        # h2-absent (monophasic) row. Merging both keys unconditionally made every
+        # imperfect h2 double the candidate list.
+        found = search(keys_alias=True)
     return tuple(sorted(found))
 
 
