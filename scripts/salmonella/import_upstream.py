@@ -386,6 +386,29 @@ def _write_bundle_metadata(
     )
 
 
+#: Upstream similarity-group typos, corrected at import time and recorded here so
+#: the deviation from SISTR's constants is deliberate and auditable. Each entry is
+#: (family, token as upstream spells it, token it should be).
+SIMILARITY_GROUP_FIXES: tuple[tuple[str, str, str], ...] = (
+    # SISTR's H1 group spells the last member 'g,s,tg,t' (a concatenation slip), so
+    # `g,[s],t` never reaches the rows keyed `g,s,t` — measured on an in-house
+    # genome whose h1 is `g,[s],t`: the expected token had no reachable row.
+    ("h1", "g,s,tg,t", "g,s,t"),
+)
+
+
+def _apply_group_fixes(groups: dict[str, list[list[str]]]) -> None:
+    """Rewrite the known upstream typos in place."""
+    fixed = 0
+    for family, wrong, right in SIMILARITY_GROUP_FIXES:
+        for group in groups.get(family, []):
+            if wrong in group:
+                group[group.index(wrong)] = right
+                fixed += 1
+    if fixed:
+        print(f"  corrected {fixed} upstream similarity-group typo(s)")
+
+
 def _merge_cross_labels(
     groups: dict[str, list[list[str]]], cross_labels: Path
 ) -> dict[str, list[list[str]]]:
@@ -817,6 +840,7 @@ def import_sistr(
         )
     rows = _sistr_formulas(table, subspecies=subspecies)
     groups = json.loads(SIMILARITY_GROUPS.read_text(encoding="utf-8"))
+    _apply_group_fixes(groups)
     if cross_labels is not None:
         groups = _merge_cross_labels(groups, cross_labels)
     rows, dropped_serovars = _drop_unreachable(markers, rows, groups=groups)

@@ -297,6 +297,46 @@ rather than counted as wins.
 | `regress_serovar.py` | measure accuracy against `sistr --no-cgmlst -f tab` |
 | `sketch_tiebreak.py` | measure the anchored-sketch signal itself |
 
+## Two decision tools (run these before building anything)
+
+**`sketch_separability.py`** answers "would a genomic-similarity channel separate
+serovars?" from a corpus and a truth table, and exits 1 when it would not. Measured
+on 125 in-house assemblies (k=21, bottom-1000 MinHash):
+
+| | min | median | max |
+| --- | --- | --- | --- |
+| within a serovar (135 pairs) | 0.630 | 0.864 | 0.979 |
+| between serovars (7615 pairs) | 0.016 | 0.519 | **0.997** |
+
+The most similar different-serovar pair is closer than the most similar
+same-serovar pair, and 5.7 % of the between pairs sit above the closest within
+pair: no threshold exists. `k` and sketch size are not the limit either — bottom-k
+error is `sqrt(J(1-J)/size)` (1.9 % at s=1000, J=0.9) and `J ~ p**k/(2-p**k)` makes
+k=21 resolve a 0.5 % ANI gap by 8 Jaccard points. The overlap is biological
+(accessory genome, phage, and clonal variants such as Typhimurium versus its
+monophasic `1,4,[5],12:i:-` form), so a reference-genome sketch is not a path to
+serovar designation. It remains useful for batch QC (duplicates, contamination) and
+for flagging "antigen says X but the genome is far from every X reference".
+
+**`antigen_diversity.py`** turns a screen table plus a SISTR truth dump into a
+worklist: for every genome and family it looks up the identity of the antigen the
+genome *should* carry (not its best hit, so a monophasic genome's weak `fljB`
+cross-reaction is correctly ignored) and reports what is weak or absent.
+
+Two things came out of running it on the 26SAL corpus:
+
+* it found an **upstream data typo**: SISTR's H1 similarity group spells its last
+  member `'g,s,tg,t'`, so `g,[s],t` never reached the rows keyed `g,s,t`.
+  `import_upstream.py` now corrects it (`SIMILARITY_GROUP_FIXES`, printed at build
+  time) and Senftenberg is reachable again — one genome recovered, documented
+  because it deviates from SISTR's constants on purpose.
+* it flagged `h2 e,n,z15` at 86.9 % for three Braenderup/Chester-lineage genomes.
+  Twenty extra alleles were extracted from the other 301 assemblies
+  (`build_h_diversity.py`) and the panel grew 1435 → 1455 — **and nothing changed**:
+  the class widening already reached the right row, because `e,n,x` and `e,n,z15`
+  share a SISTR class. A weak identity is a candidate, not a defect; check whether
+  widening already covers it before adding data.
+
 ## Sketch tiebreak: shipped
 
 SISTR separates near-identical antigen evidence with cgMLST (330 core genes).
