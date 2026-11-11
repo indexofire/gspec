@@ -297,6 +297,45 @@ rather than counted as wins.
 | `regress_serovar.py` | measure accuracy against `sistr --no-cgmlst -f tab` |
 | `sketch_tiebreak.py` | measure the anchored-sketch signal itself |
 
+## Current state after the fixes (spot check)
+
+The five-miss list above predates the formula-key, phase-floor, group-typo and
+phase-rework commits, so it is stale. Re-measured on the first 20 `26SAL` genomes
+with the shipped panel:
+
+| metric | value |
+| --- | --- |
+| single-name calls | 8/20 (40 %) |
+| candidate set contains SISTR's truth | 11/20 |
+| no call where SISTR also has none (`-:-:-`) | 1/20 |
+| genuinely wrong | **0/20** |
+
+The full 125-genome re-measurement needs a longer window than the interactive
+session allows (each genome costs ~18 s with the anchored sketch enabled); run it
+with `regress_serovar.py --assemblies ... --sistr-tab ...` on a machine that can
+keep the job alive.
+
+## Case-by-case diagnosis of the remaining misses
+
+Five genomes disagreed with both references in the 26SAL comparison. Each was
+traced to its raw hits rather than guessed at, and the split matters: **most are
+assembly problems, not database content.**
+
+| genome | SISTR / SeqSero2 | what the hits say | class |
+| --- | --- | --- | --- |
+| `26SAL0084` | `D1:l,v:l,v` / Mendoza | `wzx` D1 99.85 % but only **52 %** of the gene (two contigs); `fljB` matches `1,7` at 99.61 % and `1,2` at 96.83 % | assembly break + reference diversity |
+| `26SAL0087` | `C2-C3:r:-` / `8:r:-` | O `C2-C3` 99.58 % full length, H1 `r,[i]`/`r`, no H2 — the table simply has **no serovar** for `C2-C3:r:-` | **not a miss** (SeqSero2 agrees) |
+| `26SAL0172` | `C2-C3:l,v:l,v` / Litchfield | O `C2-C3` 100 %, H1 `l,v` 100 %, H2 `1,2` 99.94 % on its own contig — the phase guard now keeps them apart | **fixed by the phase rework** |
+| `26SAL0501` | Indiana / `-:z:1,7` | O group B reference hits at 99.65 % but over only **287 of 1293 bp (22 %)**; H1 `z` and H2 `1,7` are perfect | assembly gap in `rfb` |
+| `26SAL0511` | `Typhimurium|Lagos` / `-:i:1,2` | O group B reaches only 80.6 % over 227 bp — the locus is absent from the assembly; H1 `i` and H2 `1,2` are perfect | assembly gap in `rfb` |
+
+Three of five are missing or broken `rfb` sequence: no reference can fix that, and
+merging fragments cannot either (the bases are not in the assembly). The response is
+assembly QC — flag "O family absent while H is perfect" and ask for long reads or a
+re-assembly — which is exactly the signal `antigen_diversity.py` surfaces as
+"family with no hit" and `--mincov`/`partial_coverage_floor` already encode as a
+distinction between *absent* and *truncated*.
+
 ## Two decision tools (run these before building anything)
 
 **`sketch_separability.py`** answers "would a genomic-similarity channel separate
