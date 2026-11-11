@@ -315,6 +315,40 @@ session allows (each genome costs ~18 s with the anchored sketch enabled); run i
 with `regress_serovar.py --assemblies ... --sistr-tab ...` on a machine that can
 keep the job alive.
 
+## Do the thresholds survive a different batch?
+
+The panel's numbers were set against real data, so this is a fair challenge. The
+parameters split three ways, and `threshold_sensitivity.py` answers the question per
+batch instead of trusting the calibration.
+
+**Definitional** (a fact, not a fit): `SAME_LOCUS` 0.5, `PHASE_END_BASES` 150,
+`_PHASE_ALTERNATIVE` 0.98, `MIN_SKETCH`/`SKETCH_MARGIN`, the k-mer k, and the union/
+`_distinct_loci` overlap rule. A new batch cannot invalidate these; only a change in
+what the words mean would.
+
+**Reporting**: `margin` 0.01 decides whether a family is reported as one name or a
+candidate list. Widening never reorders rows, so it cannot turn a right call into a
+wrong one — only a decided call into a listed one. It is the *most* batch-sensitive
+number here (77 % of multi-antigen families have a top-two gap inside 3x margin) and
+it is also the safest to move.
+
+**Acceptance** (these can change a call): `identity_floor` 80, `coverage_floor` 60,
+`partial_coverage_floor` 45, `partial_identity_floor` 95, `phase_floor` 0.75. They
+are safe while the observations leave an empty band around them. Measured on the
+in-house corpus:
+
+| threshold | evidence | verdict |
+| --- | --- | --- |
+| `phase_floor` 0.75 | phase scores are ≤ 0.691 (cross-reaction) or ≥ 0.936 (present): a **0.245-wide empty band**, 0/248 observations within ±0.05 | survives a large shift in assembly quality |
+| `identity_floor` 80 | 5.4 % of hits within ±2 pp | re-check first on a new batch |
+| `coverage_floor` 60 | 7.5 % of hits within ±5 pp | re-check first on a new batch |
+| partial rule (95 / 45) | 57 accepted hits land at 51.4–55.5 % coverage, i.e. above the floor | safe, but the margin is data-shape dependent |
+
+So the answer is: no, a new batch does not invalidate them wholesale — but the
+acceptance thresholds must be re-measured, which is exactly what the tool prints. Run
+it on every new batch and re-calibrate whichever threshold reports observations inside
+its band.
+
 ## Case-by-case diagnosis of the remaining misses
 
 Five genomes disagreed with both references in the 26SAL comparison. Each was
