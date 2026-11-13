@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-11-14
+
 ### Added
 
 - **`vpa_vf` rides the wheel as a bundled database — the license-hygiene
