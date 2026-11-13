@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.5] - 2026-11-14
+
 ### Added
 
 - **`cam_vf` and `cdi_vf` ride the wheel as bundled databases — the same

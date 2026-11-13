@@ -1,6 +1,6 @@
 ---
 schema: gspec.summary/1
-tool: gspec 0.10.4
+tool: gspec 0.10.5
 created_at: 2026-09-17T12:00:00Z
 metric: '%COVERAGE'
 metrics: ["%COVERAGE"]
