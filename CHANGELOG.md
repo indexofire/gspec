@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`cam_vf` and `cdi_vf` ride the wheel as bundled databases — the same
+  license-hygiene rebuild as 0.10.4's `vpa_vf`.** Both existed only as
+  locally-built panels whose annotations carried VFDB terms (CC BY-NC
+  content must never ride the MIT distribution, AGENTS.md §6).
+  `scripts/campylobacter/build_cam_vf.py` re-cuts the sixteen C. jejuni
+  markers from NCTC 11168 (`NC_002163.1`), 81-176 pVir (`AF226280.2`,
+  `CP000550.1`), NCTC 13255 (`LR134499.1`), the strain 108 T6SS locus
+  (`JX436460.1`), `AF400048.1` and `AF130984.1`;
+  `scripts/clostridioides/build_cdi_vf.py` re-cuts the four C. difficile
+  toxin markers from strain 630 (`NC_009089.1`) and `AF271719.1`. Every
+  CDS is verified to translate exactly as annotated. Sequences are
+  byte-identical to the old panels except `cam_vf`'s `cgtB`, whose record
+  is strand-corrected to the coding orientation of `complement(5054..5959)`
+  (the old panel stored the plus-strand slice; blastn is strand-agnostic,
+  so screening output is unchanged).
+
+### Changed
+
+- **License audit verdict: `spy_emm`, `nme_sero`, `spn_sero`, `sau_spa`
+  stay fetch-only.** No byte-identical public-domain re-source could be
+  verified for their records: `spy_emm`'s CDC alleles are only reachable
+  through emmtyper's GPL packaging; `nme_sero`'s meningotype amplicons are
+  engineered/consensus targets, not INSDC verbatim (tested against the
+  reference genomes and the Tsang/Mothershed allele submissions);
+  `spn_sero`'s SeroBA loci carry no per-record INSDC provenance; and
+  `sau_spa`'s Ridom spaServer catalogue is academic-use restricted. Bundling
+  any of them would require either GPL/NC terms on the MIT wheel or
+  silently changing the shipped sequences — both unacceptable.
+
 ## [0.10.4] - 2026-11-14
 
 ### Added

@@ -71,6 +71,8 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
     expected_materialize = [
         f"gspec: materializing bundled database {name} ({count}) into {datadir}"
         for name, count in (
+            ("cam_vf", "16 records"),
+            ("cdi_vf", "4 records"),
             ("cje_cps", "42 records"),
             ("eco_dec", "16 records"),
             ("lmo_sero", "5 records"),
@@ -89,8 +91,10 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("vpa_vf", "4 records"),
         )
     ]
-    assert stderr_lines[:16] == expected_materialize
-    assert stderr_lines[16:] == [
+    assert stderr_lines[:18] == expected_materialize
+    assert stderr_lines[18:] == [
+        "gspec: indexed cam_vf (16 sequences, nucl)",
+        "gspec: indexed cdi_vf (4 sequences, nucl)",
         "gspec: indexed cje_cps (42 sequences, nucl)",
         "gspec: indexed eco_dec (16 sequences, nucl)",
         "gspec: indexed lmo_sero (5 sequences, nucl)",
@@ -112,6 +116,8 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
 
     infos = list_databases(datadir, reindex=False)
     expected_names = [
+        "cam_vf",
+        "cdi_vf",
         "cje_cps",
         "eco_dec",
         "lmo_sero",

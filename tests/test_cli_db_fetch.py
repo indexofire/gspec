@@ -362,6 +362,10 @@ def test_db_list_non_tty_emits_exact_tsv(tmp_path: Path, monkeypatch: pytest.Mon
     db_list_command(datadir=datadir, names_only=False, as_json=False)
     assert fake.getvalue() == (
         "NAME\tDESCRIPTION\tSTATUS\tDBTYPE\tKIND\tTYPING\tPROVIDER\n"
+        "cam_vf\tC. jejuni virulence panel: T4SS virB, CDT, CiaB, GGT, T6SS Hcp and"
+        " LOS-modification markers\tbundled\tnucl\tgene\t-\tgspec-curated (INSDC)\n"
+        "cdi_vf\tC. difficile toxin panel: PaLoc TcdA/TcdB + binary toxin CDT"
+        " subunits\tbundled\tnucl\tgene\t-\tgspec-curated (INSDC)\n"
         "cje_cps\tCampylobacter jejuni Penner capsule (CPS) multiplex PCR panel\tbundled"
         "\tnucl\tgene\tcommand\tgspec-curated (Poly 2015; CC0 + NCBI public domain)\n"
         "eco_dec\tDiarrheagenic E. coli marker panel (GB 4789.6 + risk-monitoring designation)"

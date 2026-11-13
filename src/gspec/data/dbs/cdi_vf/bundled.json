@@ -1,0 +1,33 @@
+{
+  "name": "cdi_vf",
+  "description": "C. difficile toxin panel: PaLoc TcdA/TcdB + binary toxin CDT subunits",
+  "vendor": "gspec-curated (INSDC)",
+  "dbtype": "nucl",
+  "kind": "gene",
+  "snapshotted": "2026-11-13",
+  "license": "Public domain (INSDC sequences)",
+  "note": "Four markers cut from public INSDC records: strain 630 chromosome NC_009089.1 (tcdA WP_011860904.1, tcdB WP_009902069.1) and the CCUG 20309 CDT locus AF271719.1 (cdtA AAF81760.1, cdtB AAF81761.1). Sequences are byte-identical to the earlier locally-built panel; annotations re-derived from INSDC so no third-party database terms ride the distribution. Screen-only; no typing scheme.",
+  "guidance": {
+    "references": [
+      {
+        "citation": "Sebaihia M, Wren BW, Mullany P, et al. The multidrug-resistant human pathogen Clostridium difficile has a highly mobile, mosaic genome. Nat Genet. 2006;38(7):779-786.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/16804543/",
+        "note": "Strain 630, the genome behind the tcdA/tcdB records."
+      },
+      {
+        "citation": "Perelle S, Gibert M, Bourlioux P, Corthier G, Popoff MR. Production of a complete binary toxin (actin-specific ADP-ribosyltransferase) by Clostridium difficile CD196. Infect Immun. 1997;65(4):1402-1407.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/9119480/",
+        "note": "The CDT locus (AF271719) behind the cdtA/cdtB records."
+      }
+    ],
+    "caveats": [
+      "Toxin gene presence does not predict toxin production: tcdC/regulatory changes, PaLoc deletions and phase variation govern expression, and RT078/BI/NAP1 strains carry deletions in tcdC that this panel does not assess.",
+      "Binary toxin (CDT) genes are present in a minority of strains and can occur independently of the PaLoc; a CDT-negative PaLoc-positive strain still reads tcdA/tcdB positive.",
+      "tcdA/tcdB allele variation (including the tcdA-negative toxinotype XI and variant toxin B genes) may lower identity below default floors; read the identity column, not just presence, when variant toxinotypes matter."
+    ],
+    "usage": [
+      "gspec screen isolate.fa -d cdi_vf --output cdi.tsv",
+      "gspec screen isolate.fa -d cdi_vf --format json"
+    ]
+  }
+}

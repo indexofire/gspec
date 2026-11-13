@@ -1,0 +1,45 @@
+{
+  "name": "cam_vf",
+  "description": "C. jejuni virulence panel: T4SS virB, CDT, CiaB, GGT, T6SS Hcp and LOS-modification markers",
+  "vendor": "gspec-curated (INSDC)",
+  "dbtype": "nucl",
+  "kind": "gene",
+  "snapshotted": "2026-11-13",
+  "license": "Public domain (INSDC sequences)",
+  "note": "Sixteen markers cut from public INSDC records: NCTC 11168 chromosome 1 NC_002163.1 (cdtA/B/C, ciaB, wlaN, the cgtA/neuA1 fusion), 81-176 plasmid pVir via AF226280.2 (virB4, virB11) and CP000550.1 (virB8/9/10), NCTC 13255 via LR134499.1 (ggt), the strain 108 T6SS locus JX436460.1 (hcp, annotated TssD), AF400048.1 (cstII) and AF130984.1 (cgtA OH4384 allele, cgtB). Sequences are byte-identical to the earlier locally-built panel except cgtB, strand-corrected here to the coding orientation of complement(5054..5959); annotations re-derived from INSDC so no third-party database terms ride the distribution. Screen-only; no typing scheme.",
+  "guidance": {
+    "references": [
+      {
+        "citation": "Parkhill J, Wren BW, Mungall K, et al. The genome sequence of the food-borne pathogen Campylobacter jejuni reveals hypervariable sequences. Nature. 2000;403(6770):665-668.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/10688204/",
+        "note": "NCTC 11168: cdtABC, ciaB, wlaN and the neuA1 fusion."
+      },
+      {
+        "citation": "Bacon DJ, Szymanski CM, Burr DH, Silver RP, Alm RA, Guerry P. DNA sequence and mutational analyses of the pVir plasmid of Campylobacter jejuni 81-176. Infect Immun. 2002;70(11):6242-6250.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/12379703/",
+        "note": "The pVir T4SS virB panel (AF226280; virB8-10 on CP000550)."
+      },
+      {
+        "citation": "Pickett CL, Cottle DL, Pesci EC, Bikah G. Prevalence of cytolethal distending toxin production in Campylobacter jejuni and related species. Infect Immun. 1996;64(6):2070-2078.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/8675309/",
+        "note": "CDT prevalence and the cdtABC locus."
+      },
+      {
+        "citation": "Cheng J, Hyun J, Kapoor M, et al. Multifunctionality of Campylobacter jejuni sialyltransferase CstII: characterization of the beta-1,4-N-acetylgalactosaminyltransfer ase and alpha-2,8-sialyltransferase activities. Glycobiology. 2008;18(9):686-697.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/18509108/",
+        "note": "CstII/cgtA LOS biosynthesis and ganglioside mimicry."
+      }
+    ],
+    "caveats": [
+      "Marker presence is genetic potential, not virulence: CDT and T4SS genes can be partial or lost, and the LOS markers depend on phase variable homopolymer tracts not captured by presence screening.",
+      "cgtA is TWO records on purpose: the NCTC 11168 neuA1 fusion (1611 nt) and the OH4384 allele (1044 nt) \u2014 key on the accession when the distinction matters. cgtB is the coding strand of the OH4384 locus (strand-corrected from the earlier local panel, which stored the plus-strand slice; blastn is strand-agnostic so screening output is unchanged).",
+      "virB4/virB11 come from the original pVir submission (AF226280) and virB8/9/10 from the 81-176 genome project's re-annotation (CP000550): the two records differ by 5 bp overall, so cross-hits between the two virB source copies read near 100% identity.",
+      "cstII/cgtA/cgtB encode LOS ganglioside mimics (GM1/GD1a) associated with Guillain-Barre syndrome strains; absence of the gene does not exclude a mimicking LOS made by other alleles.",
+      "This panel does not replace C. jejuni/C. coli species identification (combine with the cpn60 or lpxA-based assays) or capsule typing (see cje_cps)."
+    ],
+    "usage": [
+      "gspec screen isolate.fa -d cam_vf --output cam.tsv",
+      "gspec screen isolate.fa -d cam_vf --format json"
+    ]
+  }
+}

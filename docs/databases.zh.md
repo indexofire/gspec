@@ -104,8 +104,8 @@ $ for name in $(gspec db list -n); do gspec db setup -d "$name"; done
 - `-` —— 没有分型方案，仅用于筛查。
 
 STATUS 显示 `installed (N)` 的条件是 `<datadir>/<name>/gspec-manifest.json`
-存在，N 是记录数，否则显示 `available`。十六个随 wheel 发布的**内置数据库**
-（`cje_cps` 至 `vpa_vf`，当前清单以 `gspec db list` 为准）
+存在，N 是记录数，否则显示 `available`。十八个随 wheel 发布的**内置数据库**
+（`cam_vf` 至 `vpa_vf`，当前清单以 `gspec db list` 为准）
 均由 gspec 策划，没有提供商、也没有 fetch 路径：物化前为 `bundled`，物化后为
 `installed (N)`。每个提供商（包括 `ecoh`、`ncbi`、`resfinder`）都按需抓取，在
 `gspec db fetch -d <name>` 安装前显示 `available`。目录之外装进数据目录的数据库
@@ -267,7 +267,7 @@ Kaptive 的"位点型≠血清型"、VFDB 的 CC BY-NC 条款）。`tests/test_d
 ## 内置数据库（即装即用）
 
 大多数数据库在 `db fetch` 时才从上游下载，因为许可证禁止再分发（见"提供商"一节）。
-少数**内置**数据库随 gspec wheel 一起发布 —— 共十六个，均由 gspec 策划，其内容经过
+少数**内置**数据库随 gspec wheel 一起发布 —— 共十八个，均由 gspec 策划，其内容经过
 逐条记录的来源审计（公共领域来源，加上 MIT 许可的 `vpa_ok` 面板）。策略比"许可证
 允许"更严格：第三方提供商快照（`ncbi`、`card`、`ecoh`、`resfinder` 等）绝不随
 wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承担。无需下载、无需确认：
@@ -275,6 +275,8 @@ wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承
 
 | 名称 | 内容 | 快照日期 | 分型 |
 |---|---|---|---|
+| `cam_vf` | 空肠弯曲菌毒力面板：T4SS virB4/8/9/10/11、CDT（cdtA/B/C）、CiaB、GGT、T6SS Hcp 与 LOS 修饰标记（16 条，INSDC） | 2026-11-13 | -（仅筛查） |
+| `cdi_vf` | 艰难拟梭菌毒素面板：PaLoc TcdA/TcdB + 二联毒素 CDT 亚基（4 条，INSDC） | 2026-11-13 | -（仅筛查） |
 | `cje_cps` | 空肠弯曲菌 Penner 荚膜多重 PCR 面板（37 条记录：36 条 CPS 扩增子 + `lpxA` 对照） | 2026-10-27 | `gspec.typing/2`（方案 `penner_cps`） |
 | `eco_dec` | 致腹泻大肠杆菌标志基因面板（16 条记录，GB 4789.6 + 风险监测判定） | 2026-10-02 | `gspec.typing/2`（`gb4789_6`、`risk_monitoring` 双方案） |
 | `lmo_sero` | 单核细胞增生李斯特菌血清群分型（5 条记录，Doumith 2004 标记） | 2026-10-03 | `gspec.typing/2`（方案 `doumith_serogroup`） |
@@ -310,6 +312,13 @@ marker-set 解析规则，不是 ShigaTyper 的逐字节移植。`ipaH_c` 对照
 溶血素面板由公共领域 INSDC 记录重建（RIMD 2210633 二号染色体 `NC_004605.1`、
 10329 菌株 `CP045795.1`、GTVSS-031 菌株 `CP176647.1`），序列与此前本地构建的
 面板逐字节相同 —— 注释改由 INSDC 重新推导，发布物中不含任何第三方数据库条款。
+`cam_vf` 与 `cdi_vf` 以同样方式重建（NCTC 11168 `NC_002163.1`、81-176 pVir
+`AF226280.2` / `CP000550.1`、`LR134499.1`、`JX436460.1`、`AF400048.1`、
+`AF130984.1`；630 `NC_009089.1`、`AF271719.1`）—— `cam_vf` 除 `cgtB` 外逐字节
+一致（该记录链向校正为编码链），`cdi_vf` 完全一致。配套审计确认 `spy_emm`、
+`nme_sero`、`spn_sero`、`sau_spa` 维持按需抓取：其上游内容为 GPL 打包
+（spy_emm、nme_sero、spn_sero）或学术用途限制（sau_spa），且无法为其记录
+验证到逐字节一致的公共领域替代来源。
 回归测试锁定了每个内置库的
 头部不出现任何 `VF*` / `VFDB` / `ARO:` 标签。
 

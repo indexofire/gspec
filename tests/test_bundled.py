@@ -1,9 +1,9 @@
 """Bundled databases: discovery, materialization, and the DEC matrix.
 
-The wheel ships sixteen license-clean, gspec-curated bundles — the typed
+The wheel ships eighteen license-clean, gspec-curated bundles — the typed
 eco_dec, lmo_sero, cje_cps, shi_sero, and vch_vf panels, the typed vpa_ok
-cluster snapshot, and the untyped vpa_pai cluster / vpa_vf gene panels.
-Provider-backed databases (ecoh, ncbi,
+cluster snapshot, the untyped vpa_pai cluster / vpa_vf / cam_vf / cdi_vf
+gene panels. Provider-backed databases (ecoh, ncbi,
 resfinder, card, ...) are fetch-on-demand only: their upstream content
 carries licensing/provenance risk that a wheel snapshot should not
 shoulder. These tests pin the install-time-ready contract — discovery
@@ -126,15 +126,18 @@ def screen_db(sample: Path, datadir: Path, name: str, *extra: str) -> Result:
 
 def test_bundled_discovery_finds_all_bundled() -> None:
     """Given the wheel's data dir, When bundled databases are discovered,
-    Then exactly the sixteen gspec-curated bundles ship in name order —
-    eleven gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
+    Then exactly the eighteen gspec-curated bundles ship in name order —
+    thirteen gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
     cluster-kind — each metadata parses
     (vendor/dbtype/kind/snapshot date), eco_dec/lmo_sero/cje_cps carry
     their typing documents, shi_sero is the first serotype prototype,
-    vch_vf is the CTX/tcpA panel, vpa_vf is the INSDC-rebuilt haemolysin
+    vch_vf is the CTX/tcpA panel, cam_vf/cdi_vf are the INSDC-rebuilt
+    virulence/toxin panels, vpa_vf is the INSDC-rebuilt haemolysin
     panel, and vpa_ok/vpa_pai carry cluster feature
     tables; vpa_pai is screen-only."""
     assert bundled_names() == [
+        "cam_vf",
+        "cdi_vf",
         "cje_cps",
         "eco_dec",
         "lmo_sero",
@@ -153,6 +156,20 @@ def test_bundled_discovery_finds_all_bundled() -> None:
         "vpa_vf",
     ]
     by_name = {database.name: database for database in bundled_databases()}
+    cam_vf = by_name["cam_vf"]
+    assert cam_vf.metadata.vendor == "gspec-curated (INSDC)"
+    assert cam_vf.metadata.dbtype == "nucl"
+    assert cam_vf.metadata.kind == "gene"
+    assert cam_vf.metadata.snapshotted == "2026-11-13"
+    assert cam_vf.metadata.license == "Public domain (INSDC sequences)"
+    assert cam_vf.typing_path is None
+    cdi_vf = by_name["cdi_vf"]
+    assert cdi_vf.metadata.vendor == "gspec-curated (INSDC)"
+    assert cdi_vf.metadata.dbtype == "nucl"
+    assert cdi_vf.metadata.kind == "gene"
+    assert cdi_vf.metadata.snapshotted == "2026-11-13"
+    assert cdi_vf.metadata.license == "Public domain (INSDC sequences)"
+    assert cdi_vf.typing_path is None
     cje_cps = by_name["cje_cps"]
     assert cje_cps.metadata.vendor.startswith("gspec-curated (Poly 2015")
     assert cje_cps.metadata.dbtype == "nucl"
@@ -225,6 +242,8 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
     locked mechanically across every bundle (record counts pinned;
     the vpa_ok cluster snapshot's bare locus ids are trivially clean)."""
     typed_counts = {
+        "cam_vf": 16,
+        "cdi_vf": 4,
         "cje_cps": 42,
         "eco_dec": 16,
         "lmo_sero": 5,
@@ -529,6 +548,61 @@ def test_screen_materializes_bundled_vpa_vf_and_calls_all_markers(tmp_path: Path
     assert all(row[9] == "100.00" and row[10] == "100.00" for row in rows)
     alleles = sorted(row[12] for row in rows if row[5] == "trh")
     assert alleles == ["QGG36210.1", "XLX46591.1"]
+
+
+def test_screen_materializes_bundled_cam_vf_and_calls_all_markers(tmp_path: Path) -> None:
+    """Given the bundled cam_vf (the INSDC-rebuilt C. jejuni virulence
+    panel) and a sample built from the BUNDLE's own sequences, When
+    screening --db cam_vf, Then the bundle materializes and all sixteen
+    markers call themselves at 100% — one row per contig, the two cgtA
+    alleles resolved per contig by the best subject."""
+    sample = tmp_path / "panel.fna"
+    sample.write_bytes((BUNDLED_ROOT / "cam_vf" / "sequences").read_bytes())
+    datadir = tmp_path / "datadir"
+    datadir.mkdir()
+
+    result = screen_db(sample, datadir, "cam_vf", "--quiet")
+
+    assert result.exit_code == 0, result.stderr
+    rows = [line.split("\t") for line in result.stdout.splitlines() if not line.startswith("#")]
+    assert len(rows) == 16
+    assert sorted(row[5] for row in rows) == [
+        "cdtA",
+        "cdtB",
+        "cdtC",
+        "cgtA",
+        "cgtA",
+        "cgtB",
+        "ciaB",
+        "cstII",
+        "ggt",
+        "hcp",
+        "virB10",
+        "virB11",
+        "virB4",
+        "virB8",
+        "virB9",
+        "wlaN",
+    ]
+    assert all(row[9] == "100.00" and row[10] == "100.00" for row in rows)
+
+
+def test_screen_materializes_bundled_cdi_vf_and_calls_all_markers(tmp_path: Path) -> None:
+    """Given the bundled cdi_vf (the INSDC-rebuilt C. difficile toxin
+    panel) and a sample built from the BUNDLE's own sequences, When
+    screening --db cdi_vf, Then the bundle materializes and all four toxin
+    markers call themselves at 100%."""
+    sample = tmp_path / "panel.fna"
+    sample.write_bytes((BUNDLED_ROOT / "cdi_vf" / "sequences").read_bytes())
+    datadir = tmp_path / "datadir"
+    datadir.mkdir()
+
+    result = screen_db(sample, datadir, "cdi_vf", "--quiet")
+
+    assert result.exit_code == 0, result.stderr
+    rows = [line.split("\t") for line in result.stdout.splitlines() if not line.startswith("#")]
+    assert sorted(row[5] for row in rows) == ["cdtA", "cdtB", "tcdA", "tcdB"]
+    assert all(row[9] == "100.00" and row[10] == "100.00" for row in rows)
 
 
 # ------------------------------------------------------- typed cluster bundle --

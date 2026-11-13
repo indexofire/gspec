@@ -112,9 +112,9 @@ database carries a `typing.json`:
 - `-` — no typing scheme; screen-only.
 
 STATUS reads `installed (N)` when `<datadir>/<name>/gspec-manifest.json`
-exists, with N the record count, otherwise `available`. The sixteen
+exists, with N the record count, otherwise `available`. The eighteen
 wheel-shipped [bundled](#bundled-databases-install-time-ready) databases
-(`cje_cps` through `vpa_vf`; `gspec db list` prints the current set) are
+(`cam_vf` through `vpa_vf`; `gspec db list` prints the current set) are
 gspec-curated, with no provider and no fetch path:
 they read `bundled` before materialization and `installed (N)` after. Every provider,
 including `ecoh`, `ncbi`, and `resfinder`, is fetch-on-demand and reads `available` until
@@ -287,7 +287,7 @@ wheel's notes without rebuilding anything.
 
 Most databases download from upstream at `db fetch` time because their licenses forbid
 redistribution (see [Providers](#providers)). A small set of **bundled** databases ships
-inside the gspec wheel instead — sixteen gspec-curated databases whose content provenance
+inside the gspec wheel instead — eighteen gspec-curated databases whose content provenance
 was audited record-by-record (public-domain sources plus the MIT `vpa_ok` panel). The
 policy is stricter than "the license permits it": third-party provider snapshots
 (`ncbi`, `card`, `ecoh`, `resfinder`, ...) never ride the wheel, because their
@@ -296,6 +296,8 @@ Nothing to download, nothing to accept: a bundled database works out of the box.
 
 | Name | Content | Snapshot | Typed |
 |---|---|---|---|
+| `cam_vf` | C. jejuni virulence panel: T4SS virB4/8/9/10/11, CDT (cdtA/B/C), CiaB, GGT, T6SS Hcp and LOS-modification markers (16 records, INSDC) | 2026-11-13 | - (screen-only) |
+| `cdi_vf` | C. difficile toxin panel: PaLoc TcdA/TcdB + binary toxin CDT subunits (4 records, INSDC) | 2026-11-13 | - (screen-only) |
 | `cje_cps` | C. jejuni Penner capsule multiplex PCR panel (37 records: 36 CPS amplicons + `lpxA` control) | 2026-10-27 | `gspec.typing/2` (scheme `penner_cps`) |
 | `eco_dec` | Diarrheagenic E. coli marker panel (16 records, GB 4789.6 + risk-monitoring designation) | 2026-10-02 | `gspec.typing/2` (schemes `gb4789_6`, `risk_monitoring`) |
 | `lmo_sero` | Listeria monocytogenes serogrouping (5 records, Doumith 2004 markers) | 2026-10-03 | `gspec.typing/2` (scheme `doumith_serogroup`) |
@@ -335,7 +337,15 @@ The `vpa_vf` haemolysin panel was rebuilt from public INSDC records (RIMD
 2210633 chromosome 2 `NC_004605.1`, strain 10329 `CP045795.1`, strain
 GTVSS-031 `CP176647.1`) with sequences byte-identical to the earlier
 locally-built panel — annotations re-derived from INSDC, so no third-party
-database terms ride the distribution.
+database terms ride the distribution. The `cam_vf` and `cdi_vf` panels were
+rebuilt the same way (NCTC 11168 `NC_002163.1`, 81-176 pVir `AF226280.2` /
+`CP000550.1`, `LR134499.1`, `JX436460.1`, `AF400048.1`, `AF130984.1`;
+630 `NC_009089.1`, `AF271719.1`) — `cam_vf` byte-identical except `cgtB`,
+strand-corrected to the coding orientation, and `cdi_vf` byte-identical.
+A companion audit kept `spy_emm`, `nme_sero`, `spn_sero` and `sau_spa`
+fetch-only: their upstream content is GPL-packaged (spy_emm, nme_sero,
+spn_sero) or academic-use restricted (sau_spa), and no byte-identical
+public-domain re-source could be verified for their records.
 A regression test pins that no `VF*` / `VFDB` / `ARO:` tags appear in any
 bundle's headers.
 
