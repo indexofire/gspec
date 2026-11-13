@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-11-13
+
 ### Added
 
 - **`sen_sero` — Salmonella enterica subsp. enterica O/H antigen panel.** Nine

@@ -1,6 +1,6 @@
 ---
 schema: gspec.cluster/2
-tool: gspec 0.10.2
+tool: gspec 0.10.3
 created_at: 2026-10-01T12:00:00Z
 db: vpa_ok
 preset: asm20
