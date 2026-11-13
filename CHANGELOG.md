@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`vpa_vf` rides the wheel as a bundled database — the license-hygiene
+  rebuild.** The earlier `vpa_vf` (tlh species control + tdh + the two trh
+  alleles) existed only as a locally-built panel whose annotations carried
+  VFDB terms (CC BY-NC content must never ride the MIT distribution,
+  AGENTS.md §6). Rebuilt by `scripts/vibrio/build_vpa_vf.py` from public
+  INSDC records — RIMD 2210633 chromosome 2 (`NC_004605.1`: tdh VPA1314,
+  tlh VPA0226), strain 10329 (`CP045795.1`: TRH1), strain GTVSS-031
+  (`CP176647.1`: TRH2) — with each CDS verified to translate exactly as
+  annotated. Sequences are byte-identical to the old panel (screening
+  behavior unchanged); headers now carry INSDC protein accessions
+  (WP_005463268.1, QGG36210.1, XLX46591.1, WP_005481504.1) and the
+  vendor/license gates pass (`gspec-curated (INSDC)`, public domain).
+
 ## [0.10.3] - 2026-11-13
 
 ### Added

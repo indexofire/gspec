@@ -397,6 +397,8 @@ def test_db_list_non_tty_emits_exact_tsv(tmp_path: Path, monkeypatch: pytest.Mon
         "nucl\tcluster\tintegrated\tgspec-curated (vpasero)\n"
         "vpa_pai\tV. parahaemolyticus VPaI-1..VPaI-10 pathogenicity islands\tbundled\t"
         "nucl\tcluster\t-\tgspec-curated (Boyd et al. 2008; INSDC)\n"
+        "vpa_vf\tV. parahaemolyticus haemolysin panel: tlh species marker + tdh/trh"
+        " virulence markers\tbundled\tnucl\tgene\t-\tgspec-curated (INSDC)\n"
     )
 
 

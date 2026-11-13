@@ -83,6 +83,7 @@ vch_oagc	Vibrio cholerae O-antigen gene clusters (OAGC; 190 OL loci) + ompW spec
 vfdb	VFDB virulence factors (set A, nucleotide)	available	nucl	gene	-	USTC (VFDB)
 victors	Victors virulence factors	available	nucl	gene	-	University of Chicago
 vpa_ok	V. parahaemolyticus O and K antigen loci (OAgc/CPSgc, vpasero)	bundled	nucl	cluster	integrated	gspec-curated (vpasero)
+vpa_vf	V. parahaemolyticus haemolysin panel: tlh species marker + tdh/trh virulence markers	bundled	nucl	gene	-	gspec-curated (INSDC)
 ```
 
 Rows are sorted globally by NAME, so the TSV and JSON listings can be consumed without
@@ -111,9 +112,10 @@ database carries a `typing.json`:
 - `-` — no typing scheme; screen-only.
 
 STATUS reads `installed (N)` when `<datadir>/<name>/gspec-manifest.json`
-exists, with N the record count, otherwise `available`. The four
-wheel-shipped [bundled](#bundled-databases-install-time-ready) databases — `cje_cps`,
-`eco_dec`, `lmo_sero`, `vpa_ok` — are gspec-curated, with no provider and no fetch path:
+exists, with N the record count, otherwise `available`. The sixteen
+wheel-shipped [bundled](#bundled-databases-install-time-ready) databases
+(`cje_cps` through `vpa_vf`; `gspec db list` prints the current set) are
+gspec-curated, with no provider and no fetch path:
 they read `bundled` before materialization and `installed (N)` after. Every provider,
 including `ecoh`, `ncbi`, and `resfinder`, is fetch-on-demand and reads `available` until
 `gspec db fetch -d <name>` installs it. Databases installed
@@ -285,7 +287,7 @@ wheel's notes without rebuilding anything.
 
 Most databases download from upstream at `db fetch` time because their licenses forbid
 redistribution (see [Providers](#providers)). A small set of **bundled** databases ships
-inside the gspec wheel instead — thirteen gspec-curated databases whose content provenance
+inside the gspec wheel instead — sixteen gspec-curated databases whose content provenance
 was audited record-by-record (public-domain sources plus the MIT `vpa_ok` panel). The
 policy is stricter than "the license permits it": third-party provider snapshots
 (`ncbi`, `card`, `ecoh`, `resfinder`, ...) never ride the wheel, because their
@@ -307,6 +309,9 @@ Nothing to download, nothing to accept: a bundled database works out of the box.
 | `str_lancefield` | Streptococcus Lancefield A/B/C/G markers + `tuf` control (29 records) | 2026-11-06 | `gspec.typing/2` (scheme `lancefield`) |
 | `sag_sero` | GBS capsular serotyping, 10 serotypes + III subtypes (14 records, GBS-SBG) | 2026-11-06 | `gspec.typing/2` (schemes `serotype`, `serotype_iii`) |
 | `pau_sero` | P. aeruginosa OSA serogroups O1-O17 + wzyB (14 loci, pasty; cluster kind) | 2026-11-06 | `gspec.typing/2` (schemes `osa_serogroup`, `wzyb`) |
+| `sen_sero` | S. enterica subsp. enterica O/H antigen panel (13 curated INSDC CDS markers: `invA` control, O-group rfb markers, phase-1/phase-2 flagellin alleles) | 2026-11-09 | `gspec.serotype/1` |
+| `sen_sero_sistr` | S. enterica SISTR O/H antigen alleles + formula table (1443 records) | 2026-11-11 | `gspec.serotype/1` |
+| `vpa_vf` | V. parahaemolyticus haemolysin markers: `tlh` species control + `tdh` + `trh` TRH1/TRH2 alleles (4 records, INSDC) | 2026-11-13 | - (screen-only) |
 
 **License provenance.** Every `eco_dec` record was re-sourced from primary
 public-domain submissions (NCBI RefSeq/GenBank/DDBJ accessions, same alleles as the
@@ -326,8 +331,13 @@ marker FASTA (no ShigaPass GPL content); its `serotype.json` is the first
 conservative marker-set resolver and is not a byte-for-byte ShigaTyper port.
 Its `ipaH_c` control is split into two non-overlapping presence fragments
 (1-640 and 641-780) so divergent ipaH alleles remain detectable.
+The `vpa_vf` haemolysin panel was rebuilt from public INSDC records (RIMD
+2210633 chromosome 2 `NC_004605.1`, strain 10329 `CP045795.1`, strain
+GTVSS-031 `CP176647.1`) with sequences byte-identical to the earlier
+locally-built panel — annotations re-derived from INSDC, so no third-party
+database terms ride the distribution.
 A regression test pins that no `VF*` / `VFDB` / `ARO:` tags appear in any
-of the seven bundles' headers.
+bundle's headers.
 
 A `gspec.serotype/1` profile resolves its ordered marker-set rules with one
 policy knob, `decision`. The default, `ambiguous`, reports every matching rule's

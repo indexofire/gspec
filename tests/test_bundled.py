@@ -1,8 +1,9 @@
 """Bundled databases: discovery, materialization, and the DEC matrix.
 
-The wheel ships seven license-clean, gspec-curated bundles — the typed
-eco_dec, lmo_sero, cje_cps, shi_sero, and vch_vf panels plus the typed
-vpa_ok and untyped vpa_pai cluster snapshots. Provider-backed databases (ecoh, ncbi,
+The wheel ships sixteen license-clean, gspec-curated bundles — the typed
+eco_dec, lmo_sero, cje_cps, shi_sero, and vch_vf panels, the typed vpa_ok
+cluster snapshot, and the untyped vpa_pai cluster / vpa_vf gene panels.
+Provider-backed databases (ecoh, ncbi,
 resfinder, card, ...) are fetch-on-demand only: their upstream content
 carries licensing/provenance risk that a wheel snapshot should not
 shoulder. These tests pin the install-time-ready contract — discovery
@@ -125,12 +126,13 @@ def screen_db(sample: Path, datadir: Path, name: str, *extra: str) -> Result:
 
 def test_bundled_discovery_finds_all_bundled() -> None:
     """Given the wheel's data dir, When bundled databases are discovered,
-    Then exactly the thirteen gspec-curated bundles ship in name order —
-    eight gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
+    Then exactly the sixteen gspec-curated bundles ship in name order —
+    eleven gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
     cluster-kind — each metadata parses
     (vendor/dbtype/kind/snapshot date), eco_dec/lmo_sero/cje_cps carry
     their typing documents, shi_sero is the first serotype prototype,
-    vch_vf is the CTX/tcpA panel, and vpa_ok/vpa_pai carry cluster feature
+    vch_vf is the CTX/tcpA panel, vpa_vf is the INSDC-rebuilt haemolysin
+    panel, and vpa_ok/vpa_pai carry cluster feature
     tables; vpa_pai is screen-only."""
     assert bundled_names() == [
         "cje_cps",
@@ -148,6 +150,7 @@ def test_bundled_discovery_finds_all_bundled() -> None:
         "vch_vf",
         "vpa_ok",
         "vpa_pai",
+        "vpa_vf",
     ]
     by_name = {database.name: database for database in bundled_databases()}
     cje_cps = by_name["cje_cps"]
@@ -201,6 +204,13 @@ def test_bundled_discovery_finds_all_bundled() -> None:
     assert vpa_pai.typing_path is None
     assert vpa_pai.features_path is not None
     assert vpa_pai.profile_path is None
+    vpa_vf = by_name["vpa_vf"]
+    assert vpa_vf.metadata.vendor == "gspec-curated (INSDC)"
+    assert vpa_vf.metadata.dbtype == "nucl"
+    assert vpa_vf.metadata.kind == "gene"
+    assert vpa_vf.metadata.snapshotted == "2026-11-13"
+    assert vpa_vf.metadata.license == "Public domain (INSDC sequences)"
+    assert vpa_vf.typing_path is None
     assert by_name["eco_dec"].features_path is None
     assert find_bundled("eco_dec") is not None
     assert find_bundled("vpa_pai") is not None
@@ -230,6 +240,7 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "vch_vf": 13,
         "vpa_ok": VPA_OK_LOCI,
         "vpa_pai": 10,
+        "vpa_vf": 4,
     }
     for bundled in bundled_databases():
         text = bundled.sequences_path.read_text(encoding="utf-8")
@@ -494,6 +505,30 @@ def test_typing_genes_column_lists_sorted_present_genes(tmp_path: Path) -> None:
     assert len(hybrid) == 2 and len(headline) == 2
     assert [line.split("\t")[3] for line in hybrid] == ["aggR;escV;stx2a;uidA"] * 2
     assert [line.split("\t")[3] for line in headline] == ["astA;pic;uidA"] * 2
+
+
+# --------------------------------------------------- untyped gene bundle (vf) --
+
+
+def test_screen_materializes_bundled_vpa_vf_and_calls_all_markers(tmp_path: Path) -> None:
+    """Given the bundled vpa_vf (the INSDC-rebuilt haemolysin panel) and a
+    sample built from the BUNDLE's own sequences (each marker its own
+    contig — zero network), When screening --db vpa_vf, Then the gene
+    bundle materializes and every record calls itself at 100% — four rows,
+    the two trh alleles resolved per contig by the best subject."""
+    sample = tmp_path / "panel.fna"
+    sample.write_bytes((BUNDLED_ROOT / "vpa_vf" / "sequences").read_bytes())
+    datadir = tmp_path / "datadir"
+    datadir.mkdir()
+
+    result = screen_db(sample, datadir, "vpa_vf", "--quiet")
+
+    assert result.exit_code == 0, result.stderr
+    rows = [line.split("\t") for line in result.stdout.splitlines() if not line.startswith("#")]
+    assert sorted(row[5] for row in rows) == ["tdh", "tlh", "trh", "trh"]
+    assert all(row[9] == "100.00" and row[10] == "100.00" for row in rows)
+    alleles = sorted(row[12] for row in rows if row[5] == "trh")
+    assert alleles == ["QGG36210.1", "XLX46591.1"]
 
 
 # ------------------------------------------------------- typed cluster bundle --

@@ -1,0 +1,45 @@
+{
+  "name": "vpa_vf",
+  "description": "V. parahaemolyticus haemolysin panel: tlh species marker + tdh/trh virulence markers",
+  "vendor": "gspec-curated (INSDC)",
+  "dbtype": "nucl",
+  "kind": "gene",
+  "snapshotted": "2026-11-13",
+  "license": "Public domain (INSDC sequences)",
+  "note": "tdh (VPA1314, WP_005463268.1), tlh (VPA0226, WP_005481504.1), and the two trh allele records (TRH1 QGG36210.1 from CP045795.1, TRH2 XLX46591.1 from CP176647.1) cut from public INSDC records: RIMD 2210633 chromosome 2 (NC_004605.1), strain 10329 chromosome 2 (CP045795.1), strain GTVSS-031 chromosome 2 (CP176647.1). Sequences are byte-identical to the earlier locally-built panel; annotations re-derived from INSDC so no third-party database terms ride the distribution. Screen-only; no typing scheme.",
+  "guidance": {
+    "references": [
+      {
+        "citation": "Makino K, Oshima K, Kurokawa K, et al. Genome sequence of Vibrio parahaemolyticus: a pathogenic mechanism distinct from that of V. cholerae. Lancet. 2003;361(9359):743-749.",
+        "doi": "10.1016/S0140-6736(03)12659-1",
+        "note": "RIMD 2210633, the genome behind the tdh and tlh records."
+      },
+      {
+        "citation": "Nishibuchi M, Taniguchi T, Misawa T, Khaeomanee-iam S, Honda T, Miwatani T. Cloning and nucleotide sequence of the gene (trh) encoding the hemolysin related to the thermostable direct hemolysin of Vibrio parahaemolyticus. Infect Immun. 1989;57(9):2691-2697.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/2759706/",
+        "note": "trh discovery; the two-allele framework this panel encodes."
+      },
+      {
+        "citation": "Nishibuchi M, Kaper JB. Thermostable direct hemolysin gene of Vibrio parahaemolyticus: a virulence gene acquired by a marine bacterium. Infect Immun. 1995;63(6):2093-2099.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/7768586/",
+        "note": "tdh/trh biology and strain distribution."
+      },
+      {
+        "citation": "Nishibuchi M, Ishibashi M, Takeda Y, Kaper JB. Duplication and variation of the thermostable direct haemolysin (tdh) gene in Vibrio parahaemolyticus. Mol Microbiol. 1990;4(1):87-99.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/2319944/",
+        "note": "The tdh gene family: RIMD carries two copies."
+      }
+    ],
+    "caveats": [
+      "trh is ONE gene name for two allele records: TRH1 and TRH2 are alleles of the same locus, so GENE is 'trh' and the allele travels in the accession and product. Typing rules and the summary matrix therefore key on trh alone; read the accession when the allele matters.",
+      "One contig carrying trh reports a single row even with both allele records installed: the baseline dedups hits sharing (contig, start, end) and blastn's culling keeps the best-scoring subject, so the surviving accession identifies the allele.",
+      "tdh (thermostable direct haemolysin) is the marker of clinical isolates (Kanagawa phenomenon); trh is associated with pandemic O3:K6 strains. Environmental isolates often carry neither. tlh is the species marker, carried by nearly all V. parahaemolyticus (the FDA-BAM real-time PCR target); current RefSeq annotates the identical sequence as a type 2 secretion system lipase (WP_005481504.1, historically NP_799736 'lecithin-dependent hemolysin').",
+      "RIMD 2210633 carries two tdh copies (VPA1314 and VPA1378) 97% identical to each other; this panel ships VPA1314, and near-identical tdh variants in other strains still hit it \u2014 read identity, not just presence, when allele discrimination matters.",
+      "Haemolysin gene presence does not by itself establish pathogenicity: strain background and the type III secretion systems (T3SS1, T3SS2alpha, T3SS2beta) matter, and those are not in this panel."
+    ],
+    "usage": [
+      "gspec screen isolate.fa -d vpa_vf --output vpa.tsv",
+      "gspec screen isolate.fa -d vpa_vf --format json"
+    ]
+  }
+}

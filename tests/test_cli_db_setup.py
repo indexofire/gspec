@@ -61,9 +61,9 @@ def patch_synthetic_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
 def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
     """Given the fixture, When db setup runs and then databases are listed,
-    Then exit 0, all thirteen bundled databases materialize (one stderr note
+    Then exit 0, all sixteen bundled databases materialize (one stderr note
     each, alphabetical — vpa_ok/vpa_pai count loci) alongside tinyamr's
-    Indexed line, and the listing carries all eight databases."""
+    Indexed line, and the listing carries every database."""
     datadir = make_datadir(tmp_path)
     setup = runner.invoke(app, ["db", "setup", "--datadir", str(datadir)])
     assert setup.exit_code == 0
@@ -86,10 +86,11 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("vch_vf", "13 records"),
             ("vpa_ok", "195 loci"),
             ("vpa_pai", "10 loci"),
+            ("vpa_vf", "4 records"),
         )
     ]
-    assert stderr_lines[:15] == expected_materialize
-    assert stderr_lines[15:] == [
+    assert stderr_lines[:16] == expected_materialize
+    assert stderr_lines[16:] == [
         "gspec: indexed cje_cps (42 sequences, nucl)",
         "gspec: indexed eco_dec (16 sequences, nucl)",
         "gspec: indexed lmo_sero (5 sequences, nucl)",
@@ -106,6 +107,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "gspec: indexed vch_vf (13 sequences, nucl)",
         "gspec: indexed vpa_ok (195 sequences, nucl)",
         "gspec: indexed vpa_pai (10 sequences, nucl)",
+        "gspec: indexed vpa_vf (4 sequences, nucl)",
     ]
 
     infos = list_databases(datadir, reindex=False)
@@ -126,6 +128,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "vch_vf",
         "vpa_ok",
         "vpa_pai",
+        "vpa_vf",
     ]
     assert [info.name for info in infos] == sorted(expected_names)
     tinyamr = next(info for info in infos if info.name == "tinyamr")

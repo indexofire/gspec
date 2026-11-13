@@ -78,6 +78,7 @@ vch_oagc	Vibrio cholerae O-antigen gene clusters (OAGC; 190 OL loci) + ompW spec
 vfdb	VFDB virulence factors (set A, nucleotide)	available	nucl	gene	-	USTC (VFDB)
 victors	Victors virulence factors	available	nucl	gene	-	University of Chicago
 vpa_ok	V. parahaemolyticus O and K antigen loci (OAgc/CPSgc, vpasero)	bundled	nucl	cluster	integrated	gspec-curated (vpasero)
+vpa_vf	V. parahaemolyticus haemolysin panel: tlh species marker + tdh/trh virulence markers	bundled	nucl	gene	-	gspec-curated (INSDC)
 ```
 
 行按 NAME 全局排序，因此 TSV 和 JSON 列表可以直接消费，无需再次排序。NAME 是传给
@@ -102,10 +103,10 @@ $ for name in $(gspec db list -n); do gspec db setup -d "$name"; done
   但不会重新判定；cluster TSV 不能重新分型。
 - `-` —— 没有分型方案，仅用于筛查。
 
-当 `<datadir>/<name>/gspec-manifest.json` 存在时 STATUS 显示 `installed (N)`，N 是
-记录数，否则显示 `available`。七个随 wheel 发布的**内置数据库**
-—— `cje_cps`、`eco_dec`、`lmo_sero`、`shi_sero`、`vch_vf`、`vpa_ok`、`vpa_pai`
-—— 均由 gspec 策划，没有提供商、也没有 fetch 路径：物化前为 `bundled`，物化后为
+STATUS 显示 `installed (N)` 的条件是 `<datadir>/<name>/gspec-manifest.json`
+存在，N 是记录数，否则显示 `available`。十六个随 wheel 发布的**内置数据库**
+（`cje_cps` 至 `vpa_vf`，当前清单以 `gspec db list` 为准）
+均由 gspec 策划，没有提供商、也没有 fetch 路径：物化前为 `bundled`，物化后为
 `installed (N)`。每个提供商（包括 `ecoh`、`ncbi`、`resfinder`）都按需抓取，在
 `gspec db fetch -d <name>` 安装前显示 `available`。目录之外装进数据目录的数据库
 同样会列出：排在内置区之后、按名称排序 —— `db build` 产物（基因与 cluster
@@ -266,7 +267,7 @@ Kaptive 的"位点型≠血清型"、VFDB 的 CC BY-NC 条款）。`tests/test_d
 ## 内置数据库（即装即用）
 
 大多数数据库在 `db fetch` 时才从上游下载，因为许可证禁止再分发（见"提供商"一节）。
-少数**内置**数据库随 gspec wheel 一起发布 —— 共七个，均由 gspec 策划，其内容经过
+少数**内置**数据库随 gspec wheel 一起发布 —— 共十六个，均由 gspec 策划，其内容经过
 逐条记录的来源审计（公共领域来源，加上 MIT 许可的 `vpa_ok` 面板）。策略比"许可证
 允许"更严格：第三方提供商快照（`ncbi`、`card`、`ecoh`、`resfinder` 等）绝不随
 wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承担。无需下载、无需确认：
@@ -287,6 +288,9 @@ wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承
 | `str_lancefield` | 链球菌 Lancefield A/B/C/G 标记 + `tuf` 内参（29 条） | 2026-11-06 | `gspec.typing/2`（`lancefield`） |
 | `sag_sero` | GBS 荚膜血清型，10 型 + III 亚型（14 条，GBS-SBG） | 2026-11-06 | `gspec.typing/2`（`serotype`、`serotype_iii`） |
 | `pau_sero` | 铜绿假单胞菌 OSA 血清群 O1-O17 + wzyB（14 位点，pasty；cluster 类） | 2026-11-06 | `gspec.typing/2`（`osa_serogroup`、`wzyb`） |
+| `sen_sero` | 肠道沙门氏菌肠道亚种 O/H 抗原面板（13 条精选 INSDC CDS 标记：`invA` 对照、O 群 rfb 标记、相位 1/相位 2 鞭毛蛋白等位基因） | 2026-11-09 | `gspec.serotype/1` |
+| `sen_sero_sistr` | 肠道沙门氏菌 SISTR O/H 抗原等位基因 + 抗原式表（1443 条记录） | 2026-11-11 | `gspec.serotype/1` |
+| `vpa_vf` | 副溶血性弧菌溶血素标记：`tlh` 种内对照 + `tdh` + `trh` TRH1/TRH2 等位基因（4 条记录，INSDC） | 2026-11-13 | -（仅筛查） |
 
 **许可证来源声明。** `eco_dec` 的每条记录都取自公共领域的一级提交（NCBI
 RefSeq/GenBank/DDBJ 收录号，与权利方面板等位相同）；2026-10 审计中发现原面板里
@@ -302,7 +306,11 @@ gspec.typing/2 构建产出的已解析 `sequences` + `features.json` 形式入�
 同样通过审计。`shi_sero` 面板由 ShigaTyper 2.0.5 的公共领域 marker FASTA
 重新格式化而来（不含 ShigaPass GPL 内容）；其 `serotype.json` 是首批保守
 marker-set 解析规则，不是 ShigaTyper 的逐字节移植。`ipaH_c` 对照基因拆成两段
-互不重叠的存在性片段（1-640 与 641-780），以覆盖发生分化的 ipaH 等位基因。回归测试锁定了七个内置库的
+互不重叠的存在性片段（1-640 与 641-780），以覆盖发生分化的 ipaH 等位基因。`vpa_vf`
+溶血素面板由公共领域 INSDC 记录重建（RIMD 2210633 二号染色体 `NC_004605.1`、
+10329 菌株 `CP045795.1`、GTVSS-031 菌株 `CP176647.1`），序列与此前本地构建的
+面板逐字节相同 —— 注释改由 INSDC 重新推导，发布物中不含任何第三方数据库条款。
+回归测试锁定了每个内置库的
 头部不出现任何 `VF*` / `VFDB` / `ARO:` 标签。
 
 `gspec.serotype/1` 用 `decision` 这一个策略开关来消解有序 marker-set 规则。默认

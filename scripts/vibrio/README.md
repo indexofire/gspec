@@ -1,6 +1,6 @@
 # Vibrio database builders
 
-Developer scripts behind the bundled `vpa_pai` and `vch_vf` databases.
+Developer scripts behind the bundled `vpa_pai`, `vch_vf`, and `vpa_vf` databases.
 
 ## `vpa_pai` (cluster)
 
@@ -38,6 +38,28 @@ python scripts/vibrio/build_vch_vf.py \
   --ctxphi NC_015209.1_cds.fna --n16961 NC_002505.1_cds.fna \
   --o395 NC_012582.1_cds.fna --o139 NZ_NGQY01000008.1_cds.fna \
   --dest src/gspec/data/dbs/vch_vf
+```
+
+## `vpa_vf` (gene)
+
+`build_vpa_vf.py` cuts the four haemolysin markers from public INSDC records
+(the license-hygiene rebuild of the earlier locally-built panel — sequences
+byte-identical, annotations re-derived from INSDC, no third-party database
+terms):
+
+- RIMD 2210633 chromosome 2 `NC_004605.1`: `tdh` (VPA1314) and the species
+  marker `tlh` (VPA0226; current RefSeq names it a type 2 secretion system
+  lipase, WP_005481504.1);
+- strain 10329 chromosome 2 `CP045795.1`: the `trh1` CDS (QGG36210.1);
+- strain GTVSS-031 chromosome 2 `CP176647.1`: the `trh2` CDS (XLX46591.1).
+
+```bash
+curl -o NC_004605.1.gb "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_004605.1&rettype=gbwithparts&retmode=text"
+curl -o CP045795.1.gb "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP045795.1&rettype=gb&retmode=text"
+curl -o CP176647.1.gb "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP176647.1&rettype=gb&retmode=text"
+python scripts/vibrio/build_vpa_vf.py \
+    --rimd2 NC_004605.1.gb --trh1 CP045795.1.gb --trh2 CP176647.1.gb \
+    --dest src/gspec/data/dbs/vpa_vf
 ```
 
 Both builders emit only public-domain INSDC content; no GPL or non-commercial
