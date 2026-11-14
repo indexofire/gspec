@@ -74,6 +74,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("cam_vf", "16 records"),
             ("cdi_vf", "4 records"),
             ("cje_cps", "42 records"),
+            ("cje_cpsv2", "39 records"),
             ("eco_dec", "16 records"),
             ("lmo_sero", "5 records"),
             ("lpn_sero", "16 loci"),
@@ -91,11 +92,12 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("vpa_vf", "4 records"),
         )
     ]
-    assert stderr_lines[:18] == expected_materialize
-    assert stderr_lines[18:] == [
+    assert stderr_lines[:19] == expected_materialize
+    assert stderr_lines[19:] == [
         "gspec: indexed cam_vf (16 sequences, nucl)",
         "gspec: indexed cdi_vf (4 sequences, nucl)",
         "gspec: indexed cje_cps (42 sequences, nucl)",
+        "gspec: indexed cje_cpsv2 (39 sequences, nucl)",
         "gspec: indexed eco_dec (16 sequences, nucl)",
         "gspec: indexed lmo_sero (5 sequences, nucl)",
         "gspec: indexed lpn_sero (16 sequences, nucl)",
@@ -119,6 +121,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "cam_vf",
         "cdi_vf",
         "cje_cps",
+        "cje_cpsv2",
         "eco_dec",
         "lmo_sero",
         "lpn_sero",

@@ -1,0 +1,43 @@
+{
+  "name": "cje_cpsv2",
+  "description": "C. jejuni Penner typing - 31 full CPS locus categories (CjejuniTyper)",
+  "vendor": "CjejuniTyper 2026 (CC BY 4.0)",
+  "dbtype": "nucl",
+  "kind": "gene",
+  "snapshotted": "2026-11-14",
+  "license": "CC BY 4.0 (CjejuniTyper database, Juric et al. 2026); underlying sequences from public-domain INSDC/PubMLST accessions",
+  "note": "Conversion of the CjejuniTyper capsule typing database (38 full Penner CPS locus references, 15.7-41.7 kb each, plus the lpxA control) into a gspec gene database with the ported penner_cps_v2 typing scheme (31 conservative categories, exact_set rules at 90% identity / 60% locus-coverage floors with cross-type excludes). Adopted as the production cje molecular serotyping database on 2026-11-14 after a ten-database bake-off on 130 evaluation genomes (110 serotyped across 18 HS types plus 20 novel-CPS untypeable strains): 95.5% accuracy (98.1% after excluding three suspected label errors), 98% coverage. Attribution: CjejuniTyper v1.01 (https://github.com/Gagi1993/CjejuniTyper, Zenodo doi:10.5281/zenodo.22871020), Juric D, Ferencak I, Gveric Grginic A, Zmak L, Tabain I. Front Microbiol 2026;17:1943123, converted 2026-11-07, evaluated and bundled 2026-11-14. Upstream reference loci derive from Poly et al. 2011 (JCM 49:1750) and Poly et al. 2015 (PLoS One e0144349) GenBank submissions plus classic finished-locus records.",
+  "attribution": "CjejuniTyper v1.01 (Juric D et al., Croatian Institute of Public Health), https://github.com/Gagi1993/CjejuniTyper, Zenodo 10.5281/zenodo.22871020, CC BY 4.0; converted 2026-11-07",
+  "guidance": {
+    "references": [
+      {
+        "citation": "Juric D, Ferencak I, Gveric Grginic A, Zmak L, Tabain I. CjejuniTyper: integrated in silico typing of Campylobacter jejuni capsule and lipooligosaccharide loci with GBS-associated genomic profiling. Front Microbiol. 2026;17:1943123.",
+        "doi": "10.3389/fmicb.2026.1943123",
+        "note": "The capsule typing database and the Penner prediction logic this scheme ports."
+      },
+      {
+        "citation": "Poly F, Serichantalergs O, Schulman M, Ju J, Cates CN, Kanipes M, Mason C, Guerry P. Discrimination of major capsular types of Campylobacter jejuni by multiplex PCR. J Clin Microbiol. 2011;49(5):1750-1757.",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/21411576/",
+        "note": "The original capsule-locus reference set (GenBank HQ343268-HQ343274 and related accessions)."
+      },
+      {
+        "citation": "Poly F, Serichantalergs O, Kuroiwa J, Pootong P, Mason C, Guerry P, Parker CT. Updated Campylobacter jejuni Capsule PCR Multiplex Typing System and Its Application to Clinical Isolates from South and Southeast Asia. PLoS One. 2015;10(12):e0144349.",
+        "doi": "10.1371/journal.pone.0144349",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/26630669/",
+        "note": "The updated 47-type panel and the KT868844-KT893439 locus accessions (verified against the GenBank records)."
+      }
+    ],
+    "caveats": [
+      "2026-11-14 evaluation landing: won a ten-database bake-off on 130 evaluation genomes (110 serotyped, 18 HS types, plus 20 Khemnu-2023 novel-CPS untypeable strains) at 95.5% accuracy (98.1% excluding three suspected label-error strains: HS4/D2287, HS17/FDAARGOS_295, RM1285), 98% coverage - the production cje molecular serotyping database.",
+      "Known limitation: novel CPS loci sharing >=85% blastn locus coverage with a known type may be falsely typed (4/20 on the Khemnu novel-locus negative set). Raising the coverage floor cannot remove this without destroying true positives; 60% is the calibrated optimum. Review low-coverage matches manually.",
+      "Reporting is at the conservative complex level (31 categories): HS1c, HS4c, HS5_31c, HS6_7c, HS8_17c, HS15c, HS23_36c, HS33_35, HS45c collapse their member serotypes; bracketed genomic subtypes are NOT proven serological types.",
+      "CPS loci are length-variable (phase variation, gene gain/loss): partial coverage of a reference locus is expected even within a serotype, which is why the floor sits at 60%.",
+      "Species scope is C. jejuni subsp. jejuni only: the lpxA control gates the scheme; C. coli and C. jejuni subsp. doylei isolates must not be Penner-typed with this panel (one doylei evaluation strain carried an HS63-like locus)."
+    ],
+    "usage": [
+      "gspec screen isolate.fa --db cje_cpsv2 --output cje.tsv",
+      "gspec typing cje.tsv",
+      "gspec screen isolate.fa --db cje_cpsv2 --format json --detail"
+    ]
+  }
+}

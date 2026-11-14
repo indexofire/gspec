@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`cje_cpsv2` rides the wheel — the landed cje molecular serotyping
+  database.** The CjejuniTyper capsule panel (38 full Penner CPS locus
+  references 15.7-41.7 kb + the `lpxA` control; 31 conservative typing
+  categories) ships as a CC BY 4.0 conversion with full attribution
+  (v1.01, GitHub/Zenodo, Juric et al. 2026 Front Microbiol; underlying
+  loci from Poly 2011/2015 GenBank submissions). It landed after a
+  ten-database bake-off on 130 evaluation genomes (110 serotyped across
+  18 HS types plus 20 Khemnu-2023 novel-CPS untypeable strains):
+  95.5% accuracy (98.1% excluding three suspected label errors), 98%
+  coverage. Known limitation — novel loci with >=85% blastn locus
+  coverage to a known type may be falsely typed (4/20 on the negative
+  set) — is recorded in the bundled caveats. The competing local
+  candidates (cje_cps_kmer/_locus/_cpsv2c/hs_marker/hs_merged/penner/
+  penner_quad/penner_single) are retired from evaluation and archived,
+  not deleted.
+
 ## [0.10.5] - 2026-11-14
 
 ### Added

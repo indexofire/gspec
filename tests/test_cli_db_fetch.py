@@ -368,6 +368,8 @@ def test_db_list_non_tty_emits_exact_tsv(tmp_path: Path, monkeypatch: pytest.Mon
         " subunits\tbundled\tnucl\tgene\t-\tgspec-curated (INSDC)\n"
         "cje_cps\tCampylobacter jejuni Penner capsule (CPS) multiplex PCR panel\tbundled"
         "\tnucl\tgene\tcommand\tgspec-curated (Poly 2015; CC0 + NCBI public domain)\n"
+        "cje_cpsv2\tC. jejuni Penner typing - 31 full CPS locus categories (CjejuniTyper)"
+        "\tbundled\tnucl\tgene\tcommand\tCjejuniTyper 2026 (CC BY 4.0)\n"
         "eco_dec\tDiarrheagenic E. coli marker panel (GB 4789.6 + risk-monitoring designation)"
         "\tbundled\tnucl\tgene\tcommand\tgspec-curated (public-domain sources)\n"
         "lmo_sero\tListeria monocytogenes serogrouping (Doumith 2004)\tbundled\tnucl\tgene\t"

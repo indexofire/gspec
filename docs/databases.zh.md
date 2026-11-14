@@ -59,6 +59,7 @@ argannot	ARG-ANNOT acquired resistance genes	available	nucl	gene	-	IHU Méditerr
 bacmet2	BacMet2 experimentally confirmed biocide/resistance genes (protein)	available	prot	gene	-	University of Gothenburg
 card	CARD protein homolog resistance models	available	nucl	gene	-	McMaster University
 cje_cps	Campylobacter jejuni Penner capsule (CPS) multiplex PCR panel	bundled	nucl	gene	command	gspec-curated (Poly 2015; CC0 + NCBI public domain)
+cje_cpsv2	C. jejuni Penner typing - 31 full CPS locus categories (CjejuniTyper)	bundled	nucl	gene	command	CjejuniTyper 2026 (CC BY 4.0)
 ecoh	E. coli O and H antigens (srst2 EcOH)	available	nucl	gene	-	Holt lab (srst2)
 eco_dec	Diarrheagenic E. coli marker panel (GB 4789.6 + risk-monitoring designation)	bundled	nucl	gene	command	gspec-curated (public-domain sources)
 ecoli_kps	E. coli group 2+3 capsular polysaccharide loci (Kaptive)	available	nucl	cluster	-	Kaptive (Gladstone lab)
@@ -104,7 +105,7 @@ $ for name in $(gspec db list -n); do gspec db setup -d "$name"; done
 - `-` —— 没有分型方案，仅用于筛查。
 
 STATUS 显示 `installed (N)` 的条件是 `<datadir>/<name>/gspec-manifest.json`
-存在，N 是记录数，否则显示 `available`。十八个随 wheel 发布的**内置数据库**
+存在，N 是记录数，否则显示 `available`。十九个随 wheel 发布的**内置数据库**
 （`cam_vf` 至 `vpa_vf`，当前清单以 `gspec db list` 为准）
 均由 gspec 策划，没有提供商、也没有 fetch 路径：物化前为 `bundled`，物化后为
 `installed (N)`。每个提供商（包括 `ecoh`、`ncbi`、`resfinder`）都按需抓取，在
@@ -267,8 +268,9 @@ Kaptive 的"位点型≠血清型"、VFDB 的 CC BY-NC 条款）。`tests/test_d
 ## 内置数据库（即装即用）
 
 大多数数据库在 `db fetch` 时才从上游下载，因为许可证禁止再分发（见"提供商"一节）。
-少数**内置**数据库随 gspec wheel 一起发布 —— 共十八个，均由 gspec 策划，其内容经过
-逐条记录的来源审计（公共领域来源，加上 MIT 许可的 `vpa_ok` 面板）。策略比"许可证
+少数**内置**数据库随 gspec wheel 一起发布 —— 共十九个，均由 gspec 策划，其内容经过
+逐条记录的来源审计（公共领域来源、MIT 许可的 `vpa_ok` 面板，以及带署名的 CC BY 4.0
+`cje_cpsv2` 转换）。策略比"许可证
 允许"更严格：第三方提供商快照（`ncbi`、`card`、`ecoh`、`resfinder` 等）绝不随
 wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承担。无需下载、无需确认：
 内置数据库开箱即用。
@@ -278,6 +280,7 @@ wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承
 | `cam_vf` | 空肠弯曲菌毒力面板：T4SS virB4/8/9/10/11、CDT（cdtA/B/C）、CiaB、GGT、T6SS Hcp 与 LOS 修饰标记（16 条，INSDC） | 2026-11-13 | -（仅筛查） |
 | `cdi_vf` | 艰难拟梭菌毒素面板：PaLoc TcdA/TcdB + 二联毒素 CDT 亚基（4 条，INSDC） | 2026-11-13 | -（仅筛查） |
 | `cje_cps` | 空肠弯曲菌 Penner 荚膜多重 PCR 面板（37 条记录：36 条 CPS 扩增子 + `lpxA` 对照） | 2026-10-27 | `gspec.typing/2`（方案 `penner_cps`） |
+| `cje_cpsv2` | 空肠弯曲菌 Penner 分型，31 个全长 CPS 位点类别（CjejuniTyper 转换，CC BY 4.0；经十库评比落地的生产面板） | 2026-11-14 | `gspec.typing/2`（方案 `penner_cps_v2`） |
 | `eco_dec` | 致腹泻大肠杆菌标志基因面板（16 条记录，GB 4789.6 + 风险监测判定） | 2026-10-02 | `gspec.typing/2`（`gb4789_6`、`risk_monitoring` 双方案） |
 | `lmo_sero` | 单核细胞增生李斯特菌血清群分型（5 条记录，Doumith 2004 标记） | 2026-10-03 | `gspec.typing/2`（方案 `doumith_serogroup`） |
 | `shi_sero` | 志贺菌分子血清型 marker 面板（95 条 ShigaTyper 公共领域标记，`ipaH_c` 拆成两段对照片段；首批保守规则） | 2026-11-02 | `gspec.serotype/1`（ShigaTyper marker 规则） |
@@ -319,6 +322,11 @@ marker-set 解析规则，不是 ShigaTyper 的逐字节移植。`ipaH_c` 对照
 `nme_sero`、`spn_sero`、`sau_spa` 维持按需抓取：其上游内容为 GPL 打包
 （spy_emm、nme_sero、spn_sero）或学术用途限制（sau_spa），且无法为其记录
 验证到逐字节一致的公共领域替代来源。
+`cje_cpsv2` 转换加入其余宽松许可的上游转换（`sen_sero_sistr`、`lpn_vf`、`pau_sero`、
+`sag_sero`）之列：CjejuniTyper 荚膜分型数据库（CC BY 4.0，v1.01，GitHub + Zenodo）
+随包附带完整署名，并于 2026-11-14 经十库 × 130 株带标签基因组的评比（准确率 95.5%，
+剔除三株疑似标签错误后 98.1%；新型位点限制已记录在其 caveats 中）落地为生产用
+cje 血清分型面板。
 回归测试锁定了每个内置库的
 头部不出现任何 `VF*` / `VFDB` / `ARO:` 标签。
 

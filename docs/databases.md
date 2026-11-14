@@ -64,6 +64,7 @@ argannot	ARG-ANNOT acquired resistance genes	available	nucl	gene	-	IHU Méditerr
 bacmet2	BacMet2 experimentally confirmed biocide/resistance genes (protein)	available	prot	gene	-	University of Gothenburg
 card	CARD protein homolog resistance models	available	nucl	gene	-	McMaster University
 cje_cps	Campylobacter jejuni Penner capsule (CPS) multiplex PCR panel	bundled	nucl	gene	command	gspec-curated (Poly 2015; CC0 + NCBI public domain)
+cje_cpsv2	C. jejuni Penner typing - 31 full CPS locus categories (CjejuniTyper)	bundled	nucl	gene	command	CjejuniTyper 2026 (CC BY 4.0)
 ecoh	E. coli O and H antigens (srst2 EcOH)	available	nucl	gene	-	Holt lab (srst2)
 eco_dec	Diarrheagenic E. coli marker panel (GB 4789.6 + risk-monitoring designation)	bundled	nucl	gene	command	gspec-curated (public-domain sources)
 ecoli_kps	E. coli group 2+3 capsular polysaccharide loci (Kaptive)	available	nucl	cluster	-	Kaptive (Gladstone lab)
@@ -112,7 +113,7 @@ database carries a `typing.json`:
 - `-` — no typing scheme; screen-only.
 
 STATUS reads `installed (N)` when `<datadir>/<name>/gspec-manifest.json`
-exists, with N the record count, otherwise `available`. The eighteen
+exists, with N the record count, otherwise `available`. The nineteen
 wheel-shipped [bundled](#bundled-databases-install-time-ready) databases
 (`cam_vf` through `vpa_vf`; `gspec db list` prints the current set) are
 gspec-curated, with no provider and no fetch path:
@@ -287,8 +288,9 @@ wheel's notes without rebuilding anything.
 
 Most databases download from upstream at `db fetch` time because their licenses forbid
 redistribution (see [Providers](#providers)). A small set of **bundled** databases ships
-inside the gspec wheel instead — eighteen gspec-curated databases whose content provenance
-was audited record-by-record (public-domain sources plus the MIT `vpa_ok` panel). The
+inside the gspec wheel instead — nineteen gspec-curated databases whose content provenance
+was audited record-by-record (public-domain sources, the MIT `vpa_ok` panel, and
+the CC BY 4.0 `cje_cpsv2` conversion with attribution). The
 policy is stricter than "the license permits it": third-party provider snapshots
 (`ncbi`, `card`, `ecoh`, `resfinder`, ...) never ride the wheel, because their
 redistribution terms and provenance carry risk that the MIT package should not shoulder.
@@ -299,6 +301,7 @@ Nothing to download, nothing to accept: a bundled database works out of the box.
 | `cam_vf` | C. jejuni virulence panel: T4SS virB4/8/9/10/11, CDT (cdtA/B/C), CiaB, GGT, T6SS Hcp and LOS-modification markers (16 records, INSDC) | 2026-11-13 | - (screen-only) |
 | `cdi_vf` | C. difficile toxin panel: PaLoc TcdA/TcdB + binary toxin CDT subunits (4 records, INSDC) | 2026-11-13 | - (screen-only) |
 | `cje_cps` | C. jejuni Penner capsule multiplex PCR panel (37 records: 36 CPS amplicons + `lpxA` control) | 2026-10-27 | `gspec.typing/2` (scheme `penner_cps`) |
+| `cje_cpsv2` | C. jejuni Penner typing, 31 full CPS locus categories (CjejuniTyper conversion, CC BY 4.0; the landed production panel after a 10-database evaluation) | 2026-11-14 | `gspec.typing/2` (scheme `penner_cps_v2`) |
 | `eco_dec` | Diarrheagenic E. coli marker panel (16 records, GB 4789.6 + risk-monitoring designation) | 2026-10-02 | `gspec.typing/2` (schemes `gb4789_6`, `risk_monitoring`) |
 | `lmo_sero` | Listeria monocytogenes serogrouping (5 records, Doumith 2004 markers) | 2026-10-03 | `gspec.typing/2` (scheme `doumith_serogroup`) |
 | `shi_sero` | Shigella molecular serotype marker panel (95 ShigaTyper public-domain markers, `ipaH_c` split into two control fragments; first conservative rules) | 2026-11-02 | `gspec.serotype/1` (ShigaTyper marker rules) |
@@ -346,6 +349,14 @@ A companion audit kept `spy_emm`, `nme_sero`, `spn_sero` and `sau_spa`
 fetch-only: their upstream content is GPL-packaged (spy_emm, nme_sero,
 spn_sero) or academic-use restricted (sau_spa), and no byte-identical
 public-domain re-source could be verified for their records.
+
+The `cje_cpsv2` conversion joins the other permissively-licensed upstream
+conversions (`sen_sero_sistr`, `lpn_vf`, `pau_sero`, `sag_sero`): the
+CjejuniTyper capsule database (CC BY 4.0, v1.01, GitHub + Zenodo) ships
+with full attribution, and it landed as the production cje serotyping
+panel on 2026-11-14 after a ten-database evaluation on 130 labeled
+genomes (95.5% accuracy, 98.1% excluding three suspected label errors;
+the novel-locus limitation is recorded in its caveats).
 A regression test pins that no `VF*` / `VFDB` / `ARO:` tags appear in any
 bundle's headers.
 

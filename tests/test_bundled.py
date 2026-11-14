@@ -1,9 +1,10 @@
 """Bundled databases: discovery, materialization, and the DEC matrix.
 
-The wheel ships eighteen license-clean, gspec-curated bundles — the typed
+The wheel ships nineteen license-clean, gspec-curated bundles — the typed
 eco_dec, lmo_sero, cje_cps, shi_sero, and vch_vf panels, the typed vpa_ok
 cluster snapshot, the untyped vpa_pai cluster / vpa_vf / cam_vf / cdi_vf
-gene panels. Provider-backed databases (ecoh, ncbi,
+gene panels, and the CC BY 4.0 cje_cpsv2 conversion. Provider-backed
+databases (ecoh, ncbi,
 resfinder, card, ...) are fetch-on-demand only: their upstream content
 carries licensing/provenance risk that a wheel snapshot should not
 shoulder. These tests pin the install-time-ready contract — discovery
@@ -126,19 +127,21 @@ def screen_db(sample: Path, datadir: Path, name: str, *extra: str) -> Result:
 
 def test_bundled_discovery_finds_all_bundled() -> None:
     """Given the wheel's data dir, When bundled databases are discovered,
-    Then exactly the eighteen gspec-curated bundles ship in name order —
-    thirteen gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
+    Then exactly the nineteen gspec-curated bundles ship in name order —
+    fourteen gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
     cluster-kind — each metadata parses
     (vendor/dbtype/kind/snapshot date), eco_dec/lmo_sero/cje_cps carry
     their typing documents, shi_sero is the first serotype prototype,
     vch_vf is the CTX/tcpA panel, cam_vf/cdi_vf are the INSDC-rebuilt
     virulence/toxin panels, vpa_vf is the INSDC-rebuilt haemolysin
-    panel, and vpa_ok/vpa_pai carry cluster feature
+    panel, cje_cpsv2 is the landed CjejuniTyper Penner panel (CC BY 4.0
+    conversion with attribution), and vpa_ok/vpa_pai carry cluster feature
     tables; vpa_pai is screen-only."""
     assert bundled_names() == [
         "cam_vf",
         "cdi_vf",
         "cje_cps",
+        "cje_cpsv2",
         "eco_dec",
         "lmo_sero",
         "lpn_sero",
@@ -178,6 +181,16 @@ def test_bundled_discovery_finds_all_bundled() -> None:
     assert cje_cps.typing_path is not None
     assert cje_cps.floors_path is not None
     assert cje_cps.screen_path is not None
+    cje_cpsv2 = by_name["cje_cpsv2"]
+    assert cje_cpsv2.metadata.vendor == "CjejuniTyper 2026 (CC BY 4.0)"
+    assert cje_cpsv2.metadata.dbtype == "nucl"
+    assert cje_cpsv2.metadata.kind == "gene"
+    assert cje_cpsv2.metadata.snapshotted == "2026-11-14"
+    assert cje_cpsv2.metadata.license.startswith("CC BY 4.0")
+    assert "CjejuniTyper v1.01" in cje_cpsv2.metadata.attribution
+    assert cje_cpsv2.typing_path is not None
+    assert cje_cpsv2.floors_path is not None
+    assert cje_cpsv2.screen_path is not None
     eco_dec = by_name["eco_dec"]
     assert eco_dec.metadata.vendor == "gspec-curated (public-domain sources)"
     assert eco_dec.metadata.dbtype == "nucl"
@@ -245,6 +258,7 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "cam_vf": 16,
         "cdi_vf": 4,
         "cje_cps": 42,
+        "cje_cpsv2": 39,
         "eco_dec": 16,
         "lmo_sero": 5,
         "lpn_sero": 16,
@@ -603,6 +617,73 @@ def test_screen_materializes_bundled_cdi_vf_and_calls_all_markers(tmp_path: Path
     rows = [line.split("\t") for line in result.stdout.splitlines() if not line.startswith("#")]
     assert sorted(row[5] for row in rows) == ["cdtA", "cdtB", "tcdA", "tcdB"]
     assert all(row[9] == "100.00" and row[10] == "100.00" for row in rows)
+
+
+def test_screen_materializes_bundled_cje_cpsv2_and_types_two_loci(tmp_path: Path) -> None:
+    """Given the bundled cje_cpsv2 (the landed CjejuniTyper Penner panel)
+    and two single-locus samples carrying the HS19 and HS63 records from
+    the BUNDLE's own sequences (plus the lpxA control), When screened then
+    typed, Then the bundle materializes and each sample designates its own
+    category — and a sample carrying BOTH loci stays untypeable, proving
+    the mutual-exclusion rules (one genome carries one capsule)."""
+    src = (BUNDLED_ROOT / "cje_cpsv2" / "sequences").read_text(encoding="utf-8")
+
+    def write_sample(path: Path, genes: set[str]) -> None:
+        with path.open("w") as out:
+            take = False
+            for line in src.splitlines():
+                if line.startswith(">"):
+                    take = any(f"gene={name}" in line for name in genes)
+                if take:
+                    out.write(line + "\n")
+
+    datadir = tmp_path / "datadir"
+    datadir.mkdir()
+    for genes, expected in ({"HS19", "lpxA"}, "HS19"), ({"HS63", "lpxA"}, "HS63"):
+        sample = tmp_path / f"loci_{'_'.join(sorted(genes))}.fna"
+        write_sample(sample, genes)
+        table = tmp_path / f"{sample.stem}.tsv"
+        screened = runner.invoke(
+            app,
+            [
+                "screen",
+                str(sample),
+                "--db",
+                "cje_cpsv2",
+                "--datadir",
+                str(datadir),
+                "-o",
+                str(table),
+                "--quiet",
+            ],
+        )
+        assert screened.exit_code == 0, screened.stderr
+        typed = runner.invoke(app, ["typing", str(table), "--datadir", str(datadir), "--quiet"])
+        assert typed.exit_code == 0, typed.stderr
+        calls = [line.split("\t")[2] for line in typed.stdout.splitlines()[1:]]
+        assert calls == [expected]
+
+    both = tmp_path / "loci_conflict.fna"
+    write_sample(both, {"HS19", "HS63", "lpxA"})
+    table = tmp_path / "conflict.tsv"
+    screened = runner.invoke(
+        app,
+        [
+            "screen",
+            str(both),
+            "--db",
+            "cje_cpsv2",
+            "--datadir",
+            str(datadir),
+            "-o",
+            str(table),
+            "--quiet",
+        ],
+    )
+    assert screened.exit_code == 0, screened.stderr
+    typed = runner.invoke(app, ["typing", str(table), "--datadir", str(datadir), "--quiet"])
+    assert typed.exit_code == 0, typed.stderr
+    assert typed.stdout.splitlines()[1].split("\t")[2].startswith("untypeable")
 
 
 # ------------------------------------------------------- typed cluster bundle --
