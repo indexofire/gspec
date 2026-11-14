@@ -1,6 +1,6 @@
 ---
 schema: gspec.report/1
-tool: gspec 0.10.5
+tool: gspec 0.10.6
 created_at: 2026-10-01T12:00:00Z
 db: dec
 minid: 80.0

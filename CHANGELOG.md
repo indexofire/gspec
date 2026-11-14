@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-11-14
+
 ### Added
 
 - **`cje_cpsv2` rides the wheel — the landed cje molecular serotyping
