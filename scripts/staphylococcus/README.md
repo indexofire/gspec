@@ -111,16 +111,24 @@ deferred.**
   locate `se2` by annotation or SEB-group homology, cut and validate the
   CDS.
 
-**Deliberately not added (yet):**
+## Remaining gaps (explicit, deferred until conditions allow)
 
-- The remaining sec/seu/sem/sen/sek/seg/sey variant alleles (Lefebvre's
-  counts) — each is a candidate for the same INSDC-extraction route when
-  divergence data justify it.
-- `sel34`/`sel35`: a 2026 bioRxiv preprint's machine-learning calls, not
-  peer-reviewed — watch, do not bundle.
-- ~~`sel31`–`sel33`~~: added 2026-11-18 (see the fourth pass above).
-- egc pseudogenes (`psient1/2`, `seh-2p`, `ses-3p`): screening pseudogenes
-  invites false calls; excluded on purpose.
+| gap | why deferred | recovery condition |
+| --- | --- | --- |
+| **SEC2 nucleotide allele** | No complete standalone INSDC record exists; the only candidates are partial cds (ENA description search checked). SEC1 reference covers SEC2 at 97.4 % protein identity — the type is detected, the variant is not | Locate the original 1980s–90s submission or an annotated carrier genome; then extract via the same INSDC route |
+| **sel29p** | Pseudogene; absent from any contemporary strain (Dicks 2021: "not observed in any contemporary strain to date"). Screening pseudogenes invites false calls | Revisit only if a functional sel29 is ever reported |
+| **SE01** (Hisatsune) | The DDBJ/WGS accessions are behind the paywalled full text (ScienceDirect blocked in the dev environment); no UniProt/ENA entry | Obtain the paper's data-availability accessions; then fetch the genome and extract the CDS by SEB-group homology |
+| **SE02** (Suzuki 2020) | Demonstrated emetic activity + real Tokyo 2004 outbreak behind it — the highest-value deferred target. Sequences live in the outbreak strains' DDBJ WGS records; the accessions are in the paywalled full text | Same as SE01; the paper names the two outbreak strains whose WGS would carry the gene |
+| **sel34 / sel35** | A 2026 bioRxiv preprint's machine-learning calls, not peer-reviewed | Wait for peer review |
+| **egc pseudogenes** (psi-ent1/2, seh-2p, ses-3p) | Screening pseudogenes invites false-positive calls; the nucleotide is present but the protein is not made | Will remain excluded unless a use case emerges |
+| **Remaining variant alleles** for seg/sek/sem/sey (Lefebvre 2022: seg 6, sek 8, sem 9, sey 6) | The panel carries variant alleles for sec/sei/sen/seu/tsst1 — the other four genes remain one reference per type. Each missing allele is a candidate for the same INSDC-extraction route when divergence data justify it | Run the Fanelli backtest on more diverse corpora; add alleles only where real genomes diverge below the 80/80 floors |
+
+**Deliberately excluded (permanent or near-permanent):**
+
+- The 2012 "true SElW" (UniProt A0AH2WYW8, 705 bp, chromosomal): weak
+  superantigen, no emetic activity; the 2026 nomenclature review removes
+  it from the SE family. Excluded on that ruling.
+- egc pseudogenes — see table above.
 
 **Licensing note:** NAuRA (ANSES) is the reference allele-aware screening
 tool for this family, but it is GPL-3.0 — its sequences can never ride the
