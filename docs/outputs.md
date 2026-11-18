@@ -285,11 +285,11 @@ row by `(%IDENTITY, %COVERAGE)`. Real document (trimmed):
 | `source` | array | The result table path(s) as given |
 | `db` | string | The database every row screened against |
 | `files` | array | One entry per FILE that has data rows, first-appearance order |
-| `files[].genes` | array | That FILE's present gene names, sorted — the hits behind the calls |
+| `files[].genes` | array | That FILE's present gene names, sorted — the hits behind the calls; on a ranked antigen panel (`gspec.serotype/2`) one representative winning allele per family |
 | `files[].phenotypes` | object | Scheme name → its call (the additive shape below) |
 
 Each call carries `phenotype` (null on an ambiguous call), `score`, `confidence`
-(`high`/`ambiguous`/`low`), `components[{name, score}]`, and the optional `runner_up`,
+(`high`/`medium`/`low`/`ambiguous`), `components[{name, score}]`, and the optional `runner_up`,
 `ambiguous[]` (the tied pair), and `notes[]` — the same bodies the evaluator produces on
 the cluster path. The TSV/Markdown projection flattens each call to the eight `FILE`,
 `SCHEME`, `PHENOTYPE`, `GENES`, `CONFIDENCE`, `SCORE`, `RUNNER_UP`, `NOTES` columns:

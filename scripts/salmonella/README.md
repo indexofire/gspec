@@ -82,10 +82,14 @@ Two conversion steps keep the panel usable:
   rebuild does not shift them.
 - **SISTR's similarity groups are ported** (`sistr_similarity_groups.json`,
   Apache-2.0, acknowledged in `bundled.json`). The `gspec.serotype/2` lookup is
-  exact first and only widens a token to its class when nothing matches, which
-  is SISTR's own order; a widened key that fits several rows is reported as an
-  ambiguous call with the candidates, not pipe-joined. That took reachability
-  from 95.4 % to 97.4 %.
+  layered: the observed formula is matched **verbatim first** (several serovars
+  sharing the exact row keep the first-declared name as the call, the twins in
+  RUNNER_UP), and a token only widens to its similarity class when the exact
+  formula has no row — several widened matches stay an ambiguous call with the
+  candidates, not pipe-joined. That took reachability from 95.4 % to 97.4 %,
+  and the layering keeps a widened sibling from burying a formula the table
+  carries verbatim (a hand-confirmed Muenchen arrived as four candidates
+  before it: the `1,2` class also reaches `1,5` rows).
 
 The remaining 41 rows name alleles that SISTR's reference FASTAs themselves do
 not contain (`z67`, `z91`, `g,m,t`, …). `gspec db info -d sen_sero_sistr` shows
@@ -192,7 +196,10 @@ The faithful implementation is three-fold, and all three are landed:
    `1,2` also reaches the `1,2,7` / `1,5` rows. A missing O group still widens to
    every serogroup; a missing H phase stays `"-"` (the monophasic alias). Several
    matches produce an `ambiguous` call with the candidate list — the structured
-   form of SISTR's pipe-joined `Typhimurium|Lagos`.
+   form of SISTR's pipe-joined `Typhimurium|Lagos`. **Later revised (2026-11-16):
+   the widening now runs only when the observed formula has no exact row** — see
+   the layered-lookup bullet above; an exact row is a definitive call (the
+   first-declared name), and the near-ties ride as notes.
 3. **The evidence model of the panel, not the parity default.** Two settings had
    been silently discarding the answer:
 
@@ -315,6 +322,50 @@ session allows (each genome costs ~18 s with the anchored sketch enabled); run i
 with `regress_serovar.py --assemblies ... --sistr-tab ...` on a machine that can
 keep the job alive.
 
+## 2026-11-16: exact-formula-first designation (re-measured on the same 20)
+
+The widening doctrine above refused to name a formula the table carries
+verbatim, which the in-house batch made acute: a hand-confirmed Muenchen
+(`C2-C3:d:1,2`) arrived as four candidates (the `1,2` class also reaches the
+`1,5` rows), and ten D1:`g,m` genomes as thirteen candidates each. The lookup is
+now layered, in order:
+
+1. **Exact pass.** The observed `O:H1:H2` keys a row the table carries: that
+   row is the call (first-declared name the phenotype, twins in RUNNER_UP with
+   a `formula shared with ...` note).
+2. **Equal-tie pass.** A family with two antigens at *identical* evidence
+   (alignment score and sketch tied; class mates excluded — see the cross-label
+   below) contributes all its tied names, and the rows those names key are the
+   candidates: a tight set, never the margin siblings' rows or the class
+   cross-product.
+3. **Widening pass.** The pre-2026-11-16 behaviour (similarity classes,
+   undecided-O, monophasic fallback), only for formulas no row carries.
+
+Margin near-ties (strictly below the winner) no longer block the call: they
+ride as notes (`H1 near-tie within 0.01: g,q`), which is what SISTR and
+SeqSero2 effectively do — both commit to the top antigen name instead of
+reporting a margin sibling's serovar.
+
+**The `g,m`/`g,q` cross-label, measured and registered.** The ten D1:`g,m`
+genomes still paired `{Enteritidis, Moscow}` after the layering: references
+`h1_g_m` and `h1_g_q` are 99.868 % identical (1 mismatch, 1 gap over 1519 bp —
+the same allele under two labels), so every channel tied. The audit had missed
+the pair because k=21 containment lands at 0.972 (two differences destroy ~42
+k-mers), under its 0.98 floor; it is hand-registered in `cross_labels.json`
+with the measurement, folded into the shipped panel's `similarity_groups`, and
+`import_upstream.py --cross-labels` reproduces the merge on the next rebuild.
+
+Re-measured on the same 20 genomes (single-name 2/20 before the layering):
+
+| metric | before | after |
+| --- | --- | --- |
+| single-name calls | 2/20 | **16/20** |
+| ambiguous with >10 candidates | 15/20 | 0/20 (the 3 remaining ambiguous are the documented rfb assembly gaps: `0501`, `0511`, `0520`) |
+| GENES ids on a ranked panel | 575–1,271 | 2–3 (one winning allele per family) |
+
+The hand-confirmed Muenchen calls Muenchen (Virginia in RUNNER_UP); the
+`26SAL0516` batch of D1:`g,m:-` genomes calls Enteritidis.
+
 ## Do the thresholds survive a different batch?
 
 The panel's numbers were set against real data, so this is a fair challenge. The
@@ -361,7 +412,12 @@ assembly problems, not database content.**
 | `26SAL0087` | `C2-C3:r:-` / `8:r:-` | O `C2-C3` 99.58 % full length, H1 `r,[i]`/`r`, no H2 — the table simply has **no serovar** for `C2-C3:r:-` | **not a miss** (SeqSero2 agrees) |
 | `26SAL0172` | `C2-C3:l,v:l,v` / Litchfield | O `C2-C3` 100 %, H1 `l,v` 100 %, H2 `1,2` 99.94 % on its own contig — the phase guard now keeps them apart | **fixed by the phase rework** |
 | `26SAL0501` | Indiana / `-:z:1,7` | O group B reference hits at 99.65 % but over only **287 of 1293 bp (22 %)**; H1 `z` and H2 `1,7` are perfect | assembly gap in `rfb` |
-| `26SAL0511` | `Typhimurium|Lagos` / `-:i:1,2` | O group B reaches only 80.6 % over 227 bp — the locus is absent from the assembly; H1 `i` and H2 `1,2` are perfect | assembly gap in `rfb` |
+| `26SAL0511` | `Typhimurium|Lagos` / `-:i:1,2` | O group B reaches only 80.6 % over 227 bp — the *marker* is absent from the assembly; H1 `i` and H2 `1,2` are perfect | assembly gap in `rfb` |
+
+> `26SAL0511` is re-diagnosed in the 2026-11-16 open-question section below:
+> per-gene LB probes show nearly the whole `rfb` cluster present at 99.6–100 %
+> group B, with only `rfbU`/`rfbX` (the panel's markers) in the gap — the
+> cluster is not absent, the marker is.
 
 Three of five are missing or broken `rfb` sequence: no reference can fix that, and
 merging fragments cannot either (the bases are not in the assembly). The response is
@@ -543,7 +599,7 @@ comparing each antigen's representative k-mer set (containment ≥ 0.98 of the
 shorter one). On the SISTR panel it reports five classes:
 
 ```
-h1: g,m,q == g,q     g,p == g,p,s == g,p,u     g,t == i
+h1: g,m == g,m,q == g,q     g,p == g,p,s == g,p,u     g,t == i
 h2: z35 == z52
 ```
 
@@ -551,7 +607,11 @@ These are folded into the document's `similarity_groups`
 (`import_upstream.py --cross-labels`), so both names' rows stay reachable and the
 answer is an honest ambiguity instead of whichever label won on bitscore. The audit
 also flagged a record whose antigen name is empty (`h1__f_g_t`), which the merge
-skips.
+skips. The `g,m == g,q` pair is hand-registered (2026-11-16): `h1_g_m` and
+`h1_g_q` are 99.868 % identical (1 mismatch, 1 gap over 1519 bp — one allele
+under two labels), but the audit's representative comparison and its 0.98 k=21
+floor both miss a pair with two differences, and ten D1:`g,m` genomes paired
+`{Enteritidis, Moscow}` until the merge landed.
 
 The `1,2` versus `1,7` case is **not** cross-labelling: k-mer containment between
 them is 0.80, i.e. genuinely different antigens. A genome whose `fljB` matches
@@ -605,6 +665,55 @@ The lesson recorded here: before adding reference sequence, check whether the
 genome already matches one at high identity — an assembly break and a
 cross-labelled sibling both look like "no hit" from the outside.
 
+## Open question (2026-11-16): O missing at the panel markers — assembly gaps, not database divergence
+
+**Status: recorded for the next discussion; deliberately not implemented.**
+Pending wet-lab validation (gap PCR / long reads) from the curator.
+
+Three in-house genomes whose O family came out absent were dissected with
+per-gene probes taken from the LT2 reference cluster (`NC_003197.2`,
+2,157,000–2,182,000): `gnd → rfbP rfbK rfbM rfbN rfbU rfbV rfbX rfbJ rfbH rfbG
+rfbF rfbI rfbC rfbA rfbD rfbB → galF`. A probe present at ≥90 % identity over
+≥80 % coverage means the gene is assembled; the panel's O markers are `rfbX`
+(the wzx/flippase — the shipped `o_B` reference aligns to LT2 `rfbX` exactly,
+2,168,623–2,169,915) and its allele variants.
+
+| genome | cluster in the assembly | gap | consequence |
+| --- | --- | --- | --- |
+| `26SAL0501` | O marker present as a **287/1293 bp (22.2 %) remnant** at 99.65–100 %, and **only** group B hits at ≥70 % id | none (truncation) | group B is inferable from the remnant — the case SeqSero2's relative gate (≥15 % of the best O hit) converts into a call |
+| `26SAL0511` | **almost the whole cluster, 99.6–100 % identical to LT2 group B**: `gnd/rfbP/rfbK/rfbM/rfbN` on `contig00012`, `rfbV` 100 % on `contig00075`, `rfbJ…rfbB` on `contig00049` | **rfbU + rfbX (~2.4 kb)** — exactly the genes the panel uses as O markers | the isolate is almost certainly O:4/B, but the marker sits in the assembly gap |
+| `26SAL0520` | only the cluster ends: `rfbP` (`contig00137`), `rfbK/rfbM` (`contig00121`), `rfbB/rfbD/rfbA` next to `galF` (`contig00004`) | **rfbN…rfbC (~10 kb)**, including every group-specific gene | no tool can infer O from this assembly |
+
+**Not database divergence.** For `26SAL0520` there is **zero** O homology even
+at 50 % identity / e ≤ 1e-3 (a present-but-divergent locus lights up related
+groups: the D1-positive control hits six). For `26SAL0511` the surviving genes
+are 99.9–100 % identical to group B, so the sequence is the panel's group —
+only the marker gene is missing from the assembly.
+
+**On adding `rfbU`/`rfbV` as fallback markers — declined for now.** A
+two-genome check (group B vs Enteritidis D1: `rfbU`/`rfbV`/`rfbX` do not hit
+the D1 cluster at ≥80 % id, while `rfbH` does at 99.4 %) is a hypothesis, not
+evidence of group specificity. Accepting the markers requires a formal
+comparative-genomics study: all 46 O groups as a negative set with multiple
+strains per group, within-group diversity for the candidate genes, a
+calibrated identity/coverage gate, and an end-to-end re-measurement on the
+`26SAL` corpus so the change cannot introduce cross-group false calls. Until
+that exists, the shipped behaviour (O absent → formula + H evidence + candidate
+list, flagged as assembly QC) is the honest one.
+
+**How to settle "true deletion vs assembly/sequencing artefact"** (cheapest
+first): (1) map the original reads back to the LT2 cluster — reads spanning
+the gap with normal depth prove the DNA carries the region and the assembler
+lost it; (2) PCR across the gap — `rfbN`↔`rfbJ` for `26SAL0511` (~2.4 kb,
+standard polymerase), `rfbM`↔`rfbC` for `26SAL0520` (~10 kb, long-range);
+(3) long-read sequencing (ONT/HiFi) as the final arbiter, especially for the
+10 kb gap; (4) compare a positive slide-agglutination result against the
+molecular finding. If a deletion is confirmed **and** agglutination is
+positive, that is a result worth recording on its own: it would say the
+serological determinant does not live in `rfbN…rfbI`, which is also the reason
+a single-gene remnant must not be promoted into a marker without the study
+above.
+
 ## The union evidence model and paralogues
 
 `coverage: "union"` sums a reference's HSP blocks, which is what a divergent or
@@ -620,6 +729,20 @@ Additionally, a family name is no longer committed to when a sibling antigen is
 within the document's `margin` (0.01): every name inside the margin is widened and
 looked up (`_FamilyCall.ties`), and a serovar whose *observed* formula is absent
 from the table carries a "matched after widening" note plus `confidence: low`.
+
+## Screening cost: cache the sketch per window (2026-11-16)
+
+The anchored-sketch annotation is a pure function of a hit's window and its
+antigen family, but a locus produces one hit row per near-identical reference
+allele — measured on one 4.8 Mb genome: 1,070 hits over 33 distinct windows,
+and the per-hit recomputation spent 62 s of a 68 s screen (91 % of the run;
+profile: `align/blast._annotate_sketch`). The annotation now caches per
+`(window, family)`: the same genome screens in 9 s, 5.9 s of which is blastn
+itself, with byte-identical sketches and phases, and a 20-genome batch finishes
+in 41 s at four-way parallelism. Remaining headroom if it ever matters: the
+`allele_sketches` index load (1,443 small `.full.u64` reads, ~0.5 s per process,
+`lru_cache`d across files) and an inverted k-mer index for `antigen_scores`
+(~1.7 s per genome today).
 
 ## Bundle size
 
@@ -793,6 +916,133 @@ allele references is the correct — and cheapest — mechanism.
    string, so the neighbourhood, not the annotation text, identifies the allele.
 7. Serovars not in `sen_sero_serovars.tsv` return the panel's `fallback`
    string with the markers that were detected, never a guessed name.
+
+## 2026-11-17: the naming-tie problem (open, needs verified serotype data)
+
+Measured on the in-house 100-genome *Salmonella enterica* corpus with the
+shipped `sen_sero_sistr` panel and the three SNP-level O discriminators
+(`rfbS` A/D1, `wbaV` D1/D2, `wbaP` E1/E4): **92/100 genomes agree with both
+reference tools, 1 is ambiguous, and 7 differ** — but only **two** of those
+differing classes are gspec defects, and both are the same defect: **a formula
+that names more than one serovar.**
+
+### The defect in one sentence
+
+A WHO-2007 antigenic formula is not injective: **57 of the panel's 1478
+formula keys (3.9 %) name 2–3 serovars**, and gspec resolves every one of them
+by **declaration order** (first row wins, the twins ride in `RUNNER_UP` +
+`formula shared with …`). On this corpus **18/100 genomes** land on such a key.
+Four of them disagree with the references only because declaration order
+happened to pick the other twin — the other 14 are "right" by luck, not by
+evidence:
+
+| shared formula | rows, in declaration order | corpus genomes hitting it |
+| --- | --- | --- |
+| `C2-C3:d:1,2` | Muenchen, Virginia | 5 |
+| `C2-C3:k:1,5` | Blockley, Haardt | 1 |
+| `C2-C3:r:1,5` vs `C2-C3:r,[i]:1,5` | Hindmarsh, Bovismorbificans | 2 (**wrong**) |
+| `C2-C3:r:l,w` vs `C2-C3:r,[i]:l,w` | Goldcoast, Brikama | 2 (**wrong**) |
+| `B:b:1,2` | Paratyphi B, Paratyphi B var. Java | 1 |
+| `C2-C3:z10:e,n,x` | Hadar, Istanbul | 1 |
+| (57 keys in total) | … | 18 |
+
+**The `r` vs `r,[i]` pairs are one antigen written two ways** (`[i]` is a
+bracketed optional sub-factor), so Hindmarsh ≡ Bovismorbificans and
+Goldcoast ≡ Brikama *by formula alone*. Which twin is reported is decided by
+which spelling won the H1 ranking by a few hundredths of a percent:
+
+```
+GCF_002061825.1  formula C2-C3:r:1,5      -> Hindmarsh   (H1 near-tie: r,[i])
+GCF_004681245.1  formula C2-C3:r,[i]:l,w  -> Brikama     (H1 near-tie: r)
+```
+
+### How the two references resolve it (neither uses antigen evidence)
+
+| tool | mechanism | evidence it is not antigenic |
+| --- | --- | --- |
+| SeqSero2 | a hard-coded 30-entry `rename_dict` (`Hindmarsh→Bovismorbificans`, `Bardo→Newport`, …) | the map contains no sequence data at all; for `Goldcoast`/`Brikama` it has **no** entry and SeqSero2 prints `Goldcoast or Brikama` |
+| SISTR | cgMLST nearest reference genome | `cgMLST_distance` 0.0152–0.0273 against a named reference genome |
+
+So both agree the antigenic formula cannot decide these pairs. **An honest
+`A or B` is the correct output; picking one is not.**
+
+### What was tried and did NOT work (do not repeat these)
+
+**1. O-factor markers (comparative genomics, 13 complete genomes).**
+O:6 distinguishes both pairs (Hindmarsh `8,20` vs Bovismorbificans `6,8,20`;
+Goldcoast `6,8` vs Brikama `8,20`). Four complete Goldcoast (`6,8`), five
+`6,8,20` (Bovismorbificans ×3 + Newport ×2) and four `8,20` (Albany) genomes
+were compared over the rfb neighbourhood (±20 kb around `wzx`, 24 CDS each):
+
+- 21 of 28 gene clusters are present in all 13 genomes (conserved backbone);
+- the "clean" split by presence/absence (`wzxC`/`wcaK`/`wcaL` vs
+  `wzzB`/`ugd`/`gndA`) is a **position artefact**: whole-genome BLAST finds
+  those genes in *every* genome at 98.4–100 %, they merely sit at different
+  distances from the rfb cluster;
+- at allele level the best candidate (a `glycosyltransferase family 4`) has
+  **97.55 % within-group vs 95.84 % between-group** identity. Every marker that
+  actually works in this panel has **100 % within-group** (14/14 Enteritidis
+  genomes are identical over `wbaV`), so this is an order of magnitude too
+  noisy.
+
+**2. Differential k-mers (mash/SalmID style).** Two granularities, k=31:
+
+- whole genome (4.5–5.0 M k-mers each): **0** k-mers present in all of the
+  9 "factor-6" genomes and absent from all 7 `8,20` genomes;
+- rfb-targeted (41 kb window around `wzx`, ~41 k k-mers each): still **0**, and
+  the containment distributions do not separate — **within-group 0.8429
+  (0.734–1.000) vs between-group 0.8212 (0.746–0.999)**, a 0.022 gap with full
+  overlap. `BOV_016454185` vs `HIN_001478005` (different O) reach 0.9993, while
+  `HIN_002031165` vs `BRI_021104055` (same O) sit at 0.7343.
+
+Why the same method works for subspecies but not here: the six subspecies
+differ by 2–5 % of the whole genome (hundreds of thousands of k-mers, measured
+100/100 on this corpus), while O:6/O:20 sit in one small rfb segment and are
+drowned by strain-level variation.
+
+**3. Data caveat — public serotype labels are not verified.** Comparative work
+must use **agglutination-confirmed** strains. Two examples from this pull:
+`GCF_004194605.3` is labelled *Albany* (`8,20`) yet SeqSero2 calls its O as `8`
+and its rfb cluster groups with the `6,8` genomes; and the only public *Brikama*
+assembly (`GCA_021104055.1`) is a divergent contig-level genome that shares only
+0.73–0.75 k-mer containment with everything else, so it cannot anchor a marker.
+A serovar label in an INSDC record is a submitter assertion, not a phenotype.
+
+### Recommended resolution (not implemented — deliberately deferred)
+
+1. **`A or B` output for one-to-many formulas** — report both names (the
+   `formula shared with …` note already carries the data; today the first name
+   is promoted to `PHENOTYPE` and the twin demoted to `RUNNER_UP`). This is the
+   only change that is correct without new evidence, and it alone turns the 4
+   "wrong" calls into 4 honest candidate pairs.
+2. **A nomenclature merge table** (SeqSero2's `rename_dict` idea) for the pairs
+   WHO has formally merged (`Hindmarsh→Bovismorbificans`, `Bardo→Newport`).
+   Cheap, but it papers over the ambiguity rather than resolving it.
+3. **cgMLST** (SISTR's answer) breaks every pair — but it needs a reference
+   dataset that this bundle does not carry, and it is a new subsystem.
+4. **An O:6/O:20 marker** would be the real fix. It requires verified
+   serotype data (see the caveat above) and either a hand-curated rfb
+   annotation or ORF prediction across a larger, cleanly labelled panel.
+
+### The rest of the remaining disagreement (not naming ties)
+
+| genome | gspec | SISTR | SeqSero2 | class |
+| --- | --- | --- | --- | --- |
+| `GCF_002053225.1` | *ambiguous* (`Chichester`, `Ouagadougou`, `Stratford`) | `I E1:g,[s],t:1,2` (a formula) | `I 1,3,19:g,s,t:1,2` (a formula) | **all three fail to name it**: H1 ties `g,[s],t`/`g,s,t`/`g,t`/`i` and H2 ties `1,2`/`1,2,7`/`1,6`/`1,5`, and the widened H1 class reaches SISTR's over-merged `g`-family class. The O group *is* resolved (E4 over E1, `wbaP` gap 1.18 pp) |
+| `GCF_001831865.1` | **`38:k:-`** (no serovar) | `I P:k:-` | `I 38:k:-` | **fixed 2026-11-17, twice**: the `h2 k` hit was 87.15 % identity, so the old code invented `P:k:k` — the duplicate-phase rule (no WHO row has H1 == H2) now drops the weaker phase, and the serogroup→numeric-O map renders `P` as `38`. All three tools now state the **same formula** |
+| `GCF_019710395.2` | `B:-:-` (no serovar) | `Fulica` + 18 candidates | `I 4:-:-` | **genome has no H gene at all**; no tool can name a serovar from O alone. gspec's answer is the honest one |
+| `GCF_002046265.1` | `Blockley` | `Galiema` | `Blockley` | **not a gspec defect** — 2 of 3 agree; `C2-C3:k:1,5` is Blockley/Haardt, and SISTR's cgMLST lands elsewhere |
+
+### Systemic quality signals worth fixing independently
+
+- **No call reaches `high` confidence**: on the 100-genome corpus the panel
+  emits 99 × `low` + 1 × `ambiguous` and **zero `high`**. `perfect` requires a
+  100 %-identity/100 %-coverage hit *and* a single name for that gene, and
+  real assemblies almost never clear both against 1400+ references. The
+  confidence ladder is therefore not discriminating anything today.
+- **220 formula rows were dropped as unreachable** at build time (serovars
+  whose alleles no reference FASTA covers), so the panel cannot name them at
+  all — a coverage gap recorded in `bundled.json`.
 
 ## Provenance
 

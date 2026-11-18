@@ -32,7 +32,7 @@ from gspec.progress import (
     terminal_rule,
     warn_oversubscription,
 )
-from gspec.report import Report, ScreeningParams
+from gspec.report import Hit, Report, ScreeningParams
 from gspec.screening.batch import screen_batch
 from gspec.screening.cluster import (
     reject_cluster_engine_flags,
@@ -40,6 +40,48 @@ from gspec.screening.cluster import (
     resolve_cluster_params,
     run_cluster_screen,
 )
+from gspec.subspecies import (
+    SUBSPECIES_FILENAME,
+    classify_fasta,
+    load_subspecies_signatures,
+)
+
+
+def _annotate_subspecies(report: Report, database: db.Database) -> Report:
+    """Append a synthetic ``subspecies_*`` hit when the database ships a
+    subspecies k-mer signature sidecar (``sen_sero_sistr`` does).
+
+    The hit is not a gene: it threads the whole-genome subspecies verdict into
+    the screen table, which ``gspec typing`` then folds into a gene call the
+    serotype engine reads for the non-enterica ``NUMERAL O:H1:H2`` rendering.
+    """
+    sidecar = database.path / SUBSPECIES_FILENAME
+    if not sidecar.is_file():
+        return report
+    k, signatures = load_subspecies_signatures(sidecar)
+    scored = classify_fasta(Path(report.file), signatures, k)
+    top = scored[0]
+    hit = Hit(
+        sequence="*",
+        start=1,
+        end=1,
+        strand="+",
+        gene=f"subspecies_{top.name}",
+        database=database.name,
+        accession="upstream:subspecies",
+        product=top.name,
+        function="subspecies",
+        s_start=1,
+        s_end=1,
+        s_len=1,
+        coverage_map="=",
+        gap_openings=0,
+        gaps=0,
+        identity_pct=100.0,
+        coverage_pct=round(top.recovery * 100.0, 2),
+        aligned_len=1,
+    )
+    return report.model_copy(update={"hits": (*report.hits, hit)})
 
 
 def _resolve_inputs(files: list[Path] | None, fofn: Path | None) -> list[Path]:
@@ -323,6 +365,7 @@ def run_screen(
         report = screen_file(
             path, database, params, dbtype=dbtype, debug=debug, merge_fragments=merge_fragments
         )
+        report = _annotate_subspecies(report, database)
         if task_id is None and not quiet:
             click.echo(f"Found {len(report.hits)} genes in {path}", err=True)
         return report
@@ -347,7 +390,7 @@ def run_screen(
         if batch_reports is not None:
             for report in batch_reports:
                 bar.advance()
-                yield report
+                yield _annotate_subspecies(report, database)
             return
         yield from map_inputs(inputs, screen_one, jobs=jobs, on_done=bar.advance)
 

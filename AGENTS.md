@@ -139,7 +139,7 @@ Treat this as a public API. Formats are detailed in `docs/outputs.md`, agent usa
   table (`gspec.typing_result/1`; cluster dbs refuse — their typing rides the screen).
   The MCP `typing` tool accepts the screen table text and returns the same document.
 - **Databases** `[gspec-extension]`: `gspec db fetch|path|list|info|search|outdated|build|install|rename|setup`.
-  Providers download from upstream at fetch time; only the seven gspec-curated bundles under
+  Providers download from upstream at fetch time; only the gspec-curated bundles under
   `src/gspec/data/dbs/` ship inside the wheel (policy in §6). `db build NAME` with no input
   re-projects an installed gene database from its edited `records.jsonl` (the curation path);
   `db rename OLD NEW` is the migration path for names that predate the convention. Anatomy,

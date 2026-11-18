@@ -1,6 +1,6 @@
 """Bundled databases: discovery, materialization, and the DEC matrix.
 
-The wheel ships nineteen license-clean, gspec-curated bundles — the typed
+The wheel ships twenty license-clean, gspec-curated bundles — the typed
 eco_dec, lmo_sero, cje_cps, shi_sero, and vch_vf panels, the typed vpa_ok
 cluster snapshot, the untyped vpa_pai cluster / vpa_vf / cam_vf / cdi_vf
 gene panels, and the CC BY 4.0 cje_cpsv2 conversion. Provider-backed
@@ -127,8 +127,8 @@ def screen_db(sample: Path, datadir: Path, name: str, *extra: str) -> Result:
 
 def test_bundled_discovery_finds_all_bundled() -> None:
     """Given the wheel's data dir, When bundled databases are discovered,
-    Then exactly the nineteen gspec-curated bundles ship in name order —
-    fourteen gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
+    Then exactly the twenty gspec-curated bundles ship in name order —
+    fifteen gene-kind plus the lpn_sero/pau_sero/vch_oagc/vpa_ok/vpa_pai
     cluster-kind — each metadata parses
     (vendor/dbtype/kind/snapshot date), eco_dec/lmo_sero/cje_cps carry
     their typing documents, shi_sero is the first serotype prototype,
@@ -148,6 +148,7 @@ def test_bundled_discovery_finds_all_bundled() -> None:
         "lpn_vf",
         "pau_sero",
         "sag_sero",
+        "sau_ent",
         "sen_sero",
         "sen_sero_sistr",
         "shi_sero",
@@ -241,6 +242,13 @@ def test_bundled_discovery_finds_all_bundled() -> None:
     assert vpa_vf.metadata.snapshotted == "2026-11-13"
     assert vpa_vf.metadata.license == "Public domain (INSDC sequences)"
     assert vpa_vf.typing_path is None
+    sau_ent = by_name["sau_ent"]
+    assert sau_ent.metadata.vendor == "indexofire/enterotoxin (MIT) + gspec-curated control"
+    assert sau_ent.metadata.dbtype == "nucl"
+    assert sau_ent.metadata.kind == "gene"
+    assert sau_ent.metadata.license.startswith("MIT")
+    assert "30c022eeb712" in sau_ent.metadata.note
+    assert sau_ent.typing_path is None
     assert by_name["eco_dec"].features_path is None
     assert find_bundled("eco_dec") is not None
     assert find_bundled("vpa_pai") is not None
@@ -265,8 +273,9 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "lpn_vf": 275,
         "pau_sero": 14,
         "sag_sero": 14,
+        "sau_ent": 37,
         "sen_sero": 13,
-        "sen_sero_sistr": 1443,
+        "sen_sero_sistr": 1456,
         "shi_sero": 96,
         "str_lancefield": 29,
         "vch_oagc": 191,
@@ -616,6 +625,40 @@ def test_screen_materializes_bundled_cdi_vf_and_calls_all_markers(tmp_path: Path
     assert result.exit_code == 0, result.stderr
     rows = [line.split("\t") for line in result.stdout.splitlines() if not line.startswith("#")]
     assert sorted(row[5] for row in rows) == ["cdtA", "cdtB", "tcdA", "tcdB"]
+    assert all(row[9] == "100.00" and row[10] == "100.00" for row in rows)
+
+
+def test_screen_materializes_bundled_sau_ent_and_calls_all_markers(tmp_path: Path) -> None:
+    """Given the bundled sau_ent (the indexofire/enterotoxin conversion with
+    the sel27/sel28 nomenclature correction, ten curated INSDC additions,
+    and the nuc species control) and a sample built from the BUNDLE's own
+    sequences, When screening --db sau_ent, Then the bundle materializes
+    with thirty-seven rows at 100 %: one per contig, the multi-allele genes
+    (SEC x3; SEI/SEN/SEU/TSST-1 x2) each resolved to their own accession by
+    the best subject, and the relabelled sel28 carries Zhang's MF370874
+    accession while sel27 is the MN450304 sequence."""
+    sample = tmp_path / "panel.fna"
+    sample.write_bytes((BUNDLED_ROOT / "sau_ent" / "sequences").read_bytes())
+    datadir = tmp_path / "datadir"
+    datadir.mkdir()
+
+    result = screen_db(sample, datadir, "sau_ent", "--quiet")
+
+    assert result.exit_code == 0, result.stderr
+    rows = [line.split("\t") for line in result.stdout.splitlines() if not line.startswith("#")]
+    assert len(rows) == 37
+    genes = [row[5] for row in rows]
+    assert genes.count("sec") == 3
+    assert genes.count("tsst1") == 2
+    assert genes.count("sei") == 2 and genes.count("sen") == 2 and genes.count("seu") == 2
+    assert "selu2" in genes and "seo" in genes and "nuc" in genes
+    assert "sel27" in genes and "sel28" in genes and "sel30" in genes
+    sel28_acc = {row[12] for row in rows if row[5] == "sel28"}
+    sel27_acc = {row[12] for row in rows if row[5] == "sel27"}
+    assert sel28_acc == {"MN450304:2472-3197"}
+    assert sel27_acc == {"MF370874.1:3420-4172"}
+    sec_alleles = sorted(row[12] for row in rows if row[5] == "sec")
+    assert sec_alleles == ["AF217235:c1229-2044", "X05815.1:118-918", "X51661:36-836"]
     assert all(row[9] == "100.00" and row[10] == "100.00" for row in rows)
 
 

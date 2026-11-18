@@ -498,7 +498,7 @@ class TestCompose:
 def _scheme_call(
     phenotype: str | None,
     score: float,
-    confidence: Literal["high", "ambiguous", "low"],
+    confidence: Literal["high", "medium", "ambiguous", "low"],
     variants: tuple[str, ...] = (),
 ) -> SchemeCall:
     return SchemeCall(

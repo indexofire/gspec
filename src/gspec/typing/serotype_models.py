@@ -15,8 +15,9 @@ rule-scheme engine answers "which rule wins" over one gene table.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -152,6 +153,11 @@ class AntigenEntry(BaseModel, frozen=True):
 
     name: str = Field(min_length=1)
     genes: tuple[str, ...] = Field(min_length=1)
+    #: The physical locus this antigen's alleles come from (``wzx``/``wzy`` for
+    #: the O family, ``fliC``/``fljB`` for the H families). The O family is the
+    #: one place two loci share one serogroup name, so the engine ranks them
+    #: separately and reconciles them the way SISTR does.
+    locus: Literal["wzx", "wzy", "fliC", "fljB"] | None = None
 
     @model_validator(mode="after")
     def _no_duplicate_genes(self) -> AntigenEntry:
@@ -168,9 +174,9 @@ class AntigenFamily(BaseModel, frozen=True):
 
     @model_validator(mode="after")
     def _unique_names(self) -> AntigenFamily:
-        names = [entry.name for entry in self.entries]
-        if len(set(names)) != len(names):
-            raise ValueError(f"family {self.key!r} declares an antigen name twice")
+        keys = [(entry.name, entry.locus) for entry in self.entries]
+        if len(set(keys)) != len(keys):
+            raise ValueError(f"family {self.key!r} declares an antigen name+locus twice")
         return self
 
 
@@ -186,25 +192,115 @@ class SerotypeFormula(BaseModel, frozen=True):
     h1: str
     h2: str
     serovar: str = Field(min_length=1)
+    #: The subspecies this formula row belongs to. Enterica rows are the
+    #: serotyping panel; the other five subspecies' rows key the non-enterica
+    #: ``NUMERAL O:H1:H2`` lookup, which is by (subspecies, H1, H2) because the
+    #: O-antigen references are enterica-specific and must not resolve a
+    #: non-enterica O group.
+    subspecies: str = "enterica"
 
 
 class ODiscriminator(BaseModel, frozen=True):
-    """Optional SNP-level tie-breaker for the O family (``gspec.serotype/2``).
+    """A SNP-level tie-breaker between serogroups whose references cannot
+    separate them (``gspec.serotype/2``).
 
     Some serogroups cannot be separated by their antigen references at all: A
     (O:2) and D1 (O:9) share the rfb cluster and differ only in `rfbS`, whose
     alleles are 99.3 % identical over the gene (a single SNP in the 5' 609 bp
-    SeqSero2 uses). Such a marker only speaks when the gap is decisive, so the
-    document carries the floor and the engine stays with the ambiguity below it.
+    SeqSero2 uses). D1 (O:9) and D2 (O:9,46) are the same story on `wbaV`:
+    seven SNPs over 1002 bp, and neither has a `wzy` reference to break it.
+    Such a marker only speaks when the gap is decisive, so the document carries
+    the floor and the engine stays with the ambiguity below it.
     """
 
-    #: O-family antigen name -> the gene id that supports it.
-    favours: dict[str, str]
+    #: A short label for the notes (``A/D1 rfbS``, ``D1/D2 wbaV``).
+    name: str = ""
+    #: O-family antigen name -> the gene ids that support it. Several alleles per
+    #: group are allowed (a group's own diversity can rival the between-group
+    #: gap: Typhi's `wbaV` is 8 SNPs from Enteritidis' while D1 vs D2 is 7), and
+    #: the group scores by the BEST of its alleles.
+    favours: dict[str, tuple[str, ...]]
     #: Minimum identity gap, in percentage points, between the two markers.
     min_gap_pct: float = Field(default=0.5, ge=0.0, le=100.0)
     #: Both markers must be present at least this well for the gap to mean anything.
     min_coverage: float = Field(default=60.0, ge=0.0, le=100.0)
     note: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _one_gene_per_group_is_a_tuple(cls, data: Any) -> Any:
+        """Accept the single-gene spelling (``{"D1": "o_disc_D1"}``) too: a
+        one-allele group is the common case and hand-written panels use it."""
+        if not isinstance(data, dict):
+            return data
+        payload: dict[str, Any] = dict(cast("dict[str, Any]", data))
+        raw = payload.get("favours")
+        if not isinstance(raw, dict):
+            return payload
+        raw_favours: dict[str, object] = dict(cast("dict[str, object]", raw))
+        grouped: dict[str, tuple[str, ...]] = {}
+        for group, genes in raw_favours.items():
+            if isinstance(genes, str):
+                alleles: tuple[str, ...] = (genes,)
+            else:
+                alleles = tuple(str(gene) for gene in cast("Iterable[object]", genes))
+            grouped[str(group)] = alleles
+        payload["favours"] = grouped
+        return payload
+
+
+class OSubfactor(BaseModel, frozen=True):
+    """Serovar-level O:22 / O:23 tie-break (``gspec.serotype/2``).
+
+    Serogroup G (O:13) references cannot separate factor 22 from factor 23 at
+    all: the two wzx alleles differ by noise while the real sub-factor sits in
+    dedicated genes, so a formula such as ``G:d:e,n,z15`` maps to two serovars
+    (Diguel = O:22, Telelkebir = O:23). SeqSero2 resolves the pair by summing
+    three O:22-specific and three O:23-specific gene scores; this block carries
+    that comparison as data, so the engine only decides when one side wins.
+    """
+
+    #: Gene ids whose summed evidence proves the O:22 factor. May be empty
+    #: when only the O:23 side has been curated; the engine then decides O:23
+    #: by presence of the O:23 genes, O:22 by their absence.
+    o22_genes: tuple[str, ...] = ()
+    #: Gene ids whose summed evidence proves the O:23 factor.
+    o23_genes: tuple[str, ...] = Field(min_length=1)
+    #: ``(O:22 serovar, O:23 serovar)`` pairs sharing one formula row.
+    pairs: tuple[tuple[str, str], ...] = Field(min_length=1)
+    #: Minimum summed-score gap between the two sides for the pair to decide.
+    min_gap: float = Field(default=0.5, ge=0.0)
+    note: str = ""
+
+    @model_validator(mode="after")
+    def _no_overlap(self) -> OSubfactor:
+        if set(self.o22_genes) & set(self.o23_genes):
+            raise ValueError("o_subfactor: an O:22 gene also names an O:23 gene")
+        return self
+
+
+class SpecialCheck(BaseModel, frozen=True):
+    """A post-decision marker that refines one already-decided serovar.
+
+    The O5- (``oafA`` deletion) and d-tartrate (``gntR``/STM3356) variants of
+    Typhimurium and Paratyphi B are not antigenic formulas — they are single
+    genes a genome may carry or not. A check fires when its serovar was decided
+    and, depending on ``when``, its marker either scores strictly higher than
+    the competing marker or falls below the floors entirely (a deletion). It
+    only annotates: it never changes the serovar.
+    """
+
+    #: Exact serovar name (or ``"*"`` for any) this check refines.
+    serovar: str
+    #: The marker(s) that trigger the note; the best score among them wins.
+    markers: tuple[str, ...] = Field(min_length=1)
+    #: When declared, the note is suppressed if any of these outscore ``markers``
+    #: (``when="present"`` only).
+    versus: tuple[str, ...] = ()
+    #: ``present`` fires when ``markers`` clear the floors and outscore ``versus``;
+    #: ``absent`` fires when every marker falls below the floors (a deletion).
+    when: Literal["present", "absent"] = "present"
+    note: str = Field(min_length=1)
 
 
 class SerotypeDocumentV2(BaseModel, frozen=True):
@@ -253,9 +349,22 @@ class SerotypeDocumentV2(BaseModel, frozen=True):
     similarity_groups: dict[Literal["o", "h1", "h2"], tuple[tuple[str, ...], ...]] = Field(
         default_factory=dict
     )
-    #: SNP-level tie-breaker between serogroups whose references cannot separate
-    #: them (see :class:`ODiscriminator`).
+    #: SNP-level tie-breakers between serogroups whose references cannot
+    #: separate them (see :class:`ODiscriminator`). Several pairs need one —
+    #: A/D1 (`rfbS`) and D1/D2 (`wbaV`) — so this is a list, consulted in order.
     o_discriminator: ODiscriminator | None = None
+    #: The same list shape as ``o_discriminator``, for panels with more than one
+    #: discriminating pair. When both are present this one wins.
+    o_discriminators: tuple[ODiscriminator, ...] = ()
+    #: O:22/O:23 serovar-level tie-break (see :class:`OSubfactor`).
+    o_subfactor: OSubfactor | None = None
+    #: Post-decision serovar refinements (see :class:`SpecialCheck`).
+    special_checks: tuple[SpecialCheck, ...] = ()
+    #: Subspecies -> serogroup letter -> numeric O antigen (for the
+    #: non-enterica ``NUMERAL O:H1:H2`` rendering). A serogroup letter is not
+    #: consistent across subspecies (enterica ``F`` is O:11, indica ``F`` is
+    #: O:6,7), so the mapping is keyed by subspecies.
+    o_numeric: dict[str, dict[str, str]] = Field(default_factory=dict)
     fallback: str = "Not Salmonella"
     unresolved: str = "Salmonella subsp. enterica (no antigen set resolved)"
     partial: str = "Salmonella {formula} (serovar not in the formula table)"
@@ -306,6 +415,17 @@ def load_serotype(db_dir: Path) -> AnySerotypeDocument | None:
     return read_serotype_document(path) if path.is_file() else None
 
 
+def o_discriminator_specs(document: SerotypeDocumentV2) -> tuple[ODiscriminator, ...]:
+    """The document's O discriminators, new list shape first, legacy singleton
+    second. A panel with both keeps the list (the legacy field is a compatibility
+    alias for the single-pair case)."""
+    if document.o_discriminators:
+        return document.o_discriminators
+    if document.o_discriminator is not None:
+        return (document.o_discriminator,)
+    return ()
+
+
 def validate_serotype_references(document: AnySerotypeDocument, gene_ids: frozenset[str]) -> None:
     """Every marker a rule or antigen family references must exist."""
     if isinstance(document, SerotypeDocumentV2):
@@ -319,6 +439,32 @@ def validate_serotype_references(document: AnySerotypeDocument, gene_ids: frozen
                             code="SEROTYPE_UNKNOWN_GENE",
                             context={"family": family.key, "antigen": entry.name, "gene": gene},
                         )
+        if document.o_subfactor is not None:
+            for gene in (*document.o_subfactor.o22_genes, *document.o_subfactor.o23_genes):
+                if gene not in gene_ids:
+                    raise DatabaseError(
+                        f"o_subfactor references unknown marker {gene!r}",
+                        code="SEROTYPE_UNKNOWN_GENE",
+                        context={"gene": gene},
+                    )
+        for spec in o_discriminator_specs(document):
+            for genes in spec.favours.values():
+                for gene in genes:
+                    if gene not in gene_ids:
+                        raise DatabaseError(
+                            f"o_discriminator {spec.name or ''!r} references unknown marker"
+                            f" {gene!r}",
+                            code="SEROTYPE_UNKNOWN_GENE",
+                            context={"gene": gene},
+                        )
+        for check in document.special_checks:
+            for gene in (*check.markers, *check.versus):
+                if gene not in gene_ids:
+                    raise DatabaseError(
+                        f"special check {check.serovar!r} references unknown marker {gene!r}",
+                        code="SEROTYPE_UNKNOWN_GENE",
+                        context={"serovar": check.serovar, "gene": gene},
+                    )
         return
     for rule in document.rules:
         for gene in (
@@ -342,9 +488,12 @@ def validate_serotype_references(document: AnySerotypeDocument, gene_ids: frozen
 __all__ = [
     "SEROTYPE_FILENAME",
     "ODiscriminator",
+    "OSubfactor",
     "SerotypeDocument",
     "SerotypeRule",
+    "SpecialCheck",
     "load_serotype",
+    "o_discriminator_specs",
     "read_serotype_document",
     "validate_serotype_references",
 ]

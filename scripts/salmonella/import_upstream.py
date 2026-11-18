@@ -171,6 +171,23 @@ def _detect_family(path: Path) -> str | None:
     return None
 
 
+def _detect_locus(path: Path) -> str | None:
+    """The physical gene locus an upstream FASTQ file carries (``wzx``/``wzy``
+    for the O family, ``fliC``/``fljB`` for the H families). The O family is the
+    one place two loci share a serogroup name, and the engine ranks them
+    separately before reconciling (SISTR's wzx/wzy consensus)."""
+    stem = path.stem.lower()
+    if stem.startswith("fljb"):
+        return "fljB"
+    if stem.startswith("flic"):
+        return "fliC"
+    if stem.startswith("wzx"):
+        return "wzx"
+    if stem.startswith("wzy"):
+        return "wzy"
+    return None
+
+
 def _sistr_formulas(path: Path, *, subspecies: str | None) -> list[dict[str, str]]:
     """SISTR's WHO-2007 table as formula rows.
 
@@ -183,7 +200,7 @@ def _sistr_formulas(path: Path, *, subspecies: str | None) -> list[dict[str, str
         reader = csv.DictReader(handle)
         rows: list[dict[str, str]] = []
         for row in reader:
-            row_spp = (row.get("subspecies") or "").strip()
+            row_spp = (row.get("subspecies") or "").strip() or "enterica"
             if subspecies is not None and row_spp and row_spp != subspecies:
                 # A table without the column (older exports, hand-made fixtures)
                 # keeps every row rather than silently dropping all of them.
@@ -194,12 +211,72 @@ def _sistr_formulas(path: Path, *, subspecies: str | None) -> list[dict[str, str
             o = (row.get("Serogroup") or FALLBACK_PHASE).strip() or FALLBACK_PHASE
             h1 = (row.get("H1") or FALLBACK_PHASE).strip() or FALLBACK_PHASE
             h2 = (row.get("H2") or FALLBACK_PHASE).strip() or FALLBACK_PHASE
-            rows.append({"o": o, "h1": h1, "h2": h2, "serovar": serovar})
+            rows.append({"o": o, "h1": h1, "h2": h2, "serovar": serovar, "subspecies": row_spp})
             if (
                 row.get("can_h2_be_missing") or ""
             ).strip().upper() == "TRUE" and h2 != FALLBACK_PHASE:
-                rows.append({"o": o, "h1": h1, "h2": FALLBACK_PHASE, "serovar": serovar})
+                rows.append(
+                    {
+                        "o": o,
+                        "h1": h1,
+                        "h2": FALLBACK_PHASE,
+                        "serovar": serovar,
+                        "subspecies": row_spp,
+                    }
+                )
     return rows
+
+
+def _numeric_o(token: str) -> str:
+    """One WHO O-antigen string reduced to the factors that identify the group.
+
+    WKL bracket/parenthesis notation is optional sub-factor detail, the ``Vi``
+    capsule antigen is not part of the O group, and the leading factor 1 is a
+    separate antigen (O:1) that the table writes only on some rows — a group A
+    row is sometimes ``1,2,12`` and sometimes ``2,12``. Stripping all three makes
+    the remaining tokens comparable, which is what decides whether a serogroup
+    letter has ONE numeric O or several.
+    """
+    stripped = re.sub(r"[\[\]{}()]", "", token.strip()).replace("Vi", "")
+    parts = [part for part in stripped.split(",") if part]
+    if len(parts) > 1 and parts[0] == "1":
+        parts = parts[1:]
+    return ",".join(parts)
+
+
+def _serogroup_numeric_o(path: Path) -> dict[str, dict[str, str]]:
+    """Subspecies -> serogroup letter -> numeric O antigen, **only when unambiguous**.
+
+    The non-enterica subspecies are rendered as ``NUMERAL O:H1:H2`` (the
+    Kauffmann-White convention) and a serogroup letter is NOT consistent across
+    subspecies (enterica ``F`` is O:11, indica ``F`` is O:6,7), so the map is keyed
+    by subspecies.
+
+    A letter is mapped only when every one of its rows reduces to a single O
+    formula (see :func:`_numeric_o`): **38 of 48 serogroups qualify** (``P`` is
+    O:38, ``D1`` is 9,12, ``A`` is 2,12 …). The remaining 10 are genuinely
+    multi-factor — ``C2-C3`` covers 6,8 / 8,20 / 8 / 6,8,20, ``G`` covers 13,22 and
+    13,23 — and claiming one of them would be a guess, so they are left out and
+    the engine keeps reporting the letter.
+    """
+    import csv as _csv
+
+    with path.open(encoding="utf-8", newline="") as handle:
+        rows = list(_csv.DictReader(handle))
+    by_subspecies: dict[str, dict[str, set[str]]] = {}
+    for row in rows:
+        group = (row.get("Serogroup") or "").strip()
+        raw = (row.get("O_antigen") or "").strip()
+        spp = (row.get("subspecies") or "enterica").strip() or "enterica"
+        if not group or not raw:
+            continue
+        numeric = _numeric_o(raw)
+        if numeric:
+            by_subspecies.setdefault(spp, {}).setdefault(group, set()).add(numeric)
+    return {
+        spp: {group: next(iter(values)) for group, values in groups.items() if len(values) == 1}
+        for spp, groups in by_subspecies.items()
+    }
 
 
 def _formula_rows(path: Path) -> list[dict[str, str]]:
@@ -443,27 +520,83 @@ def _add_o_discriminators(
     document: Path,
     markers: dict[str, dict[str, list[str]]],
     pairs: list[tuple[str, str, str]],
-) -> dict[str, object]:
-    """Add the curated O9/O2 marker pair and return its ``serotype/2`` block.
+) -> list[dict[str, object]]:
+    """Add the SNP-level O discriminators and return their ``serotype/2`` blocks.
 
-    The markers are NOT antigen entries: they must never widden the O family's
-    candidate list or be reported as an antigen. They live as standalone records
-    whose gene ids the document points at, and the engine only consults them when
-    the O tie actually spans their names.
+    Each pair (A/D1 on `rfbS`, D1/D2 on `wbaV`) is a set of standalone records,
+    never antigen entries: they must not widen the O family's candidate list or
+    be reported as an antigen. The engine only consults a pair when the O tie
+    actually spans its names. A group may carry several alleles (a group's own
+    diversity can rival the between-group gap), and the engine scores by the
+    best of them.
     """
     spec = json.loads(document.read_text(encoding="utf-8"))
-    favours: dict[str, str] = {}
+    # Accept both the list shape (``pairs``) and the legacy single-pair shape.
+    raw_pairs = spec.get("pairs")
+    if raw_pairs is None:
+        raw_pairs = [
+            {
+                "name": spec.get("name", ""),
+                "min_gap_pct": spec.get("min_gap", 0.5),
+                "min_coverage": 60.0,
+                "note": spec.get("description", ""),
+                "favours": spec["favours"],
+                "references": spec["references"],
+            }
+        ]
+    blocks: list[dict[str, object]] = []
+    for pair in raw_pairs:
+        favours: dict[str, list[str]] = {}
+        for reference in pair["references"]:
+            gene = reference["gene_id"]
+            pairs.append(
+                (gene, f"discriminator:{reference.get('gene', '')}", reference["sequence"])
+            )
+            # ``favours`` in the source document is group -> gene ids; the engine
+            # block wants antigen (= group) -> gene ids, so the group keys over.
+            favours.setdefault(reference["group"], []).append(gene)
+        blocks.append(
+            {
+                "name": pair.get("name", ""),
+                "favours": favours,
+                "min_gap_pct": pair["min_gap_pct"],
+                "min_coverage": pair.get("min_coverage", 60.0),
+                "note": pair.get("note", ""),
+            }
+        )
+    return blocks
+
+
+def _add_o_subfactor(
+    document: Path,
+    pairs: list[tuple[str, str, str]],
+) -> tuple[dict[str, object], list[dict[str, object]]]:
+    """Add the O:22/O:23 sub-factor and special-gene markers to ``pairs``.
+
+    Like the O9/O2 discriminator, these are standalone records, never antigen
+    entries. The document carries the gene ids directly (``o22_genes``/
+    ``o23_genes`` and ``special_checks`` reference them), so this only injects
+    the sequences and returns the engine-facing blocks (``o_subfactor`` and
+    ``special_checks`` separately, matching the serotype/2 shape).
+    """
+    spec = json.loads(document.read_text(encoding="utf-8"))
     for reference in spec["references"]:
-        gene = f"o_disc_{reference['group']}"
-        pairs.append((gene, f"discriminator:{reference['group']}", reference["sequence"]))
-        for antigen in spec["favours"][reference["group"]]:
-            favours[antigen] = gene
-    return {
-        "favours": favours,
-        "min_gap_pct": spec["min_gap"],
-        "min_coverage": 60.0,
+        gene = reference["gene"]
+        label = (
+            f"discriminator:{gene}"
+            if gene.startswith("o_disc_")
+            else f"special:{gene.removeprefix('special_')}"
+        )
+        pairs.append((gene, label, reference["sequence"]))
+    subfactor = {
+        "o22_genes": spec["o22_genes"],
+        "o23_genes": spec["o23_genes"],
+        "pairs": spec["pairs"],
+        "min_gap": spec["min_gap"],
         "note": spec["description"],
     }
+    special_checks = spec["special_checks"]
+    return subfactor, special_checks
 
 
 def _write_database(
@@ -477,15 +610,18 @@ def _write_database(
     dest: Path,
     similarity_groups: dict[str, list[list[str]]] | None = None,
     o_discriminator: dict[str, object] | None = None,
+    o_discriminators: list[dict[str, object]] | None = None,
+    o_subfactor: dict[str, object] | None = None,
+    special_checks: list[dict[str, object]] | None = None,
+    o_numeric: dict[str, str] | None = None,
+    gene_locus: dict[str, str] | None = None,
 ) -> None:
     """Write ``sequences`` + ``serotype.json`` + ``info.json`` for one database."""
     dest.mkdir(parents=True, exist_ok=True)
     families = [
         {
             "key": key,
-            "entries": [
-                {"name": antigen, "genes": genes} for antigen, genes in sorted(markers[key].items())
-            ],
+            "entries": _family_entries(key, markers[key], gene_locus),
         }
         for key in ("o", "h1", "h2")
         if markers.get(key)
@@ -501,6 +637,10 @@ def _write_database(
         "formulas": formulas,
         **({"similarity_groups": similarity_groups} if similarity_groups else {}),
         **({"o_discriminator": o_discriminator} if o_discriminator else {}),
+        **({"o_discriminators": o_discriminators} if o_discriminators else {}),
+        **({"o_subfactor": o_subfactor} if o_subfactor else {}),
+        **({"special_checks": special_checks} if special_checks else {}),
+        **({"o_numeric": o_numeric} if o_numeric else {}),
         "fallback": "Not Salmonella",
         "unresolved": "Salmonella subsp. enterica (no antigen set resolved)",
         "partial": "Salmonella {formula} (serovar not in the formula table)",
@@ -611,16 +751,23 @@ def _collapse_references(
 
 
 def _renumber(
-    markers: dict[str, dict[str, list[str]]], sequences: dict[str, str]
-) -> tuple[dict[str, dict[str, list[str]]], list[tuple[str, str, str]]]:
+    markers: dict[str, dict[str, list[str]]],
+    sequences: dict[str, str],
+    loci: dict[str, str] | None = None,
+) -> (
+    tuple[dict[str, dict[str, list[str]]], list[tuple[str, str, str]]]
+    | tuple[dict[str, dict[str, list[str]]], list[tuple[str, str, str]], dict[str, str]]
+):
     """Compact gene ids after collapsing: ``<family>_<antigen>``, ``__2``, ``__3``.
 
     The pre-collapse numbering left gaps (``h2_1_2__65``) because it counted the
     upstream records that were then dropped; renumbering the survivors keeps the
-    ids short and stable for a given input.
+    ids short and stable for a given input. When ``loci`` is given it is
+    re-keyed alongside (``new gene id -> locus``).
     """
     markers_out: dict[str, dict[str, list[str]]] = {}
     pairs: list[tuple[str, str, str]] = []
+    loci_out: dict[str, str] = {}
     for family, antigens in markers.items():
         markers_out[family] = {}
         used: set[str] = set()
@@ -650,7 +797,9 @@ def _renumber(
             for gene, new in zip(genes, ids, strict=True):
                 sequences[new] = sequences[gene]
                 pairs.append((new, antigen, sequences[new]))
-    return markers_out, pairs
+                if loci is not None and gene in loci:
+                    loci_out[new] = loci[gene]
+    return (markers_out, pairs, loci_out) if loci is not None else (markers_out, pairs)
 
 
 def _drop_unreachable(
@@ -736,11 +885,12 @@ def import_sistr(
     name: str,
     formulas: Path | None,
     bundle: bool = False,
-    subspecies: str | None = "enterica",
+    subspecies: str | None = None,
     extra_h_from: Path | None = None,
     kmer_k: int = 0,
     collapse_floor: float = REFERENCE_IDENTITY_FLOOR,
     o_discriminators: Path | None = None,
+    o_subfactor: Path | None = None,
     cross_labels: Path | None = None,
     extra_refs: Path | None = None,
 ) -> None:
@@ -753,10 +903,12 @@ def import_sistr(
         raise SystemExit(f"{table}: formula table not found (pass --formulas)")
     pairs: list[tuple[str, str, str]] = []
     markers: dict[str, dict[str, list[str]]] = {"o": {}, "h1": {}, "h2": {}}
+    gene_locus: dict[str, str] = {}
     for path in files:
         family = _detect_family(path)
         if family is None:
             continue
+        locus = _detect_locus(path)
         for record_id, sequence in _read_fasta(path):
             antigen = _sistr_antigen(record_id)
             if not antigen:
@@ -772,6 +924,8 @@ def import_sistr(
             )
             genes.append(gene)
             pairs.append((gene, antigen, sequence))
+            if locus is not None:
+                gene_locus[gene] = locus
     if extra_h_from is not None:
         # A hybrid: SISTR's O groups and formula table, plus a second project's
         # H alleles. Both projects name the H antigens in WKL notation, so the
@@ -825,20 +979,56 @@ def import_sistr(
         print(f"  extra references from {extra_refs.name}: {len(document['references'])}")
     sequences = {gene: sequence for gene, _, sequence in pairs}
     markers, kept = _collapse_references(markers, sequences, floor=collapse_floor)
-    markers, pairs = _renumber(markers, kept)
+    renumbered = _renumber(markers, kept, gene_locus)
+    if len(renumbered) == 3:
+        markers, pairs, gene_locus = renumbered
+    else:
+        markers, pairs = renumbered
     # After the renumber: the discriminators are standalone records, not antigen
     # alleles, so the collapse and the allele renumbering must not see them.
-    discriminator = (
+    discriminators = (
         _add_o_discriminators(o_discriminators, markers, pairs)
         if o_discriminators is not None
         else None
     )
-    if discriminator is not None:
+    if discriminators:
         print(
-            f"  O discriminator: {len(cast(dict[str, str], discriminator['favours']))}"
-            f" group(s), min gap {discriminator['min_gap_pct']} pp"
+            f"  O discriminators: {len(discriminators)} pair(s),"
+            + ", ".join(
+                f"{block['name'] or '?'}"
+                f" ({len(cast(dict[str, list[str]], block['favours']))} groups)"
+                for block in discriminators
+            )
+        )
+    subfactor = None
+    special_checks: list[dict[str, object]] = []
+    if o_subfactor is not None:
+        subfactor, special_checks = _add_o_subfactor(o_subfactor, pairs)
+        print(
+            f"  O subfactor: {len(subfactor['o22_genes'])} O:22 genes,"
+            f" {len(subfactor['o23_genes'])} O:23 genes,"
+            f" {len(subfactor['pairs'])} pairs,"
+            f" {len(special_checks)} special check(s)"
         )
     rows = _sistr_formulas(table, subspecies=subspecies)
+    if subfactor is not None:
+        serovar_names = {row["serovar"] for row in rows}
+        kept_pairs = [
+            pair
+            for pair in subfactor["pairs"]
+            if pair[0] in serovar_names and pair[1] in serovar_names
+        ]
+        if len(kept_pairs) != len(subfactor["pairs"]):
+            dropped = [
+                f"{pair[0]}/{pair[1]}"
+                for pair in subfactor["pairs"]
+                if pair[0] not in serovar_names or pair[1] not in serovar_names
+            ]
+            print(
+                f"  O subfactor: dropped {len(dropped)} pair(s) absent from the"
+                f" formula table: {', '.join(dropped)}"
+            )
+        subfactor["pairs"] = kept_pairs
     groups = json.loads(SIMILARITY_GROUPS.read_text(encoding="utf-8"))
     _apply_group_fixes(groups)
     if cross_labels is not None:
@@ -860,7 +1050,11 @@ def import_sistr(
         formulas=rows,
         dest=dest,
         similarity_groups=groups,
-        o_discriminator=discriminator,
+        o_discriminators=discriminators,
+        o_subfactor=subfactor,
+        special_checks=special_checks,
+        o_numeric=_serogroup_numeric_o(table),
+        gene_locus=gene_locus,
     )
     if kmer_k:
         _write_kmerdb(
@@ -976,6 +1170,28 @@ def _write_kmerdb(
     print(f"  kmer.json: {len(sets)} differential sets (k={k})")
 
 
+def _family_entries(
+    key: str, antigens: dict[str, list[str]], gene_locus: dict[str, str] | None
+) -> list[dict[str, object]]:
+    """Antigen entries for one family, splitting the O family by wzx/wzy locus.
+
+    The O family is the one place two loci share a serogroup name; the engine
+    ranks the two loci separately and reconciles them, so the entries carry a
+    ``locus`` tag. H families are already one locus each (``fliC``/``fljB``).
+    """
+    entries: list[dict[str, object]] = []
+    for antigen, genes in sorted(antigens.items()):
+        if key != "o" or gene_locus is None:
+            entries.append({"name": antigen, "genes": genes})
+            continue
+        by_locus: dict[str, list[str]] = {}
+        for gene in genes:
+            by_locus.setdefault(gene_locus.get(gene, ""), []).append(gene)
+        for locus, locus_genes in sorted(by_locus.items()):
+            entries.append({"name": antigen, "genes": locus_genes, "locus": locus or None})
+    return entries
+
+
 def _write_fasta(dest: Path, name: str, pairs: list[tuple[str, str, str]]) -> None:
     """gspec/v1 FASTA: id carries db/gene/accession/function, description the antigen."""
     dest.mkdir(parents=True, exist_ok=True)
@@ -1006,11 +1222,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--subspecies",
-        default="enterica",
+        default="any",
         help=(
             "SISTR only: restrict the formula table to one subspecies"
-            " (antigen genes cannot decide the subspecies, so enterica is the"
-            " default; pass 'any' to keep every row)"
+            " (antigen genes cannot decide the subspecies; the default 'any'"
+            " keeps every row so the engine can name non-enterica subspecies"
+            " by their own formula rows)"
         ),
     )
     parser.add_argument(
@@ -1050,6 +1267,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--o-subfactor",
+        type=Path,
+        help=(
+            "SISTR only: gspec.o_subfactor/1 document (built by"
+            " build_o_subfactor.py) whose O:22/O:23 markers break serovar-level"
+            " formula ties and whose special_checks annotate a decided serovar"
+        ),
+    )
+    parser.add_argument(
         "--collapse-identity",
         type=float,
         default=REFERENCE_IDENTITY_FLOOR,
@@ -1082,6 +1308,7 @@ def main(argv: list[str] | None = None) -> int:
             kmer_k=args.kmerdb,
             collapse_floor=args.collapse_identity,
             o_discriminators=args.o_discriminators,
+            o_subfactor=args.o_subfactor,
             cross_labels=args.cross_labels,
             extra_refs=args.extra_refs,
         )

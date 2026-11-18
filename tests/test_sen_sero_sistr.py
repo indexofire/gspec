@@ -6,14 +6,14 @@ its WHO-2007 formula table, rewritten as gspec/v1 records plus a
 AGENTS.md §6 gate 1 a converted permissive dataset may ride the wheel, but it
 must carry `license`, `note` and a verbatim `attribution`, which these tests pin.
 
-Coverage is honest, not aspirational: 95.4 % of the upstream formula rows are
-reachable from the shipped antigen references. The rest reference WKL bracket
-tokens (`l,[z13],[z28]`, `1,6,7`, …) that SISTR resolves through its
-similarity-group widening, which this port does not implement yet — the test
-below pins the measured percentage so a future regression cannot hide.
+Coverage is honest, not aspirational: 97.4 % of the upstream formula rows are
+reachable from the shipped antigen references. The rest name alleles that
+SISTR's reference FASTAs themselves do not contain (`z67`, `z91`, `g,m,t`, …);
+the similarity-group widening the port does carry reconciles the bracket tokens
+(`l,[z13],[z28]` and friends), and the test below pins the measured percentage
+so a future regression cannot hide.
 """
 
-import json
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -22,6 +22,7 @@ from gspec.cli import app
 from gspec.db.bundled import find_bundled
 from gspec.dbcodec import decode_seqid
 from gspec.fasta import iter_fasta
+from gspec.formats.typing_result import TypingResultDocument
 from gspec.typing.results import SchemeCall
 from gspec.typing.serotype_models import SerotypeDocumentV2, read_serotype_document
 
@@ -76,7 +77,12 @@ def test_db_info_surfaces_the_attribution() -> None:
 def test_document_declares_the_expected_families() -> None:
     document = _document()
     families = {family.key: len(family.entries) for family in document.antigens}
-    assert families == {"o": 46, "h1": 62, "h2": 25}
+    # The O family is split by locus (wzx/wzy), so it has more entries than
+    # serogroups; the unique names still cover every serogroup.
+    assert families == {"o": 86, "h1": 62, "h2": 25}
+    o = next(family for family in document.antigens if family.key == "o")
+    assert len({entry.name for entry in o.entries}) == 46
+    assert {entry.locus for entry in o.entries} == {"wzx", "wzy"}
     assert len(document.formulas) > 1500
 
 
@@ -113,10 +119,24 @@ def test_most_formula_rows_are_reachable() -> None:
 
 
 def test_typhimurium_markers_reach_the_right_row(tmp_path: Path) -> None:
-    """group B + H:i + H:1,2 addresses the Typhimurium row; the H2 similarity
-    class also reaches its siblings, so the answer is the candidate list."""
+    """group B + H:i + H:1,2 addresses the Typhimurium row verbatim: the call
+    is the formula's own serovar, not a candidate list widened through the H2
+    similarity class."""
     call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
-    assert "Typhimurium" in _candidates(call)
+    assert call.phenotype == "Typhimurium"
+
+
+def test_genes_column_lists_the_winning_alleles(tmp_path: Path) -> None:
+    """GENES carries the decisive evidence, not every cross-reactive row: one
+    representative winning allele per antigen family (the same allele the
+    per-family note names), instead of the thousand-row cross-reaction list a
+    real genome's table holds."""
+    document = _designate_document(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
+    assert len(document.files) == 1
+    genes = document.files[0].genes
+    assert len(genes) == 3
+    families = sorted(gene.partition("_")[0] for gene in genes)
+    assert families == ["h1", "h2", "o"]
 
 
 def test_phase_off_alias_reaches_the_monophasic_row(tmp_path: Path) -> None:
@@ -128,6 +148,11 @@ def test_phase_off_alias_reaches_the_monophasic_row(tmp_path: Path) -> None:
 
 def _designate(tmp_path: Path, *antigens: tuple[str, str]) -> SchemeCall:
     """Screen a genome built from the named antigens, then designate it."""
+    return _designate_document(tmp_path, *antigens).files[0].phenotypes["serotype"]
+
+
+def _designate_document(tmp_path: Path, *antigens: tuple[str, str]) -> TypingResultDocument:
+    """The parsed gspec.typing_result/1 document for a synthetic antigen genome."""
     genes = _genes()
     body = "".join(genes[_gene(family, antigen)] for family, antigen in antigens)
     genome = tmp_path / "m.fna"
@@ -156,7 +181,7 @@ def _designate(tmp_path: Path, *antigens: tuple[str, str]) -> SchemeCall:
         catch_exceptions=False,
     )
     assert typed.exit_code == 0, typed.stderr
-    return SchemeCall.model_validate(json.loads(typed.stdout)["files"][0]["phenotypes"]["serotype"])
+    return TypingResultDocument.model_validate_json(typed.stdout)
 
 
 def _candidates(call: SchemeCall) -> set[str | None]:
@@ -164,10 +189,11 @@ def _candidates(call: SchemeCall) -> set[str | None]:
 
 
 def test_widening_keeps_the_candidate_list_visible(tmp_path: Path) -> None:
-    """A perfect antigen set is widened to its similarity class before the
-    lookup (SISTR's `isin` over the class), so the H2 class of `1,2` also reaches
-    `1,2,7` / `1,5` rows: the call is reported as ambiguous with every candidate,
-    exactly like SISTR's pipe-joined `Typhimurium|Lagos`."""
+    """A perfect antigen set reads the formula off the table: `B:i:1,2` is
+    Typhimurium verbatim, a definitive call the similarity class no longer
+    widens into a candidate list (the class reaches `1,5` rows the antigens
+    never named). Sibling cross-hits keep the families below SISTR's
+    perfection bar, so the confidence stays low."""
     call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
-    assert call.confidence == "ambiguous"
-    assert "Typhimurium" in _candidates(call)
+    assert call.phenotype == "Typhimurium"
+    assert not call.ambiguous

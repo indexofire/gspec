@@ -59,7 +59,7 @@ class PhenotypeDetail(BaseModel, frozen=True):
     byte-frozen."""
 
     score: float
-    confidence: Literal["high", "ambiguous", "low"]
+    confidence: Literal["high", "medium", "ambiguous", "low"]
     components: tuple[ScoreComponent, ...]
     runner_up: PhenotypeScore | None = None
     ambiguous: tuple[PhenotypeScore, ...] = ()
@@ -103,7 +103,7 @@ class SchemeCall(BaseModel, frozen=True):
 
     phenotype: str | None
     score: float
-    confidence: Literal["high", "ambiguous", "low"]
+    confidence: Literal["high", "medium", "ambiguous", "low"]
     components: tuple[ScoreComponent, ...] = ()
     runner_up: PhenotypeScore | None = None
     ambiguous: tuple[PhenotypeScore, ...] = ()

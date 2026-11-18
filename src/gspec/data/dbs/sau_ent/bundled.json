@@ -1,0 +1,35 @@
+{
+  "name": "sau_ent",
+  "description": "S. aureus enterotoxin gene panel: SEA-SEE, SEG-SEY, SEl26-28, SEl30, SElV/X/Z, SEU, SEO, SElU2 and TSST-1 + the nuc species control, with variant alleles for SEC, SEI, SEN, SEU and TSST-1",
+  "vendor": "indexofire/enterotoxin (MIT) + gspec-curated control",
+  "dbtype": "nucl",
+  "kind": "gene",
+  "snapshotted": "2026-11-18",
+  "license": "MIT (upstream LICENSE, Copyright 2023 Mark Renton)",
+  "note": "Twenty-five enterotoxin, enterotoxin-like and TSST-1 references converted from the indexofire/enterotoxin abricate database (commit 30c022eeb712, 2023-08-27; MIT). Sequences are the upstream records byte-for-byte; only the headers are rewritten to gspec/v1 and a curated product string is attached per gene. Five curated additions cut from public-domain INSDC records (committed as build assets with full provenance): seu from AY205305 (Letertre et al. 2003, egc-core; implicated in outbreaks without classical SEs, Umeda et al. 2017), selw (SElU2) from EF030428 (Thomas et al. 2006, egc4 recombinant), the SEC3 allele from X51661 (Hovde et al. 1990) and the SEC-bovine and TSST-1 bovine-SaPI alleles from SaPIbov AF217235 (Fitzgerald et al. 2001) \u2014 the intra-type polymorphism hotspots Lefebvre et al. (Toxins 14:249, 2022) quantified, plus the egc3 variant alleles for sei, seu and sen cut from AY158703 (strain 382F, 96.7-97.7 % to the prototypes; Letertre et al.), SElU2 from EF030428 (Thomas 2006; the gene widely called SElW after Collery & Smyth 2007 -- the 2026 nomenclature review restores SElU2 because the 2012 'true SElW' is a different, non-emetic chromosomal protein excluded from the SE family), SEl28 from MN450304:2472-3197 (egc SaPI of strain 364P, Fanelli et al.; 726 bp, the SEl26-family variant -- note the record's own CDS label for it is 'sel27', a numbering the primary literature and the 2026 review supersede) and SEl30 from PZ361155 (strain PR-14). NOMENCLATURE AUDIT: the upstream gene labels sel26/sel27 (MF370874, 744/753 bp) follow the primary designation paper (Zhang et al., IJMM 2018: 'designated SEl26 and SEl27') and the 2026 nomenclature-clarification review (Franjus et al.: SEl26-1 744 nt, SEl27-1 753 nt, SEl28 = SEl26-2 726 nt); the conflicting sel27/sel28 numbering in the MF370874/78 description lines and MN450304's CDS labels follows no peer-reviewed paper and is not adopted. SEC2 rides on the SEC1 reference at 97.4 % protein identity (no complete standalone INSDC record is indexable; the only candidates are partial cds). Variant alleles share the parent gene id and are distinguished by the accession. One species control added, staphylococcal thermonuclease (nuc) from public-domain INSDC NC_007795.1:800034-800720. Screen-only; no typing scheme. If any author or rights holder objects to the use or redistribution of this database, please contact indexofire@gmail.com and the content will be removed or adjusted promptly upon verification.",
+  "guidance": {
+    "references": [
+      {
+        "citation": "Argudin MA, Mendoza MC, Rodicio MR. Food poisoning and Staphylococcus aureus enterotoxins. Toxins (Basel). 2010;2(7):1751-1773.",
+        "url": "https://doi.org/10.3390/toxins2071751",
+        "note": "The SE/SEl gene family and its nomenclature."
+      },
+      {
+        "citation": "Lefebvre D, Blanco-Valle K, Hennekinne JA, Simon S, Fenaille F, Becher F, Nia Y. Multiplex detection of 24 staphylococcal enterotoxins in culture supernatant using liquid chromatography coupled to high-resolution mass spectrometry. Toxins (Basel). 2022;14(4):249.",
+        "url": "https://doi.org/10.3390/toxins14040249",
+        "note": "The variant inventory per gene (sec 10, seu 10, sem 9, sen 9, sek 8, seg 6, sey 6, tsst1 6) this panel's variant alleles mitigate."
+      }
+    ],
+    "caveats": [
+      "Gene presence is toxigenic potential, not toxin production: expression is strain-, niche- and growth-dependent. Food or isolate enterotoxin positivity still needs an immunological assay (ELISA) or expression evidence.",
+      "The 'enterotoxin-like' types (SEl26, SEl27, SElV, SElW, SElX, SElZ) are grouped by sequence homology; emetic activity is not demonstrated for all of them, so reporting them as enterotoxins overstates the risk.",
+      "Sequence polymorphism is the family norm (Lefebvre et al. 2022: six to ten variants per gene for sec, seg, sek, sem, sen, seu, sey and tsst1). This panel carries variant alleles for sec, sei, sen, seu and tsst1; other genes remain one reference per type, and divergence beyond these alleles can still fall below the default floors (80 % identity / 80 % coverage) \u2014 key on identity and coverage, not presence alone.",
+      "nuc is the species control: its absence argues against S. aureus (or a failed screen), while the toxin panel alone does not establish the species. S. argenteus carries SElZ-like genes \u2014 key on the accession, not the gene name alone.",
+      "Upstream references are single per-type accessions from varied strains; alleles can diverge below the default screen floors (80 % identity / 80 % coverage)."
+    ],
+    "usage": [
+      "gspec screen isolate.fa -d sau_ent --output sae.tsv",
+      "gspec screen isolate.fa -d sau_ent --format json"
+    ]
+  }
+}

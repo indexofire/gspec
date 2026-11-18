@@ -105,7 +105,7 @@ $ for name in $(gspec db list -n); do gspec db setup -d "$name"; done
 - `-` —— 没有分型方案，仅用于筛查。
 
 STATUS 显示 `installed (N)` 的条件是 `<datadir>/<name>/gspec-manifest.json`
-存在，N 是记录数，否则显示 `available`。十九个随 wheel 发布的**内置数据库**
+存在，N 是记录数，否则显示 `available`。二十个随 wheel 发布的**内置数据库**
 （`cam_vf` 至 `vpa_vf`，当前清单以 `gspec db list` 为准）
 均由 gspec 策划，没有提供商、也没有 fetch 路径：物化前为 `bundled`，物化后为
 `installed (N)`。每个提供商（包括 `ecoh`、`ncbi`、`resfinder`）都按需抓取，在
@@ -268,8 +268,9 @@ Kaptive 的"位点型≠血清型"、VFDB 的 CC BY-NC 条款）。`tests/test_d
 ## 内置数据库（即装即用）
 
 大多数数据库在 `db fetch` 时才从上游下载，因为许可证禁止再分发（见"提供商"一节）。
-少数**内置**数据库随 gspec wheel 一起发布 —— 共十九个，均由 gspec 策划，其内容经过
-逐条记录的来源审计（公共领域来源、MIT 许可的 `vpa_ok` 面板，以及带署名的 CC BY 4.0
+少数**内置**数据库随 gspec wheel 一起发布 —— 共二十个，均由 gspec 策划，其内容经过
+逐条记录的来源审计（公共领域来源、MIT 许可的 `vpa_ok` 面板、`sau_ent` 背后的 MIT
+`indexofire/enterotoxin` 转换，以及带署名的 CC BY 4.0
 `cje_cpsv2` 转换）。策略比"许可证
 允许"更严格：第三方提供商快照（`ncbi`、`card`、`ecoh`、`resfinder` 等）绝不随
 wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承担。无需下载、无需确认：
@@ -292,9 +293,10 @@ wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承
 | `lpn_vf` | 嗜肺军团菌毒力因子蛋白（275，LegionProfiler；蛋白类） | 2026-11-06 | -（仅筛查） |
 | `str_lancefield` | 链球菌 Lancefield A/B/C/G 标记 + `tuf` 内参（29 条） | 2026-11-06 | `gspec.typing/2`（`lancefield`） |
 | `sag_sero` | GBS 荚膜血清型，10 型 + III 亚型（14 条，GBS-SBG） | 2026-11-06 | `gspec.typing/2`（`serotype`、`serotype_iii`） |
+| `sau_ent` | 金黄色葡萄球菌肠毒素面板：SEA-SEE、SEG-SEY、SEl26-28、SEl30、SElV/X/Z、SEU、SEO、SElU2、TSST-1 + `nuc` 物种内参 + SEC/SEI/SEN/SEU/TSST-1 变异等位基因（37 条；`indexofire/enterotoxin` 的 MIT 转换 + 策展 INSDC 补充，含审计后的 sel26/27/28 与 SElU2/SElW 命名） | 2026-11-17 | -（仅筛查） |
 | `pau_sero` | 铜绿假单胞菌 OSA 血清群 O1-O17 + wzyB（14 位点，pasty；cluster 类） | 2026-11-06 | `gspec.typing/2`（`osa_serogroup`、`wzyb`） |
 | `sen_sero` | 肠道沙门氏菌肠道亚种 O/H 抗原面板（13 条精选 INSDC CDS 标记：`invA` 对照、O 群 rfb 标记、相位 1/相位 2 鞭毛蛋白等位基因） | 2026-11-09 | `gspec.serotype/1` |
-| `sen_sero_sistr` | 肠道沙门氏菌 SISTR O/H 抗原等位基因 + 抗原式表（1443 条记录） | 2026-11-11 | `gspec.serotype/1` |
+| `sen_sero_sistr` | 肠道沙门氏菌 SISTR O/H 抗原等位基因 + 抗原式表（1443 条记录；2026-11-16 将 `g,m`/`g,q` 交叉标记并入相似群） | 2026-11-16 | `gspec.serotype/2` |
 | `vpa_vf` | 副溶血性弧菌溶血素标记：`tlh` 种内对照 + `tdh` + `trh` TRH1/TRH2 等位基因（4 条记录，INSDC） | 2026-11-13 | -（仅筛查） |
 
 **许可证来源声明。** `eco_dec` 的每条记录都取自公共领域的一级提交（NCBI
@@ -336,6 +338,16 @@ cje 血清分型面板。
 于是完整的抗原式规则（`O + H1 + H2` → 血清型）可以压在它所蕴含的通用
 "已知 O 群、H 未定" 行之上；彼此不构成子集关系的命中仍然判为歧义。`sen_sero` 是
 第一个启用它的库，`shi_sero` 保持默认，因此其已提交输出不变。
+
+`gspec.serotype/2` 文档（完整面板所需的排序抗原形态，如 `sen_sero_sistr`）按固定
+顺序判定：先**逐字**查观测到的 `O:H1:H2` 抗原式——表里有的行就是判定；多个血清型
+共享同一抗原式时，取先声明的名字为表型（WHO 表把常见血清型排在前面：`C2-C3:d:1,2`
+是 Muenchen，Virginia 进入 RUNNER_UP）。某家族前两名抗原**证据完全相同**时，其全部
+并列名字共同参与查表，命中行构成候选列表——紧凑集合，绝不猜测。只有表里没有的
+抗原式才扩展：名字扩展到相似群、未决的 O 群触达每个血清群、弱二相回退到单相 `-`
+行——扩展后仍命中多个则保持歧义候选列表。margin 保留下来的近平局以备注形式跟随
+明确判定（`H1 near-tie within 0.01: g,q`），每条家族备注点名胜出等位基因及其
+identity 与 coverage，不打开筛查表即可审计该判定。
 
 规则还可以用**排序**而非存在性做门控：`outranks` 为每个阳性标记列出一组竞争者，
 只有当该标记的得分（`identity × coverage`，即 `best_hit` 的度量）**严格高于**每个

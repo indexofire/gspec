@@ -61,7 +61,7 @@ def patch_synthetic_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
 def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
     """Given the fixture, When db setup runs and then databases are listed,
-    Then exit 0, all sixteen bundled databases materialize (one stderr note
+    Then exit 0, all twenty bundled databases materialize (one stderr note
     each, alphabetical — vpa_ok/vpa_pai count loci) alongside tinyamr's
     Indexed line, and the listing carries every database."""
     datadir = make_datadir(tmp_path)
@@ -81,8 +81,9 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("lpn_vf", "275 records"),
             ("pau_sero", "14 loci"),
             ("sag_sero", "14 records"),
+            ("sau_ent", "37 records"),
             ("sen_sero", "13 records"),
-            ("sen_sero_sistr", "1443 records"),
+            ("sen_sero_sistr", "1456 records"),
             ("shi_sero", "96 records"),
             ("str_lancefield", "29 records"),
             ("vch_oagc", "191 loci"),
@@ -92,8 +93,8 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("vpa_vf", "4 records"),
         )
     ]
-    assert stderr_lines[:19] == expected_materialize
-    assert stderr_lines[19:] == [
+    assert stderr_lines[:20] == expected_materialize
+    assert stderr_lines[20:] == [
         "gspec: indexed cam_vf (16 sequences, nucl)",
         "gspec: indexed cdi_vf (4 sequences, nucl)",
         "gspec: indexed cje_cps (42 sequences, nucl)",
@@ -104,8 +105,9 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "gspec: indexed lpn_vf (275 sequences, prot)",
         "gspec: indexed pau_sero (14 sequences, nucl)",
         "gspec: indexed sag_sero (14 sequences, nucl)",
+        "gspec: indexed sau_ent (37 sequences, nucl)",
         "gspec: indexed sen_sero (13 sequences, nucl)",
-        "gspec: indexed sen_sero_sistr (1443 sequences, nucl)",
+        "gspec: indexed sen_sero_sistr (1456 sequences, nucl)",
         "gspec: indexed shi_sero (96 sequences, nucl)",
         "gspec: indexed str_lancefield (29 sequences, nucl)",
         "gspec: indexed tinyamr (3 sequences, nucl)",
@@ -128,6 +130,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "lpn_vf",
         "pau_sero",
         "sag_sero",
+        "sau_ent",
         "sen_sero",
         "sen_sero_sistr",
         "shi_sero",

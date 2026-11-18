@@ -37,9 +37,14 @@ from gspec.progress import ChunkSink
 from gspec.screening.contigs import find_database
 from gspec.typing.cluster_input import read_cluster_typing_input
 from gspec.typing.gene import evaluate_gene_calls
-from gspec.typing.input import STDIN_LABEL, read_typing_input
+from gspec.typing.input import STDIN_LABEL, FileGeneCalls, read_typing_input
 from gspec.typing.serotype_engine import evaluate_serotype
-from gspec.typing.serotype_models import load_serotype, validate_serotype_references
+from gspec.typing.serotype_models import (
+    AnySerotypeDocument,
+    SerotypeDocumentV2,
+    load_serotype,
+    validate_serotype_references,
+)
 
 
 def _resolve_database(table_database: str, datadir: Path | None, quiet: bool) -> Database:
@@ -61,6 +66,34 @@ def _database_gene_ids(database: Database) -> frozenset[str]:
     return frozenset(
         decode_seqid(record.id, database.name).gene
         for record in iter_fasta(database.sequences_path)
+    )
+
+
+def _serotype_result(entry: FileGeneCalls, document: AnySerotypeDocument) -> TypingFileResult:
+    """One file's serotype call; ``genes`` carries the decisive evidence only.
+
+    A ranked antigen panel (``gspec.serotype/2``) cross-hits dozens of
+    near-identical sibling alleles at one locus (measured: 1,070 gene ids in
+    one genome's table, three of which named the families), so its GENES column
+    lists one representative winning allele per antigen family — the exact hit
+    the call rests on (the same allele the per-family note names), auditable
+    against the screen table. A marker-set profile (``/1``) keeps every present
+    gene: its panels are small curated marker sets, so the full list already is
+    the audit trail.
+    """
+    call = evaluate_serotype(entry.calls, document)
+    if not isinstance(document, SerotypeDocumentV2):
+        return TypingFileResult(
+            file=entry.file, genes=tuple(sorted(entry.calls)), phenotypes={"serotype": call}
+        )
+    representative: dict[str, str] = {}
+    for component in call.components:
+        if not component.name.startswith("antigen:"):
+            continue
+        gene = component.name.split(":", 1)[1]
+        representative.setdefault(gene.partition("_")[0], gene)
+    return TypingFileResult(
+        file=entry.file, genes=tuple(sorted(representative.values())), phenotypes={"serotype": call}
     )
 
 
@@ -114,14 +147,7 @@ def run_typing(
                 f"Typing {len(table.files)} file(s) against {table.database} (serotype)",
                 err=True,
             )
-        results = [
-            TypingFileResult(
-                file=entry.file,
-                genes=tuple(sorted(entry.calls)),
-                phenotypes={"serotype": evaluate_serotype(entry.calls, serotype_document)},
-            )
-            for entry in table.files
-        ]
+        results = [_serotype_result(entry, serotype_document) for entry in table.files]
     else:
         document = require_typing(database)
         if not quiet:

@@ -400,11 +400,20 @@ def _annotate_sketch(hits: list[Hit], query: Path, database: Database) -> list[H
 
     A database without the k-mer substrate (every parity database) leaves the
     hits untouched, so the flag is a no-op unless the panel asked for it.
+
+    The scores are a pure function of ``(window, family)``, and one physical
+    locus produces hundreds of hit rows (every near-identical reference allele
+    is its own hit): measured on a real genome, 1,070 hits shared 33 distinct
+    windows, and recomputing per hit spent 62 s of a 68 s screen. Caching per
+    window+family makes the work proportional to the loci, not the hits.
     """
     index = allele_sketches(database.path)
     if index is None:
         return hits
     contigs = {record.id.split()[0]: record.sequence for record in iter_fasta(query)}
+    # (window, family) -> (antigen scores, phase affinity); the affinity is None
+    # outside the phase families.
+    cache: dict[tuple[str, int, int, str], tuple[dict[str, float], float | None]] = {}
     annotated: list[Hit] = []
     for hit in hits:
         family = hit.gene.partition("_")[0]
@@ -412,19 +421,26 @@ def _annotate_sketch(hits: list[Hit], query: Path, database: Database) -> list[H
         if not sketches:
             annotated.append(hit)
             continue
-        window = window_kmers(contigs, hit.sequence, hit.start, hit.end, index.k)
+        key = (hit.sequence, hit.start, hit.end, family)
+        cached = cache.get(key)
+        if cached is None:
+            window = window_kmers(contigs, hit.sequence, hit.start, hit.end, index.k)
+            phase: float | None = None
+            if family in {"h1", "h2"}:
+                # Only the phase families need the end signal: `l,v` exists in
+                # both pools, and a locus's ends say which one it belongs to.
+                ends = end_kmers(contigs, hit.sequence, hit.start, hit.end, index.k)
+                phase = phase_affinity(ends, sketches)
+            cached = (antigen_scores(window, sketches), phase)
+            cache[key] = cached
+        scores, phase = cached
         antigen = hit.gene[len(family) + 1 :].replace("_", ",")
-        score = antigen_scores(window, sketches).get(antigen)
         update: dict[str, float] = {}
+        score = scores.get(antigen)
         if score is not None:
             update["sketch_pct"] = 100 * score
-        if family in {"h1", "h2"}:
-            # Only the phase families need the end signal: `l,v` exists in both
-            # pools, and a locus's ends say which one it really belongs to.
-            ends = end_kmers(contigs, hit.sequence, hit.start, hit.end, index.k)
-            affinity = phase_affinity(ends, sketches)
-            if affinity is not None:
-                update["phase_pct"] = 100 * affinity
+        if phase is not None:
+            update["phase_pct"] = 100 * phase
         annotated.append(hit.model_copy(update=update) if update else hit)
     return annotated
 

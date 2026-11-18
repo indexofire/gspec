@@ -2,6 +2,155 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`sau_ent` — S. aureus enterotoxin gene panel rides the wheel.** The
+  `indexofire/enterotoxin` abricate database (MIT, Copyright 2023 Mark
+  Renton) converted to gspec/v1: 25 targets — SEA-SEE, SEG-SEY, the
+  enterotoxin-like SEl26/SEl27/SElV/SElX/SElZ and TSST-1 — plus one species
+  control, the S. aureus thermonuclease `nuc` cut from public-domain INSDC
+  (`NC_007795.1:800034-800720`). Screen-only; `bundled.json` carries the
+  upstream repo and commit (`30c022eeb712`), the MIT license, the per-gene
+  INSDC accessions, the objection clause, and guidance on the
+  presence-versus-production caveat (SE/SEl presence is toxigenic potential,
+  not toxin production; several SEl types lack demonstrated emetic activity).
+  Rebuild with `scripts/staphylococcus/build_sau_ent.py`; screen with
+  `gspec screen isolate.fa -d sau_ent`.
+- **`sau_ent` gains eleven curated targets and a full nomenclature audit,
+  closing the gaps a literature review exposed.** Sequence polymorphism is
+  the SE-family norm (Lefebvre et al. 2022: six to ten variants per gene
+  for sec, seg, sek, sem, sen, seu, sey and tsst1), and the upstream panel
+  carried one reference per type and missed several genes entirely. Added
+  from public-domain INSDC records (committed as build assets with
+  citations): `seu` (AY205305; Letertre 2003 — egc toxin implicated in
+  outbreaks without classical SEs), `selu2` (EF030428; Thomas 2006 — the
+  gene widely called SElW; the audited label restores SElU2, because the
+  2012 "true SElW" is a different, non-emetic protein the 2026
+  nomenclature review excludes from the family), **`seo` (AF285760:370-1155
+  — Jarraud 2001's original egc cluster deposit; the upstream panel never
+  carried seo at all, and the gap only surfaced in the Fanelli 2022
+  backtest below)**, the SEC3 allele (X51661; Hovde 1990), the SEC-bovine
+  + TSST-1 bovine-SaPI alleles (SaPIbov AF217235; Fitzgerald 2001), the
+  egc3 variant alleles for `sei`/`seu`/`sen` (AY158703, 96.7–97.7 % to
+  the prototypes), `sel28` (MN450304:2472-3197 — the 726 bp SEl26-family
+  variant; the record's own CDS label "sel27" follows an unpublished
+  numbering the primary literature and the 2026 review supersede) and
+  `sel30` (PZ361155). `sel26`/`sel27` keep Zhang 2018's primary
+  designation (MF370874, 744/753 bp), confirmed verbatim from the IJMM
+  abstract ("designated SEl26 and 27") and the 2026 clarification table
+  (SEl26-1/SEl27-1/SEl28 = SEl26-2). SEC2 is covered by the SEC1
+  reference at 97.4 % protein identity (no complete standalone INSDC
+  record exists — every candidate is a partial cds). Variant alleles share
+  the parent gene id and are distinguished by accession; the panel is now
+  37 records, still screen-only.
+- **`sau_ent` backtested on a published phenotype dataset (Fanelli et al.
+  2022, Toxins 14:731): recall 100 %, precision 94 % at gene level.** The
+  12 Algerian food isolates (ENA BioProject PRJNA712985) carry complete
+  se/sel gene profiles in the paper plus ELISA-quantified SEA/SEB/SED/
+  SEH/SER production for five strains — the validation the panel lacked.
+  All 63 expected gene calls were detected (including sel30 in SA51,
+  selu2 in the three egc5 strains, tst in SA82, and the ELISA-validated
+  sea/seb/sed/ser/seh producers); the four extra calls are the known
+  nucleotide-level limit of presence screening, not panel errors: SA02/
+  SA51's egc1 loci carry full-length selu2-homologous sequence the paper
+  tables as psi-ent pseudogenes, and SA20's sed / SA46's seh are
+  pseudogenes whose intact-length nucleotide still aligns (99.6 %/87.4 %
+  identity). The backtest is scripted in
+  `scripts/staphylococcus/README.md`.
+
+### Changed
+
+- **Salmonella serotyping confidence is now a three-tier ladder instead of a
+  binary flag, so `high` finally means something.** The old rule required a
+  100 %-identity/100 %-coverage hit on every antigen *and* no other antigen
+  scoring at all, which no real assembly satisfies: the 100-genome corpus came
+  out **99 `low` + 1 `ambiguous` + 0 `high`**, a label that discriminated
+  nothing. The new ladder keys on three signals that were measured rather than
+  guessed — the weakest *present* antigen's score (`identity x coverage`), whether
+  every family was decided on whole-length evidence with one name, and whether the
+  serovar was read off a single-row formula entry without class widening:
+
+  | tier | rule | corpus |
+  | --- | --- | --- |
+  | `high` | exact row, all families whole + single-named, weakest ≥ 0.99 | 22 genomes, **100 % agree with both reference tools** |
+  | `medium` | named, but a tie/discriminator/one-to-many row/widening/truncation applied | 72 genomes, 93 % |
+  | `low` | weakest ≥ 0.90 not met | 5 genomes, 60 % |
+  | `ambiguous` | no single serovar | 1 genome |
+
+  An absent H2 is a monophasic signal, not weak evidence, so it no longer caps
+  confidence (the twelve `I 1,4,[5],12:i:-` genomes reach `high`). A truncated
+  locus and a one-to-many formula row both cap at `medium`. `confidence` gains
+  the additive value `medium` (`gspec.typing_result/1` field tables updated in
+  both languages); consumers matching on `high` are unaffected.
+- **Serogroup letters translate to their numeric O antigen where the WHO table
+  allows one answer.** `P` is O:38 and nothing else, so an unnamed formula now
+  reads `Salmonella 38:k:-` instead of `Salmonella P:k:-` — byte-comparable with
+  SeqSero2's `I 38:k:-`. A letter is mapped only when **every** row of that
+  serogroup reduces to one O formula after dropping WKL bracket notation, the
+  `Vi` capsule and the leading factor 1 (a separate antigen the table writes on
+  some rows only): **38 of 48 serogroups qualify** (`A`→2,12, `D1`→9,12,
+  `D2`→9,46, `F`→11, `I`→16, `P`→38, `Q`→39, …). The 10 that stay letters are
+  genuinely multi-factor — `C2-C3` is 6,8 *or* 8,20 *or* 8 *or* 6,8,20, `G` is
+  13,22 *or* 13,23, and `B`/`C1`/`D3`/`E1`/`E4`/`H`/`K` likewise — and claiming
+  one would be a guess. Named calls carry an `O group P = O:38` note when the
+  mapping exists, so the letter and the number are always both on record.
+- **H1 and H2 can no longer name the same antigen.** The two phases are different
+  flagellin genes, so an identical name in both is a cross-reaction and **no
+  WHO-2007 row carries one** (0 of 2541 rows, every subspecies). The panel used to
+  report such a formula anyway: a corpus genome arrived as `P:k:k` because `h2 k`
+  hit at 87.15 % identity while `h1 k` was perfect. The weaker phase is now dropped
+  with a note on record, giving `P:k:-` — the same answer SISTR and SeqSero2 give —
+  and an exact tie (which cannot say which phase is the cross-reaction) also caps
+  confidence at `medium`.
+
+- **Performance: the anchored allele-sketch annotation is cached per window,
+  making `gspec screen` ~7× faster on an antigen panel.** One physical locus
+  produces one hit row per near-identical reference allele, and the
+  annotation recomputed the full family k-mer scoring for every row —
+  measured on a 4.8 Mb genome: 1,070 hits shared 33 distinct windows, and the
+  recomputation spent 62 s of a 68 s screen. Scoring is a pure function of
+  `(window, family)`, so it now runs once per window (9 s total, 5.9 s of it
+  blastn) with byte-identical annotations — a 20-genome batch screens in 41 s
+  at four-way parallelism instead of ~10× that. The amplification only
+  affected panels that ship the k-mer substrate (`sen_sero_sistr`); every
+  other database behaves exactly as before.
+
+- **`gspec.serotype/2` designation is exact-formula-first, so a resolved
+  formula is named instead of widened into a candidate list.** The observed
+  `O:H1:H2` formula is looked up verbatim before any similarity widening: a
+  row the table carries is the call, and when several serovars share the
+  formula (57 keys do) the first-declared name — the common serovar in the
+  WHO table, e.g. Muenchen for `C2-C3:d:1,2` — is the phenotype with the
+  twin in RUNNER_UP (`formula shared with ...` note). A family whose top two
+  antigens tie at *identical* evidence contributes all tied names, and the
+  rows those names key are the candidates (a tight set); the pre-existing
+  widening (similarity classes, undecided-O, monophasic fallback) now applies
+  only to formulas no row carries. Margin near-ties (strictly below the
+  winner) ride the definitive call as notes (`H1 near-tie within 0.01: g,q`)
+  — what SISTR and SeqSero2 effectively do by committing to the top antigen
+  name. Motivation: a hand-confirmed Muenchen genome arrived as four
+  ambiguous candidates (the `1,2` similarity class also reaches `1,5` rows),
+  and ten D1:`g,m` genomes as thirteen each; measured on the 20-genome
+  in-house batch, single-name calls went 2/20 → 16/20 and no call carries
+  more than the 28 candidates of a documented rfb assembly gap.
+- **`sen_sero_sistr`: the `g,m`/`g,q` cross-label is folded into the shipped
+  similarity groups.** References `h1_g_m` and `h1_g_q` are 99.868 %
+  identical (1 mismatch, 1 gap over 1519 bp — one allele under two labels);
+  the k-mer audit missed the pair (containment 0.972 at k=21, under its 0.98
+  floor) and ten D1:`g,m` genomes paired `{Enteritidis, Moscow}` until the
+  merge. Hand-registered in `scripts/salmonella/cross_labels.json` with the
+  measurement; `import_upstream.py --cross-labels` reproduces the merge on
+  the next rebuild.
+- **`gspec typing`'s GENES column carries the decisive evidence on ranked
+  antigen panels.** For a `gspec.serotype/2` document the list is one
+  representative winning allele per antigen family (`o_C2-C3;h1_d__31;
+  h2_1_2__79`) instead of every cross-reactive sibling allele (measured:
+  1,070 gene ids on one genome, three of which named the families). The
+  per-family notes now also name that allele with its identity and
+  coverage (`O: C2-C3 via o_C2-C3 (99.92% id, 100.00% cov)`), so a call is
+  auditable without opening the screen table. Marker-set panels (`/1`,
+  e.g. `shi_sero`) are unchanged.
+
 ## [0.10.6] - 2026-11-14
 
 ### Added

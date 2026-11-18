@@ -272,11 +272,11 @@ non-DEC。零命中文件不产生筛查行，因此不会出现在判定输出�
 | `source` | array | 按输入原样的结果表路径 |
 | `db` | string | 所有行共同筛查的数据库 |
 | `files` | array | 每个有数据行的 FILE 一项，按首次出现顺序 |
-| `files[].genes` | array | 该 FILE 的 present 基因名，已排序 —— 驱动判定的命中 |
+| `files[].genes` | array | 该 FILE 的 present 基因名，已排序 —— 驱动判定的命中；排序抗原面板（`gspec.serotype/2`）为每个抗原家族一个代表性胜出等位基因 |
 | `files[].phenotypes` | object | scheme 名 → 其判定（下述累加结构） |
 
 每条判定携带 `phenotype`（歧义为 null）、`score`、`confidence`
-（`high`/`ambiguous`/`low`）、`components[{name, score}]`，以及可选的 `runner_up`、
+（`high`/`medium`/`low`/`ambiguous`）、`components[{name, score}]`，以及可选的 `runner_up`、
 `ambiguous[]`（并列的一对）与 `notes[]` —— 与评估器在基因簇路径上产出的结构相同。
 TSV/Markdown 投影把每条判定压平为 `FILE`、`SCHEME`、`PHENOTYPE`、`GENES`、
 `CONFIDENCE`、`SCORE`、`RUNNER_UP`、`NOTES` 八列：歧义判定的表型渲染 `-`、候选对写入

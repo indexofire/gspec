@@ -59,7 +59,9 @@ $ gspec screen 1.fna --db eco_dec --quiet | gspec typing --quiet
 `GENES`、`CONFIDENCE`、`SCORE`、`RUNNER_UP`、`NOTES`——歧义判定的表型（与 runner-up）
 渲染为 `-`，候选对写入 NOTES；`GENES` 紧跟表型之后，列出该 FILE 的 present 基因名
 （排序后、`;` 串接），且在该 FILE 的每个 scheme 行上重复——即驱动该判定的命中，
-一目了然。
+一目了然。对排序抗原面板（`gspec.serotype/2`，如 `sen_sero_sistr`），present 指每个
+抗原家族一个代表性胜出等位基因（`o_C2-C3;h1_d__31;h2_1_2__79`，与逐家族备注点名的
+等位基因相同）——而非一个位点交叉命中的上百个兄弟等位基因。
 `json` 输出 `gspec.typing_result/1`（完整分数分解外加同样的逐文件 `genes` 列表；
 `gspec schema typing_result`）；`md` 在标明数据库与来源表的 frontmatter 下渲染同样的
 八列表。类型化错误：`DATABASE` 值混杂为 `DATABASE_MISMATCH`，无数据行的表为

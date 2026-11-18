@@ -92,7 +92,9 @@ def test_kmer_manifest_declares_every_antigen(tmp_path: Path) -> None:
     assert document["schema"] == "gspec.kmerdb/1"
     assert document["k"] == 27
     antigens = json.loads((ASSET / "serotype.json").read_text(encoding="utf-8"))["antigens"]
-    declared = sum(len(family["entries"]) for family in antigens)
+    # One set per ANTIGEN, not per entry: the O family splits an antigen into a
+    # wzx and a wzy entry, and the k-mer substrate keys on the antigen name.
+    declared = sum(len({entry["name"] for entry in family["entries"]}) for family in antigens)
     assert len(document["sets"]) == declared
     assert "h2_1,2" in document["sets"]
     entry = document["sets"]["h2_1,2"]

@@ -6,8 +6,9 @@ The measured facts these tests pin (see `scripts/salmonella/README.md`):
   family whose alignment scores sit inside the margin can still be decided;
 - a *whole genome* against an antigen's k-mer set cannot (it saturates), which is
   why the API takes a window;
-- a tie the sketch cannot separate must stay a tie — the candidates are the
-  honest answer, never a guess.
+- a margin near-tie names the winner's own formula (the sibling rides as a
+  note) while an exact-score tie with no sketch decision stays a tie — the
+  candidates are the honest answer when no mechanism chose.
 """
 
 from __future__ import annotations
@@ -135,9 +136,11 @@ def test_the_sketch_breaks_a_margin_tie() -> None:
     assert "formula C2:e,h:1,2,7" in call.notes
 
 
-def test_a_tie_the_sketch_cannot_separate_stays_a_tie() -> None:
-    """Given both antigens at the same sketch score, When the family is ranked,
-    Then the candidates stay visible rather than one being guessed."""
+def test_a_tie_the_sketch_cannot_drop_names_the_leader_takes_its_row() -> None:
+    """Both antigens inside the sketch margin: the sketch puts `e,h` ahead of
+    the alignment winner (`e,n,x` at 1.0), `e,n,x` stays a near-tie note, and
+    the leader's own formula row is the call — the sketch reorder is the whole
+    point of the tiebreak, not a reason to refuse to name."""
     calls = {
         "o_C2": _call(100.0, 100.0),
         "h1_eh": _call(99.5, 100.0),
@@ -145,13 +148,31 @@ def test_a_tie_the_sketch_cannot_separate_stays_a_tie() -> None:
         "h2_127": _call(100.0, 100.0),
     }
     call = evaluate_serotype(calls, _document())
+    assert call.phenotype == "Newport"
+    # Graduated confidence (the subspecies work): a named call that needed a
+    # resolution step — here the sketch reorder — reads "medium", not "low".
+    assert call.confidence == "medium"
+    assert any(note.startswith("H1 near-tie within 0.01: e,n,x") for note in call.notes)
+
+
+def test_an_exact_score_tie_stays_a_candidate_list() -> None:
+    """Two antigens at the SAME alignment score, no sketch: there is no winner
+    to name, so the call is the candidate list — never declaration order."""
+    calls = {
+        "o_C2": _call(100.0),
+        "h1_eh": _call(100.0),
+        "h1_enx": _call(100.0),
+        "h2_127": _call(100.0),
+    }
+    call = evaluate_serotype(calls, _document())
     assert call.phenotype is None
     assert call.confidence == "ambiguous"
     assert {entry.phenotype for entry in call.ambiguous} == {"Newport", "Other"}
 
 
-def test_without_any_sketch_the_tie_widens_as_before() -> None:
-    """A database that ships no sketches keeps the previous behaviour exactly."""
+def test_without_any_sketch_the_tie_names_the_winner() -> None:
+    """A database that ships no sketches keeps the same doctrine: the margin
+    sibling cannot block the winner's own row, it rides as a note."""
     calls = {
         "o_C2": _call(100.0),
         "h1_eh": _call(99.5),
@@ -159,8 +180,8 @@ def test_without_any_sketch_the_tie_widens_as_before() -> None:
         "h2_127": _call(100.0),
     }
     call = evaluate_serotype(calls, _document())
-    assert call.phenotype is None
-    assert {entry.phenotype for entry in call.ambiguous} == {"Newport", "Other"}
+    assert call.phenotype == "Other"
+    assert any(note.startswith("H1 near-tie within 0.01: e,h") for note in call.notes)
 
 
 def test_typing_reads_the_sketch_from_a_screen_document(tmp_path: Path) -> None:
@@ -260,11 +281,16 @@ def test_a_shared_phase_locus_goes_to_the_family_with_no_alternative() -> None:
 
 
 def test_without_loci_the_phase_guard_does_nothing() -> None:
-    """A frozen 15-column table carries no coordinates, so nothing is dropped."""
+    """A frozen 15-column table carries no coordinates, so the LOCUS guard cannot
+    fire. The duplicate-name rule still applies: `l,v` in both phases is not a
+    serovar (no WHO row has H1 == H2), so the weaker phase is dropped and the
+    fixture's impossible `C2:l,v:l,v` row is never reached."""
     calls = {
         "o_C2": _phase_call(99.9, None, 0, 0),
         "h1_l_v": _phase_call(97.0, None, 0, 0),
         "h2_l_v": _phase_call(99.5, None, 0, 0),
     }
     call = evaluate_serotype(calls, _phase_document())
-    assert call.phenotype == "CrossPhase"
+    # H2 scores higher (99.5 % vs 97.0 %), so H2 survives and H1 is dropped.
+    assert call.phenotype == "Salmonella C2:-:l,v (serovar not in the formula table)"
+    assert any("repeats H2" in note for note in call.notes)

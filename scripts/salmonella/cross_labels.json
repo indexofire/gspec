@@ -9,6 +9,10 @@
         ",f,g,t"
       ],
       [
+        "g,m",
+        "g,q"
+      ],
+      [
         "g,m,q",
         "g,q"
       ],
@@ -43,6 +47,14 @@
       "second": "z52",
       "containment": 1.0,
       "shared_kmers": 1435
+    },
+    {
+      "family": "h1",
+      "first": "g,m",
+      "second": "g,q",
+      "containment": 0.972,
+      "shared_kmers": 1457,
+      "note": "hand-registered 2026-11-16: BLAST identity 99.868 pct over 1519 bp (1 mismatch, 1 gap) between references h1_g_m and h1_g_q — the same allele under two labels. The audit's representative comparison missed the pair (this containment sits below the 0.98 floor because k=21 kmers lose ~42 members to two differences), and a ten-genome D1:g,m batch arrived as {Enteritidis, Moscow} candidate pairs until the merge."
     },
     {
       "family": "h1",

@@ -113,7 +113,7 @@ database carries a `typing.json`:
 - `-` — no typing scheme; screen-only.
 
 STATUS reads `installed (N)` when `<datadir>/<name>/gspec-manifest.json`
-exists, with N the record count, otherwise `available`. The nineteen
+exists, with N the record count, otherwise `available`. The twenty
 wheel-shipped [bundled](#bundled-databases-install-time-ready) databases
 (`cam_vf` through `vpa_vf`; `gspec db list` prints the current set) are
 gspec-curated, with no provider and no fetch path:
@@ -288,9 +288,10 @@ wheel's notes without rebuilding anything.
 
 Most databases download from upstream at `db fetch` time because their licenses forbid
 redistribution (see [Providers](#providers)). A small set of **bundled** databases ships
-inside the gspec wheel instead — nineteen gspec-curated databases whose content provenance
-was audited record-by-record (public-domain sources, the MIT `vpa_ok` panel, and
-the CC BY 4.0 `cje_cpsv2` conversion with attribution). The
+inside the gspec wheel instead — twenty gspec-curated databases whose content provenance
+was audited record-by-record (public-domain sources, the MIT `vpa_ok` panel, the MIT
+`indexofire/enterotoxin` conversion behind `sau_ent`, and the CC BY 4.0 `cje_cpsv2`
+conversion with attribution). The
 policy is stricter than "the license permits it": third-party provider snapshots
 (`ncbi`, `card`, `ecoh`, `resfinder`, ...) never ride the wheel, because their
 redistribution terms and provenance carry risk that the MIT package should not shoulder.
@@ -313,9 +314,10 @@ Nothing to download, nothing to accept: a bundled database works out of the box.
 | `lpn_vf` | L. pneumophila virulence-factor proteins (275, LegionProfiler; protein kind) | 2026-11-06 | - (screen-only) |
 | `str_lancefield` | Streptococcus Lancefield A/B/C/G markers + `tuf` control (29 records) | 2026-11-06 | `gspec.typing/2` (scheme `lancefield`) |
 | `sag_sero` | GBS capsular serotyping, 10 serotypes + III subtypes (14 records, GBS-SBG) | 2026-11-06 | `gspec.typing/2` (schemes `serotype`, `serotype_iii`) |
+| `sau_ent` | S. aureus enterotoxin panel: SEA-SEE, SEG-SEY, SEl26-28, SEl30, SElV/X/Z, SEU, SEO, SElU2, TSST-1 + `nuc` species control + SEC/SEI/SEN/SEU/TSST-1 variant alleles (37 records; MIT conversion of `indexofire/enterotoxin` + curated INSDC additions incl. the audited sel26/27/28 and SElU2/SElW nomenclature) | 2026-11-17 | - (screen-only) |
 | `pau_sero` | P. aeruginosa OSA serogroups O1-O17 + wzyB (14 loci, pasty; cluster kind) | 2026-11-06 | `gspec.typing/2` (schemes `osa_serogroup`, `wzyb`) |
 | `sen_sero` | S. enterica subsp. enterica O/H antigen panel (13 curated INSDC CDS markers: `invA` control, O-group rfb markers, phase-1/phase-2 flagellin alleles) | 2026-11-09 | `gspec.serotype/1` |
-| `sen_sero_sistr` | S. enterica SISTR O/H antigen alleles + formula table (1443 records) | 2026-11-11 | `gspec.serotype/1` |
+| `sen_sero_sistr` | S. enterica SISTR O/H antigen alleles + formula table (1443 records; `g,m`/`g,q` cross-label folded into the similarity groups 2026-11-16) | 2026-11-16 | `gspec.serotype/2` |
 | `vpa_vf` | V. parahaemolyticus haemolysin markers: `tlh` species control + `tdh` + `trh` TRH1/TRH2 alleles (4 records, INSDC) | 2026-11-13 | - (screen-only) |
 
 **License provenance.** Every `eco_dec` record was re-sourced from primary
@@ -369,6 +371,21 @@ antigenic formula (`O + H1 + H2` → serovar) sit above the generic "O group
 known, H undetermined" row it implies; matches that are not comparable stay
 ambiguous. `sen_sero` is the first profile to use it, and `shi_sero` keeps the
 default so its committed output does not move.
+
+A `gspec.serotype/2` document (the ranked-antigen shape a full panel needs,
+e.g. `sen_sero_sistr`) designates in a fixed order: the observed
+`O:H1:H2` formula is looked up **verbatim first** — a row the table carries is
+the call, and the serovar's first-declared name is the phenotype when several
+names share the formula (the WHO table lists the common serovar first:
+`C2-C3:d:1,2` is Muenchen, then Virginia as RUNNER_UP). A family whose top two
+antigens tie at *identical* evidence contributes all its tied names and their
+rows become the candidate list — a tight set, never a guess. Only a formula
+with no row widens: names expand to their similarity class, an undecided O
+group reaches every serogroup, and a weak phase-2 falls back to the monophasic
+`-` row — several widened matches stay an ambiguous candidate list. Near-ties
+the margin kept alive ride the definitive call as notes (`H1 near-tie within
+0.01: g,q`), and every family note names the winning allele with its identity
+and coverage, so the call is auditable without opening the screen table.
 
 A rule may also gate on *ranking* instead of presence: `outranks` names one
 competitor list per positive marker, and the rule matches only when that marker

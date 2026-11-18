@@ -146,6 +146,12 @@ class BundledDatabase(BaseModel, frozen=True):
         serotype = self.path / "serotype.json"
         return serotype if serotype.is_file() else None
 
+    @property
+    def subspecies_path(self) -> Path | None:
+        """The optional gspec.subspecies_kmers/1 sidecar for a gene bundle."""
+        subspecies = self.path / "subspecies_kmers.json"
+        return subspecies if subspecies.is_file() else None
+
 
 def bundled_databases() -> list[BundledDatabase]:
     """Every bundled database, sorted by name. A directory qualifies when it
@@ -233,6 +239,8 @@ def materialize_bundled(name: str, datadir: Path, *, quiet: bool = True) -> None
         shutil.copyfile(bundled.markers_path, datadir / name / "markers.json")
     if bundled.serotype_path is not None:
         shutil.copyfile(bundled.serotype_path, datadir / name / "serotype.json")
+    if bundled.subspecies_path is not None:
+        shutil.copyfile(bundled.subspecies_path, datadir / name / "subspecies_kmers.json")
     if bundled.kmer_path is not None:
         # The substrate ships as data + a JSON document; the sets themselves are
         # computed here so the bundle does not carry the packed arrays.
