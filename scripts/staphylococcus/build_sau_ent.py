@@ -69,6 +69,9 @@ PRODUCTS: dict[str, str] = {
     "sel26": "enterotoxin-like type 26 (SEl26)",
     "sel27": "enterotoxin-like type 27 (SEl27)",
     "sel28": "enterotoxin-like type 28 (SEl28, SEl26-family variant)",
+    "sel31": "enterotoxin-like type 31 (SEl31, plasmid)",
+    "sel32": "enterotoxin-like type 32 (SEl32, plasmid)",
+    "sel33": "enterotoxin-like type 33 (SEl33, egc recombinant)",
     "sel30": "enterotoxin-like type 30 (SEl30)",
     "selu2": "enterotoxin-like U2 (SElU2, often called SElW)",
     "seo": "staphylococcal enterotoxin type O (SEO, egc)",
@@ -137,6 +140,24 @@ EXTRAS: tuple[tuple[str, str, str, str], ...] = (
         "sel28",
         "MN450304:2472-3197",
         "enterotoxin-like type 28 (SEl28 = SEl26-family variant; TTG start)",
+    ),
+    (
+        "sel31_AFTU01000025.fna",
+        "sel31",
+        "AFTU01000025.1:11135-11905",
+        "enterotoxin-like type 31 (SEl31, plasmid cluster with SEl32; Dicks 2021 Gr8)",
+    ),
+    (
+        "sel32_AFTU01000025.fna",
+        "sel32",
+        "AFTU01000025.1:10294-11025",
+        "enterotoxin-like type 32 (SEl32, plasmid cluster with SEl31; Dicks 2021 Gr9)",
+    ),
+    (
+        "sel33_FGMI01000018.fna",
+        "sel33",
+        "FGMI01000018.1:35991-36743",
+        "enterotoxin-like type 33 (SEl33, a selw-sen egc recombinant; Dicks 2021 Gr10)",
     ),
     (
         "seo_AF285760.fna",
@@ -267,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
                 "name": "sau_ent",
                 "description": (
                     "S. aureus enterotoxin gene panel: SEA-SEE, SEG-SEY,"
-                    " SEl26-28, SEl30, SElV/X/Z, SEU, SEO, SElU2 and TSST-1 + the"
+                    " SEl26-28, SEl30-33, SElV/X/Z, SEU, SEO, SElU2 and TSST-1 + the"
                     " nuc species control, with variant alleles for SEC,"
                     " SEI, SEN, SEU and TSST-1"
                 ),

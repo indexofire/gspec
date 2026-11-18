@@ -1,9 +1,9 @@
 # sau_ent curation — S. aureus enterotoxin panel
 
 `sau_ent` is the bundled enterotoxin gene panel: 25 references converted from
-the MIT-licensed `indexofire/enterotoxin` abricate database, eleven curated
+the MIT-licensed `indexofire/enterotoxin` abricate database, fourteen curated
 additions cut from public-domain INSDC records, and the `nuc` species control
-(37 records total).
+(40 records total).
 Build with `build_sau_ent.py` (offline: assets are committed; upstream is
 pinned to commit `30c022eeb712`).
 
@@ -118,6 +118,7 @@ deferred.**
   divergence data justify it.
 - `sel34`/`sel35`: a 2026 bioRxiv preprint's machine-learning calls, not
   peer-reviewed — watch, do not bundle.
+- ~~`sel31`–`sel33`~~: added 2026-11-18 (see the fourth pass above).
 - egc pseudogenes (`psient1/2`, `seh-2p`, `ses-3p`): screening pseudogenes
   invites false calls; excluded on purpose.
 

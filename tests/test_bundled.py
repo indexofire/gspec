@@ -273,7 +273,7 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "lpn_vf": 275,
         "pau_sero": 14,
         "sag_sero": 14,
-        "sau_ent": 37,
+        "sau_ent": 40,
         "sen_sero": 13,
         "sen_sero_sistr": 1456,
         "shi_sero": 96,
@@ -633,7 +633,7 @@ def test_screen_materializes_bundled_sau_ent_and_calls_all_markers(tmp_path: Pat
     the sel27/sel28 nomenclature correction, ten curated INSDC additions,
     and the nuc species control) and a sample built from the BUNDLE's own
     sequences, When screening --db sau_ent, Then the bundle materializes
-    with thirty-seven rows at 100 %: one per contig, the multi-allele genes
+    with forty rows at 100 %: one per contig, the multi-allele genes
     (SEC x3; SEI/SEN/SEU/TSST-1 x2) each resolved to their own accession by
     the best subject, and the relabelled sel28 carries Zhang's MF370874
     accession while sel27 is the MN450304 sequence."""
@@ -646,13 +646,14 @@ def test_screen_materializes_bundled_sau_ent_and_calls_all_markers(tmp_path: Pat
 
     assert result.exit_code == 0, result.stderr
     rows = [line.split("\t") for line in result.stdout.splitlines() if not line.startswith("#")]
-    assert len(rows) == 37
+    assert len(rows) == 40
     genes = [row[5] for row in rows]
     assert genes.count("sec") == 3
     assert genes.count("tsst1") == 2
     assert genes.count("sei") == 2 and genes.count("sen") == 2 and genes.count("seu") == 2
     assert "selu2" in genes and "seo" in genes and "nuc" in genes
     assert "sel27" in genes and "sel28" in genes and "sel30" in genes
+    assert "sel31" in genes and "sel32" in genes and "sel33" in genes
     sel28_acc = {row[12] for row in rows if row[5] == "sel28"}
     sel27_acc = {row[12] for row in rows if row[5] == "sel27"}
     assert sel28_acc == {"MN450304:2472-3197"}

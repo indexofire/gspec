@@ -314,7 +314,7 @@ Nothing to download, nothing to accept: a bundled database works out of the box.
 | `lpn_vf` | L. pneumophila virulence-factor proteins (275, LegionProfiler; protein kind) | 2026-11-06 | - (screen-only) |
 | `str_lancefield` | Streptococcus Lancefield A/B/C/G markers + `tuf` control (29 records) | 2026-11-06 | `gspec.typing/2` (scheme `lancefield`) |
 | `sag_sero` | GBS capsular serotyping, 10 serotypes + III subtypes (14 records, GBS-SBG) | 2026-11-06 | `gspec.typing/2` (schemes `serotype`, `serotype_iii`) |
-| `sau_ent` | S. aureus enterotoxin panel: SEA-SEE, SEG-SEY, SEl26-28, SEl30, SElV/X/Z, SEU, SEO, SElU2, TSST-1 + `nuc` species control + SEC/SEI/SEN/SEU/TSST-1 variant alleles (37 records; MIT conversion of `indexofire/enterotoxin` + curated INSDC additions incl. the audited sel26/27/28 and SElU2/SElW nomenclature) | 2026-11-17 | - (screen-only) |
+| `sau_ent` | S. aureus enterotoxin panel: SEA-SEE, SEG-SEY, SEl26-28, SEl30-33, SElV/X/Z, SEU, SEO, SElU2, TSST-1 + `nuc` species control + SEC/SEI/SEN/SEU/TSST-1 variant alleles (40 records; MIT conversion of `indexofire/enterotoxin` + curated INSDC additions incl. the audited sel26/27/28 and SElU2/SElW nomenclature) | 2026-11-17 | - (screen-only) |
 | `pau_sero` | P. aeruginosa OSA serogroups O1-O17 + wzyB (14 loci, pasty; cluster kind) | 2026-11-06 | `gspec.typing/2` (schemes `osa_serogroup`, `wzyb`) |
 | `sen_sero` | S. enterica subsp. enterica O/H antigen panel (13 curated INSDC CDS markers: `invA` control, O-group rfb markers, phase-1/phase-2 flagellin alleles) | 2026-11-09 | `gspec.serotype/1` |
 | `sen_sero_sistr` | S. enterica SISTR O/H antigen alleles + formula table (1443 records; `g,m`/`g,q` cross-label folded into the similarity groups 2026-11-16) | 2026-11-16 | `gspec.serotype/2` |

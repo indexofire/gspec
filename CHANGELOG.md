@@ -16,7 +16,7 @@
   not toxin production; several SEl types lack demonstrated emetic activity).
   Rebuild with `scripts/staphylococcus/build_sau_ent.py`; screen with
   `gspec screen isolate.fa -d sau_ent`.
-- **`sau_ent` gains eleven curated targets and a full nomenclature audit,
+- **`sau_ent` gains fourteen curated targets and a full nomenclature audit,
   closing the gaps a literature review exposed.** Sequence polymorphism is
   the SE-family norm (Lefebvre et al. 2022: six to ten variants per gene
   for sec, seg, sek, sem, sen, seu, sey and tsst1), and the upstream panel
@@ -34,15 +34,20 @@
   egc3 variant alleles for `sei`/`seu`/`sen` (AY158703, 96.7–97.7 % to
   the prototypes), `sel28` (MN450304:2472-3197 — the 726 bp SEl26-family
   variant; the record's own CDS label "sel27" follows an unpublished
-  numbering the primary literature and the 2026 review supersede) and
-  `sel30` (PZ361155). `sel26`/`sel27` keep Zhang 2018's primary
+  numbering the primary literature and the 2026 review supersede),
+  `sel30` (PZ361155) and **`sel31`/`sel32`/`sel33` (Dicks 2021: the
+  plasmid cluster sel31+sel32 from AFTU01000025.1 and the selw-sen egc
+  recombinant sel33 from FGMI01000018.1, each verified 100 %
+  aa-identical to the paper's Table S3 reference translations — the
+  historic-collection genes the second pass deferred)**.
+  `sel26`/`sel27` keep Zhang 2018's primary
   designation (MF370874, 744/753 bp), confirmed verbatim from the IJMM
   abstract ("designated SEl26 and 27") and the 2026 clarification table
   (SEl26-1/SEl27-1/SEl28 = SEl26-2). SEC2 is covered by the SEC1
   reference at 97.4 % protein identity (no complete standalone INSDC
   record exists — every candidate is a partial cds). Variant alleles share
   the parent gene id and are distinguished by accession; the panel is now
-  37 records, still screen-only.
+  40 records, still screen-only.
 - **`sau_ent` backtested on a published phenotype dataset (Fanelli et al.
   2022, Toxins 14:731): recall 100 %, precision 94 % at gene level.** The
   12 Algerian food isolates (ENA BioProject PRJNA712985) carry complete

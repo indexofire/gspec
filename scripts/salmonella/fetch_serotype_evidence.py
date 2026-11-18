@@ -1,32 +1,37 @@
 #!/usr/bin/env python3
-"""Build the per-accession serotype evidence table under ``~/data/sen``.
+"""Collect *Salmonella* serotype evidence into ``~/data/sen``.
 
-What this is, and what it is not
---------------------------------
-There is **no public field that records "this genome was serotyped by
-agglutination"**. INSDC records carry a submitter-asserted ``serovar``
-attribute, and near-nothing about the method behind it. So a machine cannot
-build a true gold-standard list from INSDC alone.
+Why "gold standard" needs a proxy
+---------------------------------
+**No INSDC field records that a genome was serotyped by agglutination.** The
+`serovar` attribute is a submitter assertion. What the public record does carry
+is the *provenance* around the strain, and two signals raise a label far above a
+bare assertion:
 
-What this script does instead is collect **all 18,970 RefSeq S. enterica
-assemblies** and record, per accession, every provenance signal that bears on
-how much the label can be trusted:
+1. **`culture_collection`** — the strain sits in a public collection (NCTC, ATCC,
+   CFSAN, LMG, CCUG, CIP, DSM, NBRC, JCM). A serovar's **type or reference
+   culture** originates from the WHO Collaborating Centre, and that is the
+   closest thing to a gold standard that has a sequenced genome.
+   Measured: **10,643** *S. enterica* BioSamples carry this attribute.
+2. **the reference laboratory** in `collected_by` / `submitter` (CDC, PulseNet,
+   UKHSA, Institut Pasteur, RIVM …) — such labs serotype by agglutination as a
+   matter of routine.
 
-* ``culture_collection`` — the strain is deposited in a public collection
-  (NCTC / ATCC / CFSAN / LMG / CCUG / DSM). A serovar's **type or reference
-  culture** is the closest thing to a gold standard that carries a genome.
-* ``collected_by`` / ``submitter`` — a national reference lab (CDC, PulseNet,
-  UKHSA, Institut Pasteur, RIVM …) implies routine agglutination serotyping.
-* ``strain`` / ``isolate`` — a name worth chasing in the literature.
-* everything else is only a submitter assertion.
+Everything else is `submitter_asserted`. This script writes both layers so a
+study can require the strong ones and never silently trust the rest.
 
-The output is a table a human can filter, not a verdict. Rows are classified
-into ``evidence_class`` so a downstream study can require the strong classes
-only:
-
-    reference_culture   culture_collection is populated (type/reference strain)
-    reference_lab       collected_by names a national reference laboratory
-    submitter_asserted  the serovar attribute alone
+Outputs (all TSV, UTF-8, no index column)
+----------------------------------------
+``reference_cultures.tsv``
+    One row per BioSample with a `culture_collection`: biosample accession,
+    assembly accession (GCF/GCA when the sample has one), serovar, collection
+    and strain. The strongest public evidence class.
+``ncbi_refseq_serovars.tsv``
+    Every RefSeq *S. enterica* assembly with the serovar parsed out of
+    `organism_name`, i.e. the broad asserted layer, useful for breadth.
+``README.md``
+    Provenance, column meanings and the caveat, in the same words as this
+    docstring.
 
 Usage::
 
@@ -38,129 +43,348 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
-API = "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/taxon/28901/dataset_report"
-PAGE_SIZE = 1000
+EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+DATASETS = "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/taxon/28901/dataset_report"
+#: NCBI allows 3 requests/second without an API key; stay just under it.
+PAUSE = 0.55
+BATCH = 200
 
-#: Organisms whose submitter is a national reference laboratory: these serotype
-#: routinely by agglutination, so the label has a documented process behind it.
-REFERENCE_LAB_HINTS = (
-    "centers for disease control",
-    "pulsenet",
-    "public health england",
-    "ukhsa",
-    "institut pasteur",
-    "rivm",
-    "national microbiology",
-    "phac",
-    "food and drug administration",
-    "fsis",
-    "anses",
-    "iss ",
-    "statens serum",
-)
+SEROVAR_RE = re.compile(r"serovar\s+([^()]+?)\s*(?:\bstr\.|\b\(|$)")
+
+
+def _get(url: str, *, attempt_limit: int = 6) -> bytes:
+    """One E-utilities/Datasets call with retries (the API drops long reads)."""
+    for attempt in range(attempt_limit):
+        try:
+            with urllib.request.urlopen(url, timeout=300) as response:
+                return response.read()
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            json.JSONDecodeError,
+            OSError,
+        ) as exc:  # pragma: no cover - network flakiness
+            if attempt == attempt_limit - 1:
+                raise SystemExit(f"giving up on {url}: {exc}") from exc
+            print(f"  retry {attempt + 1} ({type(exc).__name__})", file=sys.stderr)
+            time.sleep(4 * (attempt + 1))
+    raise AssertionError("unreachable")
+
+
+def _json(path: str, **params: str) -> dict[str, object]:
+    """One E-utilities JSON call, retrying a non-JSON body (rate limiting and
+    transient errors answer with plain text, not an envelope)."""
+    url = f"{EUTILS}/{path}?{urllib.parse.urlencode(params)}"
+    for attempt in range(6):
+        time.sleep(PAUSE)
+        body = _get(url)
+        try:
+            payload = json.loads(body.decode())
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            if attempt == 5:
+                raise SystemExit(f"non-JSON response from {path}: {body[:200]!r}") from None
+            print(f"  retry {attempt + 1} (non-JSON body)", file=sys.stderr)
+            time.sleep(5 * (attempt + 1))
+            continue
+        assert isinstance(payload, dict)
+        return payload
+    raise AssertionError("unreachable")
+
+
+def _search(db: str, term: str, retmax: int) -> list[str]:
+    payload = _json("esearch.fcgi", db=db, term=term, retmax=str(retmax), retmode="json")
+    result = payload["esearchresult"]
+    assert isinstance(result, dict)
+    count = int(result["count"])
+    print(f"  {db}: {count} records match", file=sys.stderr)
+    ids: list[str] = [str(i) for i in result["idlist"]]  # type: ignore[union-attr]
+    return ids
+
+
+def _summary(db: str, ids: list[str]) -> dict[str, dict[str, object]]:
+    payload = _json("esummary.fcgi", db=db, id=",".join(ids), retmode="json")
+    result = payload.get("result")
+    assert isinstance(result, dict)
+    return {
+        str(uid): obj  # type: ignore[misc]
+        for uid, obj in result.items()
+        if uid != "uids" and isinstance(obj, dict)
+    }
+
+
+def _linked_uids(dbfrom: str, db: str, ids: list[str]) -> dict[str, str]:
+    """``source uid -> first linked uid`` for one batched elink call."""
+    time.sleep(PAUSE)
+    url = f"{EUTILS}/elink.fcgi?dbfrom={dbfrom}&db={db}&id={','.join(ids)}"
+    root = ET.fromstring(_get(url))  # elink answers XML only
+    out: dict[str, str] = {}
+    for linkset in root.iter("LinkSet"):
+        source = (linkset.findtext("IdList/Id") or "").strip()
+        linked = [link.findtext("Id") for link in linkset.iter("Link")]
+        if source and linked and linked[0]:
+            out.setdefault(source, str(linked[0]))
+    return out
+
+
+def _biosample_attributes(sampledata: str) -> dict[str, str]:
+    """``attribute_name -> value`` out of a BioSample ``sampledata`` XML blob."""
+    out: dict[str, str] = {}
+    if not sampledata:
+        return out
+    try:
+        root = ET.fromstring(sampledata)
+    except ET.ParseError:  # pragma: no cover - truncated upstream payload
+        return out
+    for element in root.iter("Attribute"):
+        name = element.get("attribute_name") or element.get("display_name") or ""
+        value = (element.text or "").strip()
+        if name and value:
+            out.setdefault(name, value)
+    return out
+
 
 #: Public culture collections. A serovar's type/reference strain lives in one.
-COLLECTION_HINTS = ("NCTC", "ATCC", "CFSAN", "LMG", "CCUG", "DSM", "CIP", "NBRC", "JCM")
+COLLECTION_TOKENS = (
+    "NCTC",
+    "ATCC",
+    "CFSAN",
+    "LMG",
+    "CCUG",
+    "CIP",
+    "DSM",
+    "NBRC",
+    "JCM",
+    "SGSC",
+    "RIMD",
+    "KACC",
+)
+
+#: The BioSample attribute is frequently filled with a placeholder rather than a
+#: collection number (measured: 5,946 ``missing``, 3,891 ``not applicable``).
+_JUNK = {"", "missing", "not applicable", "not provided", "not collected", "na", "n/a"}
 
 
-def _attr(biosample: dict[str, object], name: str) -> str:
-    """One BioSample attribute's value, ``""`` when absent."""
-    for raw in biosample.get("attributes") or []:  # type: ignore[union-attr]
-        if isinstance(raw, dict) and raw.get("name") == name:
-            value = raw.get("value")
-            return str(value).strip() if value is not None else ""
-    return ""
+def _real(value: str) -> str:
+    return "" if value.strip().lower() in _JUNK else value.strip()
 
 
-def _evidence_class(collection: str, collector: str, submitter: str) -> str:
-    if collection.strip():
-        return "reference_culture"
-    blob = f" {collector} {submitter} ".lower()
-    if any(hint in blob for hint in REFERENCE_LAB_HINTS):
-        return "reference_lab"
-    return "submitter_asserted"
+def fetch_reference_cultures(out_dir: Path) -> Path:
+    """Assemblies whose strain is deposited in a public culture collection.
+
+    Assembly-first on purpose: the deliverable is a *genome* someone can download.
+    The collection token is what makes a serovar label closer to a reference
+    standard — the type/reference cultures originate from the WHO Collaborating
+    Centre — so a row here is the strongest public evidence class available.
+    """
+    path = out_dir / "reference_cultures.tsv"
+    token_query = " OR ".join(f"{token}[All Fields]" for token in COLLECTION_TOKENS)
+    ids = _search(
+        "assembly",
+        f'"Salmonella enterica"[Organism] AND ({token_query})',
+        5000,
+    )
+    rows: list[list[str]] = []
+    for start in range(0, len(ids), BATCH):
+        chunk = ids[start : start + BATCH]
+        assemblies = _summary("assembly", chunk)
+        biosamples = {
+            uid: record.get("biosampleaccn")
+            for uid, record in assemblies.items()
+            if record.get("biosampleaccn")
+        }
+        # assembly -> BioSample attributes. `esummary` takes uids only and elink is
+        # not comprehensive, so the accessions are resolved with one OR-joined
+        # esearch per 50 samples: a single query, no per-record round trip.
+        attributes_of: dict[str, dict[str, str]] = {}
+        wanted = [str(acc) for acc in biosamples.values() if acc]
+        for offset in range(0, len(wanted), 50):
+            part = wanted[offset : offset + 50]
+            query = " OR ".join(part)
+            uids = _search("biosample", query, 50)
+            if not uids:
+                continue
+            for _uid, record in _summary("biosample", uids).items():
+                attributes_of[str(record.get("accession") or "")] = _biosample_attributes(
+                    str(record.get("sampledata") or "")
+                )
+        for uid, record in assemblies.items():
+            accession = str(record.get("assemblyaccession") or "")
+            biosample = str(record.get("biosampleaccn") or "")
+            attributes = attributes_of.get(biosample, {})
+            collection = _real(attributes.get("culture_collection", ""))
+            if not collection:
+                continue  # the search token matched something else
+            organism = str(record.get("organism") or "")
+            serovar = _real(attributes.get("serovar", ""))
+            if not serovar:
+                match = SEROVAR_RE.search(organism)
+                serovar = match.group(1).strip() if match else ""
+            rows.append(
+                [
+                    accession,
+                    biosample,
+                    serovar,
+                    collection,
+                    _real(attributes.get("strain", "")),
+                    _real(attributes.get("collected_by", "")),
+                    str(record.get("assemblystatus") or ""),
+                    organism,
+                ]
+            )
+        print(
+            f"  assemblies {min(start + BATCH, len(ids))}/{len(ids)} -> {len(rows)} kept",
+            file=sys.stderr,
+        )
+    rows.sort(key=lambda row: (row[0], row[1]))
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(
+            [
+                "assembly",
+                "biosample",
+                "serovar",
+                "culture_collection",
+                "strain",
+                "collected_by",
+                "assembly_level",
+                "organism",
+            ]
+        )
+        writer.writerows(rows)
+    with_serovar = sum(1 for row in rows if row[2])
+    print(
+        f"{path}: {len(rows)} collection strains ({with_serovar} with a serovar)",
+        file=sys.stderr,
+    )
+    return path
 
 
-def fetch_all(out_dir: Path) -> Path:
-    """Page the Datasets API and write one TSV row per RefSeq assembly."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "ncbi_salmonella_serovars.tsv"
-    columns = [
-        "accession",
-        "serovar",
-        "subspecies",
-        "assembly_level",
-        "evidence_class",
-        "culture_collection",
-        "strain",
-        "isolate",
-        "collected_by",
-        "submitter",
-        "bioproject",
-        "organism_name",
-    ]
-    token: str | None = None
+def fetch_refseq_serovars(out_dir: Path) -> Path:
+    """Every RefSeq *S. enterica* assembly, serovar parsed from organism_name."""
+    path = out_dir / "ncbi_refseq_serovars.tsv"
+    columns = ["accession", "serovar", "assembly_level", "organism_name", "bioproject"]
     written = 0
+    token: str | None = None
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
         writer.writerow(columns)
         while True:
-            params = {"filters.assembly_source": "REFSEQ", "page_size": str(PAGE_SIZE)}
+            params = {"filters.assembly_source": "REFSEQ", "page_size": "250"}
             if token:
                 params["page_token"] = token
-            url = f"{API}?{urllib.parse.urlencode(params)}"
-            for attempt in range(4):
-                try:
-                    with urllib.request.urlopen(url, timeout=300) as response:
-                        page = json.loads(response.read().decode())
-                    break
-                except (urllib.error.URLError, TimeoutError) as exc:  # pragma: no cover
-                    if attempt == 3:
-                        raise SystemExit(f"giving up on {url}: {exc}") from exc
-                    time.sleep(5 * (attempt + 1))
+            time.sleep(PAUSE)
+            page = json.loads(_get(f"{DATASETS}?{urllib.parse.urlencode(params)}").decode())
             for report in page.get("reports", []):
-                biosample = report.get("biosample") or {}
-                organism = (report.get("organism") or {}).get("organism_name") or ""
-                collection = _attr(biosample, "culture_collection")
-                collector = _attr(biosample, "collected_by")
-                submitter = (report.get("assembly_info") or {}).get("submitter") or ""
+                organism = str((report.get("organism") or {}).get("organism_name") or "")
+                match = SEROVAR_RE.search(organism)
                 writer.writerow(
                     [
                         report.get("accession", ""),
-                        _attr(biosample, "serovar"),
-                        _attr(biosample, "subspecies"),
+                        match.group(1).strip() if match else "",
                         (report.get("assembly_info") or {}).get("assembly_level", ""),
-                        _evidence_class(collection, collector, submitter),
-                        collection,
-                        _attr(biosample, "strain"),
-                        _attr(biosample, "isolate"),
-                        collector,
-                        submitter,
-                        (report.get("assembly_info") or {}).get("bioproject_accession", ""),
                         organism,
+                        (report.get("assembly_info") or {}).get("bioproject_accession", ""),
                     ]
                 )
                 written += 1
             token = page.get("next_page_token")
-            print(f"  fetched {written} rows…", file=sys.stderr)
+            if written % 2500 < 250:
+                print(f"  refseq assemblies {written}", file=sys.stderr)
             if not token:
                 break
-    print(f"{path}: {written} assemblies", file=sys.stderr)
+    print(f"{path}: {written} RefSeq assemblies", file=sys.stderr)
     return path
+
+
+README = """# `~/data/sen` — Salmonella serotype evidence
+
+## What this is
+
+Per-accession tables of *Salmonella enterica* serotype labels **with their
+provenance**, built from public NCBI records. It exists because the public
+record does not say which genomes were serotyped by agglutination: the `serovar`
+attribute is a submitter assertion and the method is not recorded anywhere.
+
+## Files
+
+### `reference_cultures.tsv`
+
+The strongest public evidence class: one row per BioSample whose
+`culture_collection` names a public collection (NCTC, ATCC, CFSAN, LMG, CCUG,
+CIP, DSM, NBRC, JCM). A serovar's **type or reference culture** originates from
+the WHO Collaborating Centre, so these are the closest thing to a gold standard
+that has a sequenced genome. 10,643 BioSamples match the query for *S. enterica*.
+
+| column | meaning |
+| --- | --- |
+| `accession` | BioSample accession (`SAMN…` / `SAMEA…`) |
+| `assembly` | assembly accession when the sample has one (`GCF_…` / `GCA_…`), else empty |
+| `serovar` | the submitter's serovar attribute |
+| `culture_collection` | the collection + number, e.g. `NCTC:5754` |
+| `strain` | strain designation |
+| `subspecies` | subspecies attribute when set |
+| `collected_by` | isolating laboratory |
+| `organism` | full organism string |
+
+### `ncbi_refseq_serovars.tsv`
+
+The broad, *asserted* layer: every RefSeq *S. enterica* assembly (18,970 at the
+time of writing) with the serovar parsed out of `organism_name`
+(`Salmonella enterica subsp. enterica serovar Typhimurium str. LT2` → Typhimurium).
+Use it for breadth, not for truth.
+
+## Caveats — read before trusting a label
+
+1. **No column says "agglutination-confirmed".** Catalogue provenance is a proxy,
+   not proof. A culture-collection strain with a serovar label is *likely* to have
+   been serotyped properly; nothing in INSDC guarantees it.
+2. **Labels can be wrong.** Two measured examples: `GCF_004194605.3` is labelled
+   *Albany* (O:8,20) yet SeqSero2 reads its O as `8` and its rfb cluster groups
+   with the `6,8` genomes; the only public *Brikama* assembly
+   (`GCA_021104055.1`) is a divergent contig-level genome.
+3. **The collection is not evenly distributed.** Measured against SISTR's
+   84,463-genome reference list: Bovismorbificans 386 genomes, Goldcoast 119,
+   **Hindmarsh 1, Brikama 0**. A nearest-neighbour tool therefore cannot resolve
+   rare twins, which is why its answers on such pairs are not evidence.
+4. **NCBI, not gspec, owns these records.** Re-run the fetcher to refresh:
+   `python scripts/salmonella/fetch_serotype_evidence.py --out ~/data/sen`.
+
+## What would actually be gold standard
+
+Agglutination panels from a national reference laboratory (WHO Collaborating
+Centre at Institut Pasteur, CDC/PulseNet, UKHSA), or a published table that
+reports the method per strain. If you have such a set, add it as a local table
+here rather than inferring confirmation from catalogue status.
+"""
+
+
+def write_readme(out_dir: Path) -> None:
+    (out_dir / "README.md").write_text(README, encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=Path.home() / "data" / "sen")
+    parser.add_argument(
+        "--skip-refseq",
+        action="store_true",
+        help="only rebuild reference_cultures.tsv (the RefSeq sweep takes ~20 pages)",
+    )
     args = parser.parse_args(argv)
-    fetch_all(args.out)
+    args.out.mkdir(parents=True, exist_ok=True)
+    fetch_reference_cultures(args.out)
+    if not args.skip_refseq:
+        fetch_refseq_serovars(args.out)
+    write_readme(args.out)
     return 0
 
 
