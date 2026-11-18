@@ -216,7 +216,7 @@ def fetch_reference_cultures(out_dir: Path) -> Path:
                 attributes_of[str(record.get("accession") or "")] = _biosample_attributes(
                     str(record.get("sampledata") or "")
                 )
-        for uid, record in assemblies.items():
+        for record in assemblies.values():
             accession = str(record.get("assemblyaccession") or "")
             biosample = str(record.get("biosampleaccn") or "")
             attributes = attributes_of.get(biosample, {})
@@ -318,22 +318,37 @@ attribute is a submitter assertion and the method is not recorded anywhere.
 
 ### `reference_cultures.tsv`
 
-The strongest public evidence class: one row per BioSample whose
-`culture_collection` names a public collection (NCTC, ATCC, CFSAN, LMG, CCUG,
-CIP, DSM, NBRC, JCM). A serovar's **type or reference culture** originates from
-the WHO Collaborating Centre, so these are the closest thing to a gold standard
-that has a sequenced genome. 10,643 BioSamples match the query for *S. enterica*.
+The strongest public evidence class: assemblies whose strain is deposited in a
+public collection (NCTC, ATCC, CFSAN, LMG, CCUG, CIP, DSM, NBRC, JCM, SGSC, RIMD,
+KACC). A serovar's **type or reference culture** originates from the WHO
+Collaborating Centre, so these are the closest thing to a gold standard that has
+a sequenced genome. **158 assemblies** survive the collection filter for
+*S. enterica* (128 of them also carry a serovar attribute).
 
 | column | meaning |
 | --- | --- |
-| `accession` | BioSample accession (`SAMN…` / `SAMEA…`) |
-| `assembly` | assembly accession when the sample has one (`GCF_…` / `GCA_…`), else empty |
-| `serovar` | the submitter's serovar attribute |
-| `culture_collection` | the collection + number, e.g. `NCTC:5754` |
+| `assembly` | assembly accession — the genome to download (`GCA_…` / `GCF_…`) |
+| `biosample` | the BioSample behind it, for provenance |
+| `serovar` | the submitter's serovar attribute (empty when unset) |
+| `culture_collection` | collection + number, e.g. `ATCC:43845` |
 | `strain` | strain designation |
-| `subspecies` | subspecies attribute when set |
-| `collected_by` | isolating laboratory |
+| `collected_by` | isolating laboratory (e.g. `FDA`) |
+| `assembly_level` | `Complete Genome` / `Chromosome` / `Contig` / `Scaffold` |
 | `organism` | full organism string |
+
+A note on the filter: the E-utilities text search matches the collection token
+anywhere, so the candidate set is larger than the survivors; a row is kept only
+when the BioSample's `culture_collection` holds a real number (not the `missing`
+/ `not applicable` placeholders that 9,837 of the 10,643 matching BioSamples
+carry).
+
+### `tie_serovars_candidates.tsv`
+
+Every RefSeq assembly whose asserted serovar is one of the four that gspec cannot
+separate (`Hindmarsh`, `Bovismorbificans`, `Goldcoast`, `Brikama`) — the raw
+material for a verified re-analysis, with the label's evidence class implied by
+the files above. Measured: **Hindmarsh 2 (both contig-level), Bovismorbificans 63
+(4 complete), Goldcoast 47 (11 complete), Brikama 0**.
 
 ### `ncbi_refseq_serovars.tsv`
 
@@ -357,6 +372,42 @@ Use it for breadth, not for truth.
    rare twins, which is why its answers on such pairs are not evidence.
 4. **NCBI, not gspec, owns these records.** Re-run the fetcher to refresh:
    `python scripts/salmonella/fetch_serotype_evidence.py --out ~/data/sen`.
+
+## The verdict for the four unseparable pairs (2026-11-18)
+
+| serovar | collection strains | RefSeq assemblies (asserted) | complete |
+| --- | --- | --- | --- |
+| Bovismorbificans | 0 | 63 | 4 |
+| Goldcoast | 0 | 47 | 11 |
+| Hindmarsh | 0 | 2 | 0 |
+| **Brikama** | **0** | **0** | **0** |
+
+**No catalogue-deposited (reference-culture) genome exists for any of the four**
+— the strongest evidence class is empty for all of them. `Brikama` has no RefSeq
+assembly at all and no entry in SISTR's 84,463-genome reference list. So the tie
+cannot be settled from public data by provenance alone; it needs strains
+serotyped by a reference laboratory, and the rare twins (Hindmarsh, Brikama)
+need to be sourced from the laboratory, not from NCBI.
+
+## The merge layer (`merged_evidence.tsv`)
+
+`scripts/salmonella/merge_compare_serotypes.py merge` joins the four layers above
+by accession (version-suffix independent) and keeps the strongest label, ranked
+`verified` > `culture` > `published` > `asserted`. Two extra files appear:
+
+* `merged_evidence.tsv` — one row per accession: winning serovar, the layer it
+  came from, every source, and the full label set.
+* `label_conflicts.tsv` — the rows where two sources name **different** serovars.
+  Measured on the first build: 16,111 accessions, only **6** conflicts (all from
+  one paper whose table carries two serotype columns). A conflicting accession is
+  excluded from marker analysis: its own sources disagree about what it is.
+
+Then `… compare --group NAME=serovar,serovar …` downloads the genomes, cuts the
+rfb neighbourhood out of each (anchored on a panel wzx gene), clusters the CDS,
+and reports whether any cluster is present in every genome of one group and none
+of the other. First run (O:6 question, 11 genomes, 2,640 CDS, 2,065 clusters):
+**no perfect group-splitting cluster** — matching the manual analysis, which is
+the point of having the tool.
 
 ## What would actually be gold standard
 

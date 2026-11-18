@@ -293,7 +293,7 @@ wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承
 | `lpn_vf` | 嗜肺军团菌毒力因子蛋白（275，LegionProfiler；蛋白类） | 2026-11-06 | -（仅筛查） |
 | `str_lancefield` | 链球菌 Lancefield A/B/C/G 标记 + `tuf` 内参（29 条） | 2026-11-06 | `gspec.typing/2`（`lancefield`） |
 | `sag_sero` | GBS 荚膜血清型，10 型 + III 亚型（14 条，GBS-SBG） | 2026-11-06 | `gspec.typing/2`（`serotype`、`serotype_iii`） |
-| `sau_ent` | 金黄色葡萄球菌肠毒素面板：SEA-SEE、SEG-SEY、SEl26-28、SEl30-33、SElV/X/Z、SEU、SEO、SElU2、TSST-1 + `nuc` 物种内参 + SEC/SEI/SEN/SEU/TSST-1 变异等位基因（40 条；`indexofire/enterotoxin` 的 MIT 转换 + 策展 INSDC 补充，含审计后的 sel26/27/28 与 SElU2/SElW 命名） | 2026-11-17 | -（仅筛查） |
+| `sau_ent` | 金黄色葡萄球菌肠毒素面板：SEA-SEE、SEG-SEY、SEl26-28、SEl30-33、SElV/X/Z、SE02、SEU、SEO、SElU2、TSST-1 + `nuc` 物种内参 + SEC/SEI/SEN/SEU/TSST-1 变异等位基因（41 条；`indexofire/enterotoxin` 的 MIT 转换 + 策展 INSDC 补充，含审计后的 sel26/27/28 与 SElU2/SElW 命名） | 2026-11-17 | -（仅筛查） |
 | `pau_sero` | 铜绿假单胞菌 OSA 血清群 O1-O17 + wzyB（14 位点，pasty；cluster 类） | 2026-11-06 | `gspec.typing/2`（`osa_serogroup`、`wzyb`） |
 | `sen_sero` | 肠道沙门氏菌肠道亚种 O/H 抗原面板（13 条精选 INSDC CDS 标记：`invA` 对照、O 群 rfb 标记、相位 1/相位 2 鞭毛蛋白等位基因） | 2026-11-09 | `gspec.serotype/1` |
 | `sen_sero_sistr` | 肠道沙门氏菌 SISTR O/H 抗原等位基因 + 抗原式表（1443 条记录；2026-11-16 将 `g,m`/`g,q` 交叉标记并入相似群） | 2026-11-16 | `gspec.serotype/2` |

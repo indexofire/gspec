@@ -383,7 +383,7 @@ def test_db_list_non_tty_emits_exact_tsv(tmp_path: Path, monkeypatch: pytest.Mon
         "sag_sero\tGBS capsular serotyping - 10 serotypes + III subtypes (GBS-SBG)\tbundled\t"
         "nucl\tgene\tcommand\tGBS-SBG 2021 (MIT)\n"
         "sau_ent\tS. aureus enterotoxin gene panel: SEA-SEE, SEG-SEY, SEl26-28, SEl30-33,"
-        " SElV/X/Z, SEU, SEO, SElU2 and TSST-1 + the nuc species control, with variant"
+        " SElV/X/Z, SE02, SEU, SEO, SElU2 and TSST-1 + the nuc species control, with variant"
         " alleles for SEC, SEI, SEN, SEU and TSST-1\tbundled\tnucl\tgene\t-\t"
         "indexofire/enterotoxin (MIT) + gspec-curated control\n"
         "sen_sero\tSalmonella enterica subsp. enterica serotyping panel"

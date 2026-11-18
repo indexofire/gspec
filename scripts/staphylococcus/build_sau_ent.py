@@ -75,6 +75,7 @@ PRODUCTS: dict[str, str] = {
     "sel30": "enterotoxin-like type 30 (SEl30)",
     "selu2": "enterotoxin-like U2 (SElU2, often called SElW)",
     "seo": "staphylococcal enterotoxin type O (SEO, egc)",
+    "se02": "staphylococcal enterotoxin type 02 (SE02, validated emetic + superantigenic)",
     "selV": "enterotoxin-like type V (SElV)",
     "selX": "enterotoxin-like type X (SElX)",
     "selZ": "enterotoxin-like type Z (SElZ)",
@@ -140,6 +141,13 @@ EXTRAS: tuple[tuple[str, str, str, str], ...] = (
         "sel28",
         "MN450304:2472-3197",
         "enterotoxin-like type 28 (SEl28 = SEl26-family variant; TTG start)",
+    ),
+    (
+        "se02_AP019712.fna",
+        "se02",
+        "AP019712:50873-51652",
+        "staphylococcal enterotoxin type 02 (SE02; VALIDATED emetic"
+        " + superantigenic, Tokyo 2004 outbreak; 95.4 % aa to SElZ)",
     ),
     (
         "sel31_AFTU01000025.fna",
@@ -288,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
                 "name": "sau_ent",
                 "description": (
                     "S. aureus enterotoxin gene panel: SEA-SEE, SEG-SEY,"
-                    " SEl26-28, SEl30-33, SElV/X/Z, SEU, SEO, SElU2 and TSST-1 + the"
+                    " SEl26-28, SEl30-33, SElV/X/Z, SE02, SEU, SEO, SElU2 and TSST-1 + the"
                     " nuc species control, with variant alleles for SEC,"
                     " SEI, SEN, SEU and TSST-1"
                 ),
@@ -323,7 +331,14 @@ def main(argv: list[str] | None = None) -> int:
                     " 364P, Fanelli deposit), SEl30 from PZ361155, and"
                     " sel31/sel32/sel33 from AFTU01000025.1 and"
                     " FGMI01000018.1 (Dicks 2021, each verified 100 %"
-                    " aa-identical to Table S3)."
+                    " aa-identical to Table S3), and se02 from"
+                    " AP019712:50873-51652 (Suzuki 2020 Tokyo 2004"
+                    " outbreak — the only novel SE with validated emetic"
+                    " (marmoset) and superantigenic activity; 95.4 % aa"
+                    " to SElZ, listed as a distinct type by the 2026"
+                    " review). SEl01/SE01 (Hisatsune 2017) is 100 %"
+                    " aa-identical to sel30 — the same gene discovered"
+                    " twice; sel30 already covers it."
                     " NOMENCLATURE AUDIT: the upstream"
                     " gene labels sel26/sel27 (MF370874, 744/753 bp) follow"
                     " the primary designation paper (Zhang et al., IJMM"
@@ -337,8 +352,7 @@ def main(argv: list[str] | None = None) -> int:
                     " scripts/staphylococcus/README.md): SEC2 (no complete"
                     " INSDC record; SEC1 covers at 97.4 % protein"
                     " identity), sel29p (pseudogene, absent from"
-                    " contemporary strains), SE01/SE02 (Suzuki 2020,"
-                    " accessions behind paywalled full text), sel34/sel35"
+                    " contemporary strains), sel34/sel35"
                     " (bioRxiv preprint, unreviewed), and the remaining"
                     " variant alleles for seg/sek/sem/sey (Lefebvre 2022"
                     " inventory). Variant alleles share the parent gene id"

@@ -3,7 +3,7 @@
 `sau_ent` is the bundled enterotoxin gene panel: 25 references converted from
 the MIT-licensed `indexofire/enterotoxin` abricate database, fourteen curated
 additions cut from public-domain INSDC records, and the `nuc` species control
-(40 records total).
+(41 records total).
 Build with `build_sau_ent.py` (offline: assets are committed; upstream is
 pinned to commit `30c022eeb712`).
 
@@ -117,8 +117,8 @@ deferred.**
 | --- | --- | --- |
 | **SEC2 nucleotide allele** | No complete standalone INSDC record exists; the only candidates are partial cds (ENA description search checked). SEC1 reference covers SEC2 at 97.4 % protein identity — the type is detected, the variant is not | Locate the original 1980s–90s submission or an annotated carrier genome; then extract via the same INSDC route |
 | **sel29p** | Pseudogene; absent from any contemporary strain (Dicks 2021: "not observed in any contemporary strain to date"). Screening pseudogenes invites false calls | Revisit only if a functional sel29 is ever reported |
-| **SE01** (Hisatsune) | The DDBJ/WGS accessions are behind the paywalled full text (ScienceDirect blocked in the dev environment); no UniProt/ENA entry | Obtain the paper's data-availability accessions; then fetch the genome and extract the CDS by SEB-group homology |
-| **SE02** (Suzuki 2020) | Demonstrated emetic activity + real Tokyo 2004 outbreak behind it — the highest-value deferred target. Sequences live in the outbreak strains' DDBJ WGS records; the accessions are in the paywalled full text | Same as SE01; the paper names the two outbreak strains whose WGS would carry the gene |
+| ~~**SE01** (Hisatsune)~~ | **RESOLVED 2026-11-19**: SE01/SEl01 (AP014922:c4729-5481, plasmid-borne) is **100 % aa-identical to sel30** already in the panel — the same gene independently discovered by Hisatsune 2017 (named SE1) and Dicks 2021 (named sel30). No addition needed | ~~N/A~~ |
+| ~~**SE02** (Suzuki 2020)~~ | **RESOLVED 2026-11-19**: Added from AP019712:50873-51652 (Tokyo 2004 outbreak strain). SE02 has **validated emetic activity** (common marmoset model) + superantigenic activity, and is **95.4 % aa to SElZ** — a closely related but distinct type per the 2026 review | ~~N/A~~ |
 | **sel34 / sel35** | A 2026 bioRxiv preprint's machine-learning calls, not peer-reviewed | Wait for peer review |
 | **egc pseudogenes** (psi-ent1/2, seh-2p, ses-3p) | Screening pseudogenes invites false-positive calls; the nucleotide is present but the protein is not made | Will remain excluded unless a use case emerges |
 | **Remaining variant alleles** for seg/sek/sem/sey (Lefebvre 2022: seg 6, sek 8, sem 9, sey 6) | The panel carries variant alleles for sec/sei/sen/seu/tsst1 — the other four genes remain one reference per type. Each missing allele is a candidate for the same INSDC-extraction route when divergence data justify it | Run the Fanelli backtest on more diverse corpora; add alleles only where real genomes diverge below the 80/80 floors |

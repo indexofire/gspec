@@ -1026,3 +1026,47 @@ def test_the_partial_formula_prefers_the_numeric_o() -> None:
     calls = {"invA": _call("invA"), "o_P": _call("o_P"), "h1_k": _call("h1_k")}
     call = evaluate_serotype(calls, document)
     assert call.phenotype == "Salmonella 38:k:- (serovar not in the formula table)"
+
+
+def test_merge_evidence_keeps_the_strongest_layer_and_flags_conflicts() -> None:
+    """The evidence merge decides which of several labels for one accession wins.
+
+    A lab's own agglutination outranks a culture-collection strain, which
+    outranks a paper table, which outranks the INSDC submitter attribute. Two
+    different labels on one accession are kept in ``conflict`` and the row is
+    flagged: a genome whose own sources disagree cannot support a marker call.
+    """
+    # Loaded by path: other tests change the process working directory, so the
+    # repo root is not reliably on sys.path by the time this runs.
+    import importlib.util
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / "salmonella"
+    script = script / "merge_compare_serotypes.py"
+    spec = importlib.util.spec_from_file_location("merge_compare_serotypes", script)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    # `@dataclass` resolves annotations through sys.modules, so register first.
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    Evidence, merge_evidence = module.Evidence, module.merge_evidence
+
+    rows = merge_evidence(
+        [
+            Evidence("GCF_000000001.1", "Enteritidis", "asserted", "ncbi"),
+            Evidence("GCF_000000001.2", "Enteritidis", "published", "doi:10.1/x"),
+            Evidence("GCF_000000001.2", "Kentucky", "asserted", "ncbi"),
+            Evidence("GCF_000000002.1", "Typhimurium", "culture", "NCTC:1"),
+            Evidence("GCF_000000002.1", "Typhimurium", "verified", "lab"),
+        ]
+    )
+    by_base = {str(row["base"]): row for row in rows}
+    # Version suffixes collapse onto one base accession.
+    assert set(by_base) == {"GCF_000000001", "GCF_000000002"}
+    # The published label outranks the asserted one, and the clash is visible.
+    assert by_base["GCF_000000001"]["serovar"] == "Enteritidis"
+    assert by_base["GCF_000000001"]["conflict"] == "Enteritidis;Kentucky"
+    assert by_base["GCF_000000001"]["n_labels"] == 3
+    # The verified layer wins without a conflict.
+    assert by_base["GCF_000000002"]["serovar"] == "Typhimurium"
+    assert by_base["GCF_000000002"]["layer"] == "verified"
+    assert by_base["GCF_000000002"]["conflict"] == "Typhimurium"
