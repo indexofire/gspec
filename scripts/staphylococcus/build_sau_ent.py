@@ -72,7 +72,8 @@ PRODUCTS: dict[str, str] = {
     "sel31": "enterotoxin-like type 31 (SEl31, plasmid)",
     "sel32": "enterotoxin-like type 32 (SEl32, plasmid)",
     "sel33": "enterotoxin-like type 33 (SEl33, egc recombinant)",
-    "sel30": "enterotoxin-like type 30 (SEl30)",
+    "sel30": "enterotoxin-like type 30 (SEl30; identical to SEl01/SE01"
+    " of Hisatsune 2017 — the same gene discovered twice)",
     "selu2": "enterotoxin-like U2 (SElU2, often called SElW)",
     "seo": "staphylococcal enterotoxin type O (SEO, egc)",
     "se02": "staphylococcal enterotoxin type 02 (SE02, validated emetic + superantigenic)",
@@ -177,7 +178,8 @@ EXTRAS: tuple[tuple[str, str, str, str], ...] = (
         "sel30_PZ361155.fna",
         "sel30",
         "PZ361155:32-784",
-        "enterotoxin-like type 30 (SEl30)",
+        "enterotoxin-like type 30 (SEl30; identical to SEl01/SE01 of"
+        " Hisatsune 2017, AP014922 — the same gene discovered twice)",
     ),
 )
 
