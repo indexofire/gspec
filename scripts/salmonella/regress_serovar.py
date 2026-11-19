@@ -8,7 +8,7 @@ assembly, designate it, and diff the call against the expected serovar.
 Usage::
 
     python scripts/salmonella/regress_serovar.py \\
-        --db sen_sero_sistr --assemblies /path/to/fastas \\
+        --db sen_sero --assemblies /path/to/fastas \\
         --expected ~/.mamba/envs/sistr/…/data/genomes-to-serovar.txt \\
         --datadir ~/.local/share/gspec/db
 

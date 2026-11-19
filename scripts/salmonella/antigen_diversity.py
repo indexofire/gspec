@@ -24,10 +24,10 @@ genome's weak `fljB` cross-reaction is correctly ignored (its expected h2 is `-`
 
 Usage::
 
-    gspec screen -d sen_sero_sistr assemblies/*.fna -o table.tsv --format tsv
+    gspec screen -d sen_sero assemblies/*.fna -o table.tsv --format tsv
     sistr --no-cgmlst -f tab -o sistr.tab assemblies/*.fna
     python scripts/salmonella/antigen_diversity.py \\
-        --table table.tsv --sistr-tab sistr.tab --db-dir ~/.local/share/gspec/db/sen_sero_sistr \\
+        --table table.tsv --sistr-tab sistr.tab --db-dir ~/.local/share/gspec/db/sen_sero \\
         [--weak-below 98] [--out report.json]
 """
 

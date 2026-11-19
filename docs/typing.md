@@ -68,7 +68,7 @@ Usage: `gspec typing RESULT.tsv [RESULT2.tsv ...] [-D datadir] [-f tsv|json|md] 
 `-` for the phenotype (and runner-up) and carry the candidate pair in NOTES; `GENES`
 follows the phenotype with the FILE's present gene names (sorted, `;`-joined), the same
 list on each of the FILE's scheme rows — the hits that drove the call, in the open. For a
-ranked antigen panel (`gspec.serotype/2`, e.g. `sen_sero_sistr`) that means one
+ranked antigen panel (`gspec.serotype/2`, e.g. `sen_sero`) that means one
 representative winning allele per antigen family (`o_C2-C3;h1_d__31;h2_1_2__79`), the
 same allele the per-family note names — not the hundred-plus sibling alleles a locus
 cross-hits. `json` emits

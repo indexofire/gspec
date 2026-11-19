@@ -54,12 +54,12 @@ disk:
 ```bash
 python scripts/salmonella/import_upstream.py sistr \
     --source /path/to/SISTR_V_1.1.3_db \
-    --dest src/gspec/data/dbs/sen_sero_sistr --name sen_sero_sistr --bundle
+    --dest src/gspec/data/dbs/sen_sero --name sen_sero --bundle
 python -m pytest tests/test_bundled.py tests/test_serotype_formula.py
 ```
 
 The port was run against a local SISTR install
-(`…/site-packages/sistr/data`, SISTR db 1.1.3) and ships as `sen_sero_sistr`:
+(`…/site-packages/sistr/data`, SISTR db 1.1.3) and ships as `sen_sero`:
 
 | | count |
 |---|---|
@@ -92,8 +92,8 @@ Two conversion steps keep the panel usable:
   before it: the `1,2` class also reaches `1,5` rows).
 
 The remaining 41 rows name alleles that SISTR's reference FASTAs themselves do
-not contain (`z67`, `z91`, `g,m,t`, …). `gspec db info -d sen_sero_sistr` shows
-the Apache-2.0 attribution; `tests/test_sen_sero_sistr.py` pins the numbers and
+not contain (`z67`, `z91`, `g,m,t`, …). `gspec db info -d sen_sero` shows
+the Apache-2.0 attribution; `tests/test_sen_sero.py` pins the numbers and
 exercises Typhimurium, the phase-off alias (Paratyphi A) and the partial
 formula end to end.
 
@@ -271,7 +271,7 @@ serovar set in one `|`-joined cell.
 
 ```bash
 sistr --no-cgmlst -t 4 -f tab -o sistr_all.tab assemblies/*.fna
-python scripts/salmonella/regress_serovar.py --db sen_sero_sistr \
+python scripts/salmonella/regress_serovar.py --db sen_sero \
     --assemblies assemblies --sistr-tab sistr_all.tab --datadir <datadir>
 ```
 
@@ -746,7 +746,7 @@ in 41 s at four-way parallelism. Remaining headroom if it ever matters: the
 
 ## Bundle size
 
-`sen_sero_sistr` ships 2.9 MiB (sequences + `serotype.json` + `kmer.json` +
+`sen_sero` ships 2.9 MiB (sequences + `serotype.json` + `kmer.json` +
 `bundled.json`); the packed k-mer sets are computed by `db setup`. They used to be
 committed (8.2 MiB, the largest single item in the wheel) because
 `scripts/salmonella/kmers_call_reads.py` materialized them into the source bundle
@@ -765,7 +765,7 @@ runner-up on the same reads.
 
 ```bash
 python scripts/salmonella/kmers_call_reads.py \
-    --db-dir src/gspec/data/dbs/sen_sero_sistr --fastq reads.fq
+    --db-dir src/gspec/data/dbs/sen_sero --fastq reads.fq
 #   o: B (1.00 … runner-up 0.00)   h1: i (1.00 … 0.11)   h2: 1,2 (1.00 … 0.07)
 ```
 
@@ -777,7 +777,7 @@ are slightly permissive.
 
 **The CLI uses it.** `bundled.py` now ships `kmer.json` inside the bundle and
 materializes the sets on first use, and `run_screen_reads` routes a database with
-a k-mer substrate away from minimap2: `gspec screen -d sen_sero_sistr --r1
+a k-mer substrate away from minimap2: `gspec screen -d sen_sero --r1
 reads.fq` returns one row per representative antigen (`BREADTH%` = the set's
 containment fraction, `IDENTITY%` = the mash-style ANI estimate), which
 `gspec typing` designates exactly like a mapped table. On the synthetic reads that
@@ -920,7 +920,7 @@ allele references is the correct — and cheapest — mechanism.
 ## 2026-11-17: the naming-tie problem (open, needs verified serotype data)
 
 Measured on the in-house 100-genome *Salmonella enterica* corpus with the
-shipped `sen_sero_sistr` panel and the three SNP-level O discriminators
+shipped `sen_sero` panel and the three SNP-level O discriminators
 (`rfbS` A/D1, `wbaV` D1/D2, `wbaP` E1/E4): **92/100 genomes agree with both
 reference tools, 1 is ambiguous, and 7 differ** — but only **two** of those
 differing classes are gspec defects, and both are the same defect: **a formula

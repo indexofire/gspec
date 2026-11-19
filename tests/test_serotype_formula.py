@@ -498,7 +498,7 @@ def test_imported_bundle_is_discoverable_and_attributed(
     table.write_text("Serovar,Serogroup,H1,H2\nTyphimurium,O:4,i,-\n", encoding="utf-8")
 
     root = tmp_path / "bundles"
-    dest = root / "sen_sero_sistr"
+    dest = root / "sen_sero"
     _import(
         "sistr",
         "--source",
@@ -506,15 +506,15 @@ def test_imported_bundle_is_discoverable_and_attributed(
         "--dest",
         str(dest),
         "--name",
-        "sen_sero_sistr",
+        "sen_sero",
         "--formulas",
         str(table),
         "--bundle",
     )
     monkeypatch.setattr("gspec.db.bundled.BUNDLED_ROOT", root)
     found = {database.name: database for database in bundled_databases()}
-    assert "sen_sero_sistr" in found
-    metadata = found["sen_sero_sistr"].metadata
+    assert "sen_sero" in found
+    metadata = found["sen_sero"].metadata
     assert metadata.license == "Apache-2.0"
     assert "PHAC-NML" in metadata.attribution
     assert "15078586" in metadata.attribution

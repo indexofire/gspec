@@ -317,7 +317,7 @@ Nothing to download, nothing to accept: a bundled database works out of the box.
 | `sau_ent` | S. aureus enterotoxin panel: SEA-SEE, SEG-SEY, SEl26-28, SEl30-33, SElV/X/Z, SE02, SEU, SEO, SElU2, TSST-1 + `nuc` species control + SEC/SEI/SEN/SEU/TSST-1 variant alleles (41 records; MIT conversion of `indexofire/enterotoxin` + curated INSDC additions incl. the audited sel26/27/28 and SElU2/SElW nomenclature) | 2026-11-17 | - (screen-only) |
 | `pau_sero` | P. aeruginosa OSA serogroups O1-O17 + wzyB (14 loci, pasty; cluster kind) | 2026-11-06 | `gspec.typing/2` (schemes `osa_serogroup`, `wzyb`) |
 | `sen_sero` | S. enterica subsp. enterica O/H antigen panel (13 curated INSDC CDS markers: `invA` control, O-group rfb markers, phase-1/phase-2 flagellin alleles) | 2026-11-09 | `gspec.serotype/1` |
-| `sen_sero_sistr` | S. enterica SISTR O/H antigen alleles + formula table (1443 records; `g,m`/`g,q` cross-label folded into the similarity groups 2026-11-16) | 2026-11-16 | `gspec.serotype/2` |
+| `sen_sero` | S. enterica SISTR O/H antigen alleles + formula table (1443 records; `g,m`/`g,q` cross-label folded into the similarity groups 2026-11-16) | 2026-11-16 | `gspec.serotype/2` |
 | `vpa_vf` | V. parahaemolyticus haemolysin markers: `tlh` species control + `tdh` + `trh` TRH1/TRH2 alleles (4 records, INSDC) | 2026-11-13 | - (screen-only) |
 
 **License provenance.** Every `eco_dec` record was re-sourced from primary
@@ -353,7 +353,7 @@ spn_sero) or academic-use restricted (sau_spa), and no byte-identical
 public-domain re-source could be verified for their records.
 
 The `cje_cpsv2` conversion joins the other permissively-licensed upstream
-conversions (`sen_sero_sistr`, `lpn_vf`, `pau_sero`, `sag_sero`): the
+conversions (`sen_sero`, `lpn_vf`, `pau_sero`, `sag_sero`): the
 CjejuniTyper capsule database (CC BY 4.0, v1.01, GitHub + Zenodo) ships
 with full attribution, and it landed as the production cje serotyping
 panel on 2026-11-14 after a ten-database evaluation on 130 labeled
@@ -373,7 +373,7 @@ ambiguous. `sen_sero` is the first profile to use it, and `shi_sero` keeps the
 default so its committed output does not move.
 
 A `gspec.serotype/2` document (the ranked-antigen shape a full panel needs,
-e.g. `sen_sero_sistr`) designates in a fixed order: the observed
+e.g. `sen_sero`) designates in a fixed order: the observed
 `O:H1:H2` formula is looked up **verbatim first** — a row the table carries is
 the call, and the serovar's first-declared name is the phenotype when several
 names share the formula (the WHO table lists the common serovar first:

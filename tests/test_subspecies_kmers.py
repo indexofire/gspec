@@ -20,7 +20,7 @@ DOC_PATH = (
     / "gspec"
     / "data"
     / "dbs"
-    / "sen_sero_sistr"
+    / "sen_sero"
     / "subspecies_kmers.json"
 )
 

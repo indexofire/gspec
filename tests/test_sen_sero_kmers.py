@@ -19,7 +19,7 @@ from gspec.fasta import iter_fasta
 from gspec.typing.results import SchemeCall
 
 HERE = Path(__file__).resolve().parents[1]
-ASSET = HERE / "src/gspec/data/dbs/sen_sero_sistr"
+ASSET = HERE / "src/gspec/data/dbs/sen_sero"
 SCRIPT = HERE / "scripts/salmonella/kmers_call_reads.py"
 
 
@@ -34,7 +34,7 @@ def _module() -> object:
 
 def _genes() -> dict[str, str]:
     return {
-        decode_seqid(record.id, "sen_sero_sistr").gene: record.sequence
+        decode_seqid(record.id, "sen_sero").gene: record.sequence
         for record in iter_fasta(ASSET / "sequences")
     }
 
@@ -98,7 +98,7 @@ def test_kmer_manifest_declares_every_antigen(tmp_path: Path) -> None:
     assert len(document["sets"]) == declared
     assert "h2_1,2" in document["sets"]
     entry = document["sets"]["h2_1,2"]
-    assert entry["of"].startswith("gspec|db=sen_sero_sistr|gene=h2_1_2")
+    assert entry["of"].startswith("gspec|db=sen_sero|gene=h2_1_2")
     # One representative per *other antigen of the same family*: h2 declares 25.
     h2_antigens = next(len(family["entries"]) for family in antigens if family["key"] == "h2")
     assert len(entry["against"]) == h2_antigens - 1
@@ -145,8 +145,8 @@ def test_cli_reads_route_through_the_kmer_substrate(tmp_path: Path) -> None:
 
     datadir = tmp_path / "dd"
     datadir.mkdir()
-    materialize_bundled("sen_sero_sistr", datadir, quiet=True)
-    assert (datadir / "sen_sero_sistr" / "kmers").is_dir()
+    materialize_bundled("sen_sero", datadir, quiet=True)
+    assert (datadir / "sen_sero" / "kmers").is_dir()
 
     fastq = _reads(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
     table = tmp_path / "screen.tsv"
@@ -156,7 +156,7 @@ def test_cli_reads_route_through_the_kmer_substrate(tmp_path: Path) -> None:
         [
             "screen",
             "-d",
-            "sen_sero_sistr",
+            "sen_sero",
             "--r1",
             str(fastq),
             "--read-type",
@@ -203,7 +203,7 @@ def test_min_identity_gates_the_kmer_path_on_an_ani_floor(tmp_path: Path) -> Non
 
     datadir = tmp_path / "dd"
     datadir.mkdir()
-    materialize_bundled("sen_sero_sistr", datadir, quiet=True)
+    materialize_bundled("sen_sero", datadir, quiet=True)
 
     genes = _genes()
     sequence = list(genes[_antigen_gene("h1", "i")])
@@ -230,7 +230,7 @@ def test_min_identity_gates_the_kmer_path_on_an_ani_floor(tmp_path: Path) -> Non
             [
                 "screen",
                 "-d",
-                "sen_sero_sistr",
+                "sen_sero",
                 "--r1",
                 str(fastq),
                 "--read-type",

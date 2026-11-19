@@ -24,7 +24,7 @@ References (one per subspecies):
 Usage::
 
     python scripts/salmonella/build_subspecies_kmers.py \
-        --out src/gspec/data/dbs/sen_sero_sistr/subspecies_kmers.json
+        --out src/gspec/data/dbs/sen_sero/subspecies_kmers.json
 
 The default ``--max-per-set`` keeps the shipped sidecar small (10 000
 signature k-mers per subspecies still classify the in-house 100-genome corpus

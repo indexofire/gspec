@@ -1,4 +1,4 @@
-"""sen_sero_sistr: the SISTR antigen panel ported into gspec format.
+"""sen_sero: the SISTR antigen panel ported into gspec format.
 
 This bundle is a *conversion*, not gspec curation: SISTR's antigen references and
 its WHO-2007 formula table, rewritten as gspec/v1 records plus a
@@ -26,13 +26,13 @@ from gspec.formats.typing_result import TypingResultDocument
 from gspec.typing.results import SchemeCall
 from gspec.typing.serotype_models import SerotypeDocumentV2, read_serotype_document
 
-ASSET = Path(__file__).resolve().parents[1] / "src/gspec/data/dbs/sen_sero_sistr"
+ASSET = Path(__file__).resolve().parents[1] / "src/gspec/data/dbs/sen_sero"
 runner = CliRunner()
 
 
 def _genes() -> dict[str, str]:
     return {
-        decode_seqid(record.id, "sen_sero_sistr").gene: record.sequence
+        decode_seqid(record.id, "sen_sero").gene: record.sequence
         for record in iter_fasta(ASSET / "sequences")
     }
 
@@ -54,7 +54,7 @@ def _document() -> SerotypeDocumentV2:
 
 
 def test_bundle_is_discoverable_and_attributed() -> None:
-    bundled = find_bundled("sen_sero_sistr")
+    bundled = find_bundled("sen_sero")
     assert bundled is not None
     metadata = bundled.metadata
     assert metadata.kind == "gene"
@@ -67,9 +67,7 @@ def test_bundle_is_discoverable_and_attributed() -> None:
 
 
 def test_db_info_surfaces_the_attribution() -> None:
-    result = runner.invoke(
-        app, ["db", "info", "-d", "sen_sero_sistr", "--json"], catch_exceptions=False
-    )
+    result = runner.invoke(app, ["db", "info", "-d", "sen_sero", "--json"], catch_exceptions=False)
     assert '"attribution"' in result.stdout
     assert "15078586" in result.stdout
 
@@ -164,7 +162,7 @@ def _designate_document(tmp_path: Path, *antigens: tuple[str, str]) -> TypingRes
         [
             "screen",
             "-d",
-            "sen_sero_sistr",
+            "sen_sero",
             str(genome),
             "-o",
             str(table),

@@ -146,7 +146,6 @@ def test_db_list_json_without_extras_carries_only_the_bundled_source_field(
         ("sag_sero", "bundled"),
         ("sau_ent", "bundled"),
         ("sen_sero", "bundled"),
-        ("sen_sero_sistr", "bundled"),
         ("shi_sero", "bundled"),
         ("str_lancefield", "bundled"),
         ("vch_oagc", "bundled"),

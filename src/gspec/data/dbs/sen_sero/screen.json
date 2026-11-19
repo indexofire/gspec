@@ -1,12 +1,15 @@
 {
-  "schema": "gspec.screen/1",
+  "schema": "gspec.screen/2",
   "contigs": {
-    "minid": 90.0,
-    "mincov": 60.0,
-    "merge_fragments": true
+    "minid": 80.0,
+    "mincov": 45.0,
+    "coverage": "union",
+    "merge_fragments": false,
+    "dedup": "subject",
+    "allele_sketch": true
   },
   "reads": {
     "min_breadth": 60.0,
-    "min_identity": 90.0
+    "min_identity": 80.0
   }
 }

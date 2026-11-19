@@ -13,9 +13,9 @@ tokens in SISTR's own ``antigenic_formula`` column:
 
 Usage::
 
-    gspec screen -d sen_sero_sistr assemblies/*.fna -o table.tsv      # any batch
+    gspec screen -d sen_sero assemblies/*.fna -o table.tsv      # any batch
     python scripts/salmonella/sketch_tiebreak.py \\
-        --db-dir ~/.local/share/gspec/db/sen_sero_sistr \\
+        --db-dir ~/.local/share/gspec/db/sen_sero \\
         --sistr-tab sistr_all.tab --screen-table table.tsv [--limit N]
 
 The measured answer (304 in-house genomes) is the reason ``anchored`` exists:

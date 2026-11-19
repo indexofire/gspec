@@ -24,7 +24,7 @@ gspec-curated nor a redistributable upstream dataset.
 Usage::
 
     python scripts/salmonella/build_h_diversity.py \\
-        --db-dir ~/.local/share/gspec/db/sen_sero_sistr \\
+        --db-dir ~/.local/share/gspec/db/sen_sero \\
         --assemblies ~/assemblies --antigen 1,2 --family h2 \\
         --exclude 26SAL0084 --out h2_1_2_extra.json
 """

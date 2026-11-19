@@ -18,7 +18,7 @@ the ambiguity is reported instead of being resolved by bitscore noise.
 Usage::
 
     python scripts/salmonella/audit_cross_labels.py \\
-        --db-dir ~/.local/share/gspec/db/sen_sero_sistr --out cross_labels.json
+        --db-dir ~/.local/share/gspec/db/sen_sero --out cross_labels.json
 """
 
 from __future__ import annotations

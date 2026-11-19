@@ -38,7 +38,7 @@ D2 (wbaV)    GCF_009730015.1 (Gateshead) WP_076726827.1         1002
 Usage::
 
     python scripts/salmonella/build_o_discriminators.py \
-        --out src/gspec/data/dbs/sen_sero_sistr/o_discriminators.json
+        --out src/gspec/data/dbs/sen_sero/o_discriminators.json
 """
 
 from __future__ import annotations

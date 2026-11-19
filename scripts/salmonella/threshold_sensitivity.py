@@ -30,9 +30,9 @@ within ±2-5 pp), so they are the first to re-check on a new batch.
 
 Usage::
 
-    gspec screen -d sen_sero_sistr assemblies/*.fna -o table.tsv --format tsv
+    gspec screen -d sen_sero assemblies/*.fna -o table.tsv --format tsv
     python scripts/salmonella/threshold_sensitivity.py \\
-        --table table.tsv --db-dir ~/.local/share/gspec/db/sen_sero_sistr [--out report.json]
+        --table table.tsv --db-dir ~/.local/share/gspec/db/sen_sero [--out report.json]
 """
 
 from __future__ import annotations

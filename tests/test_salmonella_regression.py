@@ -25,7 +25,7 @@ from gspec.dbcodec import decode_seqid
 from gspec.fasta import iter_fasta
 from gspec.typing.serotype_models import SerotypeDocumentV2, read_serotype_document
 
-ASSET = Path(__file__).resolve().parents[1] / "src/gspec/data/dbs/sen_sero_sistr"
+ASSET = Path(__file__).resolve().parents[1] / "src/gspec/data/dbs/sen_sero"
 REGRESS = Path(__file__).resolve().parents[1] / "scripts/salmonella/regress_serovar.py"
 IMPORTER = Path(__file__).resolve().parents[1] / "scripts/salmonella/import_upstream.py"
 SISTR_DATA = Path.home() / ".mamba/envs/sistr/lib/python3.9/site-packages/sistr/data"
@@ -34,7 +34,7 @@ SEQSERO2_FASTA = Path.home() / ".mamba/envs/seqsero/seqsero2_db/H_and_O_and_spec
 
 def _genes() -> dict[str, str]:
     return {
-        decode_seqid(record.id, "sen_sero_sistr").gene: record.sequence
+        decode_seqid(record.id, "sen_sero").gene: record.sequence
         for record in iter_fasta(ASSET / "sequences")
     }
 
@@ -76,7 +76,7 @@ def test_harness_reports_full_accuracy_on_known_assemblies(
             sys.executable,
             str(REGRESS),
             "--db",
-            "sen_sero_sistr",
+            "sen_sero",
             "--assemblies",
             str(assemblies),
             "--expected",
@@ -115,7 +115,7 @@ def test_harness_reports_a_confusion_instead_of_hiding_it(tmp_path: Path) -> Non
             sys.executable,
             str(REGRESS),
             "--db",
-            "sen_sero_sistr",
+            "sen_sero",
             "--assemblies",
             str(assemblies),
             "--expected",

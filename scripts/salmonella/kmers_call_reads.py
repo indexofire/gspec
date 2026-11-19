@@ -11,7 +11,7 @@ has several near-identical references (the reads split between them).
 Usage::
 
     python scripts/salmonella/kmers_call_reads.py \\
-        --db-dir src/gspec/data/dbs/sen_sero_sistr --fastq reads.fq [--k 27]
+        --db-dir src/gspec/data/dbs/sen_sero --fastq reads.fq [--k 27]
 
 The sets are materialized on first use under the database directory
 (`materialize_kmer_sets`), so the command works on a copied bundle too.

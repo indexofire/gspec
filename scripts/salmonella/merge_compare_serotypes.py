@@ -693,7 +693,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{len(genomes)} genomes selected; downloading…", file=sys.stderr)
     fastas = download(genomes, work)
 
-    anchor_source = args.datadir / "sen_sero_sistr" / "sequences"
+    anchor_source = args.datadir / "sen_sero" / "sequences"
     anchor_fasta = work / "anchor.fna"
     if not anchor_fasta.is_file():
         found = False

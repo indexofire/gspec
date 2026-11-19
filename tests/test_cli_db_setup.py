@@ -82,8 +82,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("pau_sero", "14 loci"),
             ("sag_sero", "14 records"),
             ("sau_ent", "41 records"),
-            ("sen_sero", "13 records"),
-            ("sen_sero_sistr", "1456 records"),
+            ("sen_sero", "1456 records"),
             ("shi_sero", "96 records"),
             ("str_lancefield", "29 records"),
             ("vch_oagc", "191 loci"),
@@ -93,8 +92,8 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
             ("vpa_vf", "4 records"),
         )
     ]
-    assert stderr_lines[:20] == expected_materialize
-    assert stderr_lines[20:] == [
+    assert stderr_lines[:19] == expected_materialize
+    assert stderr_lines[19:] == [
         "gspec: indexed cam_vf (16 sequences, nucl)",
         "gspec: indexed cdi_vf (4 sequences, nucl)",
         "gspec: indexed cje_cps (42 sequences, nucl)",
@@ -106,8 +105,7 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "gspec: indexed pau_sero (14 sequences, nucl)",
         "gspec: indexed sag_sero (14 sequences, nucl)",
         "gspec: indexed sau_ent (41 sequences, nucl)",
-        "gspec: indexed sen_sero (13 sequences, nucl)",
-        "gspec: indexed sen_sero_sistr (1456 sequences, nucl)",
+        "gspec: indexed sen_sero (1456 sequences, nucl)",
         "gspec: indexed shi_sero (96 sequences, nucl)",
         "gspec: indexed str_lancefield (29 sequences, nucl)",
         "gspec: indexed tinyamr (3 sequences, nucl)",
@@ -132,7 +130,6 @@ def test_setup_then_listing_roundtrip(tmp_path: Path) -> None:
         "sag_sero",
         "sau_ent",
         "sen_sero",
-        "sen_sero_sistr",
         "shi_sero",
         "str_lancefield",
         "tinyamr",

@@ -296,7 +296,7 @@ wheel 发布，因为它们的再分发条款和来源风险不应由 MIT 包承
 | `sau_ent` | 金黄色葡萄球菌肠毒素面板：SEA-SEE、SEG-SEY、SEl26-28、SEl30-33、SElV/X/Z、SE02、SEU、SEO、SElU2、TSST-1 + `nuc` 物种内参 + SEC/SEI/SEN/SEU/TSST-1 变异等位基因（41 条；`indexofire/enterotoxin` 的 MIT 转换 + 策展 INSDC 补充，含审计后的 sel26/27/28 与 SElU2/SElW 命名） | 2026-11-17 | -（仅筛查） |
 | `pau_sero` | 铜绿假单胞菌 OSA 血清群 O1-O17 + wzyB（14 位点，pasty；cluster 类） | 2026-11-06 | `gspec.typing/2`（`osa_serogroup`、`wzyb`） |
 | `sen_sero` | 肠道沙门氏菌肠道亚种 O/H 抗原面板（13 条精选 INSDC CDS 标记：`invA` 对照、O 群 rfb 标记、相位 1/相位 2 鞭毛蛋白等位基因） | 2026-11-09 | `gspec.serotype/1` |
-| `sen_sero_sistr` | 肠道沙门氏菌 SISTR O/H 抗原等位基因 + 抗原式表（1443 条记录；2026-11-16 将 `g,m`/`g,q` 交叉标记并入相似群） | 2026-11-16 | `gspec.serotype/2` |
+| `sen_sero` | 肠道沙门氏菌 SISTR O/H 抗原等位基因 + 抗原式表（1443 条记录；2026-11-16 将 `g,m`/`g,q` 交叉标记并入相似群） | 2026-11-16 | `gspec.serotype/2` |
 | `vpa_vf` | 副溶血性弧菌溶血素标记：`tlh` 种内对照 + `tdh` + `trh` TRH1/TRH2 等位基因（4 条记录，INSDC） | 2026-11-13 | -（仅筛查） |
 
 **许可证来源声明。** `eco_dec` 的每条记录都取自公共领域的一级提交（NCBI
@@ -324,7 +324,7 @@ marker-set 解析规则，不是 ShigaTyper 的逐字节移植。`ipaH_c` 对照
 `nme_sero`、`spn_sero`、`sau_spa` 维持按需抓取：其上游内容为 GPL 打包
 （spy_emm、nme_sero、spn_sero）或学术用途限制（sau_spa），且无法为其记录
 验证到逐字节一致的公共领域替代来源。
-`cje_cpsv2` 转换加入其余宽松许可的上游转换（`sen_sero_sistr`、`lpn_vf`、`pau_sero`、
+`cje_cpsv2` 转换加入其余宽松许可的上游转换（`sen_sero`、`lpn_vf`、`pau_sero`、
 `sag_sero`）之列：CjejuniTyper 荚膜分型数据库（CC BY 4.0，v1.01，GitHub + Zenodo）
 随包附带完整署名，并于 2026-11-14 经十库 × 130 株带标签基因组的评比（准确率 95.5%，
 剔除三株疑似标签错误后 98.1%；新型位点限制已记录在其 caveats 中）落地为生产用
@@ -339,7 +339,7 @@ cje 血清分型面板。
 "已知 O 群、H 未定" 行之上；彼此不构成子集关系的命中仍然判为歧义。`sen_sero` 是
 第一个启用它的库，`shi_sero` 保持默认，因此其已提交输出不变。
 
-`gspec.serotype/2` 文档（完整面板所需的排序抗原形态，如 `sen_sero_sistr`）按固定
+`gspec.serotype/2` 文档（完整面板所需的排序抗原形态，如 `sen_sero`）按固定
 顺序判定：先**逐字**查观测到的 `O:H1:H2` 抗原式——表里有的行就是判定；多个血清型
 共享同一抗原式时，取先声明的名字为表型（WHO 表把常见血清型排在前面：`C2-C3:d:1,2`
 是 Muenchen，Virginia 进入 RUNNER_UP）。某家族前两名抗原**证据完全相同**时，其全部

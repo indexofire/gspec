@@ -150,7 +150,6 @@ def test_bundled_discovery_finds_all_bundled() -> None:
         "sag_sero",
         "sau_ent",
         "sen_sero",
-        "sen_sero_sistr",
         "shi_sero",
         "str_lancefield",
         "vch_oagc",
@@ -198,6 +197,10 @@ def test_bundled_discovery_finds_all_bundled() -> None:
     assert eco_dec.metadata.kind == "gene"
     assert eco_dec.metadata.snapshotted == "2026-10-02"
     assert eco_dec.typing_path is not None
+    sen_sero = by_name["sen_sero"]
+    assert sen_sero.metadata.kind == "gene"
+    assert sen_sero.serotype_path is not None
+    assert sen_sero.screen_path is not None
     assert eco_dec.floors_path is not None
     shi_sero = by_name["shi_sero"]
     assert shi_sero.metadata.vendor.startswith("gspec-curated (ShigaTyper")
@@ -274,8 +277,8 @@ def test_bundled_headers_carry_no_red_flag_tags() -> None:
         "pau_sero": 14,
         "sag_sero": 14,
         "sau_ent": 41,
-        "sen_sero": 13,
-        "sen_sero_sistr": 1456,
+        "sen_sero": 1456,
+        "sen_sero": 1456,
         "shi_sero": 96,
         "str_lancefield": 29,
         "vch_oagc": 191,

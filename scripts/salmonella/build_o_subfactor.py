@@ -26,7 +26,7 @@ variant reference genomes are curated.
 Usage::
 
     python scripts/salmonella/build_o_subfactor.py \
-        --out src/gspec/data/dbs/sen_sero_sistr/o_subfactor.json
+        --out src/gspec/data/dbs/sen_sero/o_subfactor.json
 """
 
 from __future__ import annotations

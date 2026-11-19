@@ -49,7 +49,7 @@ from gspec.subspecies import (
 
 def _annotate_subspecies(report: Report, database: db.Database) -> Report:
     """Append a synthetic ``subspecies_*`` hit when the database ships a
-    subspecies k-mer signature sidecar (``sen_sero_sistr`` does).
+    subspecies k-mer signature sidecar (``sen_sero`` does).
 
     The hit is not a gene: it threads the whole-genome subspecies verdict into
     the screen table, which ``gspec typing`` then folds into a gene call the
