@@ -432,25 +432,31 @@ traceable to the paper and the exact columns it came from.
 * Duplicate accessions across papers are left in place on purpose — agreement
   between two independent labs is itself evidence.
 
-## What the first harvest found (2026-11-18)
+## Depth matters: the shallow vs the deep harvest
 
-133 open-access papers scanned, **14 with a machine-readable accession+serovar
-table**, giving **4,058 (accession, serovar) rows over 106 serovars**. The
-largest contributors are the O1/Paratyphi-A genomics study (PMC7530988, 1,444
-rows), an Oxford-Nanopore evaluation (PMC13532270, 1,082) and the SeqSero2
-validation set (PMC7147080, 94).
+The first pass took the top 25 of five queries — **133 papers** — which is 2 % of
+the 6,468 that match `"Salmonella" AND serovar AND genome` and open access with a
+supplement. A relevance-sorted sample is also a biased one. The second pass pages
+with `cursorMark`, adds a targeted query per serovar of interest, and fetches the
+supplements with 8 workers behind one shared rate limiter:
 
-For the four serovars gspec cannot separate:
+| pass | candidates | scanned | with a table | yield | rows | serovars |
+| --- | --- | --- | --- | --- | --- | --- |
+| shallow | 6,468 | 133 | 14 | 10.5 % | 4,058 | 106 |
+| deep | 6,468 | **1,099** | **69** | **6.3 %** | **78,342** | 646 |
 
-| serovar | rows from papers |
-| --- | --- |
-| Goldcoast | 52 |
-| Bovismorbificans | 6 |
-| Hindmarsh | **0** |
-| Brikama | **0** |
+The deeper pass is what found the rare serovars at all:
 
-So papers add real material for the O:6-bearing side but **nothing for the rare
-twins** — those have to come from a laboratory, not from a publication either.
+| serovar | shallow | deep |
+| --- | --- | --- |
+| Goldcoast | 52 | **129** |
+| Bovismorbificans | 6 | **204** |
+| Hindmarsh | 0 | **6** |
+| Brikama | **0** | **0** |
+
+So: papers do hold material for three of the four, and **Brikama remains absent
+everywhere** — no RefSeq assembly, no catalogue strain, no paper table. That one
+has to come from a laboratory.
 
 Two caveats the numbers force:
 

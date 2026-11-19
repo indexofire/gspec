@@ -257,6 +257,7 @@ def select_genomes(
     wanted = {serovar.lower(): group for group, serovars in groups.items() for serovar in serovars}
     floor = LAYER_WEIGHT[minimum_layer]
     candidates: dict[str, list[tuple[int, int, int, str, str, str]]] = defaultdict(list)
+    relaxed: dict[str, list[tuple[int, int, int, str, str, str]]] = defaultdict(list)
     for row in rows:
         serovar = str(row["serovar"]).lower()
         group = wanted.get(serovar)
@@ -265,19 +266,29 @@ def select_genomes(
         if len(str(row["conflict"]).split(";")) > 1:
             continue
         layer = str(row["layer"])
-        if LAYER_WEIGHT[layer] < floor:
-            continue
         accession = str(row["accession"])
         if not accession.startswith(("GCF_", "GCA_")):
             continue
         # Prefer RefSeq ("complete" second), then the strongest evidence layer.
         complete = 1 if "complete" in str(row["assembly_level"]).lower() else 0
         refseq = 1 if accession.startswith("GCF_") else 0
+        entry = (-LAYER_WEIGHT[layer], -refseq, -complete, accession, layer, str(row["serovar"]))
         # The candidate carries its own serovar and layer: reading them back from
         # a loop variable later silently substituted the last row parsed.
-        candidates[serovar].append(
-            (-LAYER_WEIGHT[layer], -refseq, -complete, accession, layer, str(row["serovar"]))
+        (candidates if LAYER_WEIGHT[layer] >= floor else relaxed)[serovar].append(entry)
+
+    # A serovar with no genome at the accepted layers would silently drop out of
+    # the comparison (a paper table lists `SRR` runs, the assemblies live only in
+    # the asserted layer). Fall back for that serovar alone and say so.
+    for serovar in wanted:
+        if serovar in candidates or serovar not in relaxed:
+            continue
+        print(
+            f"  {serovar}: no genome at layer >= {minimum_layer},"
+            f" falling back to its weaker labels",
+            file=sys.stderr,
         )
+        candidates[serovar] = relaxed[serovar]
 
     chosen: list[Genome] = []
     for serovar, entries in sorted(candidates.items()):

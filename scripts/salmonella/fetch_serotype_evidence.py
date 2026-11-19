@@ -398,9 +398,11 @@ by accession (version-suffix independent) and keeps the strongest label, ranked
 * `merged_evidence.tsv` — one row per accession: winning serovar, the layer it
   came from, every source, and the full label set.
 * `label_conflicts.tsv` — the rows where two sources name **different** serovars.
-  Measured on the first build: 16,111 accessions, only **6** conflicts (all from
-  one paper whose table carries two serotype columns). A conflicting accession is
-  excluded from marker analysis: its own sources disagree about what it is.
+  Measured after the deep paper harvest: 77,249 accessions over 1,478 conflicts.
+  The conflict count rises with the number of papers because one accession now
+  appears in several tables, and a paper may list both a submitted and a computed
+  serovar; every conflicting accession is excluded from marker analysis, because
+  its own sources disagree about what it is.
 
 Then `… compare --group NAME=serovar,serovar …` downloads the genomes, cuts the
 rfb neighbourhood out of each (anchored on a panel wzx gene), clusters the CDS,
