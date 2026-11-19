@@ -1,0 +1,39 @@
+{
+  "schema": "gspec.naming_priority/1",
+  "name": "sen_sero_naming_priority",
+  "description": "Which serovar name to report when an antigenic formula names several. This is a NOMENCLATURE decision, not an antigen test: the pairs below are indistinguishable by wzx/wzy and, for Brikama/Goldcoast, indistinguishable by slide agglutination in a reference laboratory (PMC9150820). The block makes the convention explicit and auditable instead of leaving it to the order rows happen to sit in.",
+  "license": "gspec curation (nomenclature convention), not upstream data",
+  "updated": "2026-11-19",
+  "rules": [
+    {
+      "primary": "Goldcoast",
+      "others": ["Brikama"],
+      "formula": "C2-C3:r:l,w",
+      "note": "C2-C3:r:l,w — the H1 spellings r and r,[i] are one antigen, and the two rows they key (Goldcoast, Brikama) are the same formula. Evidence: a reference laboratory's agglutination result was literally 'Goldcoast or Brikama' (PMC9150820, SAMN26764377 / SAMN26764405); PMC8552638 submitted its isolate A030_06/19 as Goldcoast with the same in-silico ambiguity; SISTR reports Goldcoast. Brikama has no public genome at all, so no sequence evidence can ever prefer it.",
+      "evidence": [
+        "doi:10.3389/fmicb.2022.882647",
+        "doi:10.1128/Spectrum.00248-21"
+      ]
+    },
+    {
+      "primary": "Bovismorbificans",
+      "others": ["Hindmarsh"],
+      "formula": "C2-C3:r:1,5",
+      "note": "C2-C3:r:1,5 — same r/[i] spelling pair. Bovismorbificans is O:6,8,20 and Hindmarsh is O:8,20, but the O:6 factor has no marker in the rfb cluster (13 complete genomes, 3220 CDS clusters, no cluster splits the groups). Evidence: SISTR reports Bovismorbificans; SeqSero2's curated rename_dict maps Hindmarsh to Bovismorbificans (the WHO merge).",
+      "evidence": [
+        "SeqSero2 Initial_Conditions.rename_dict",
+        "SISTR cgMLST nearest reference"
+      ]
+    },
+    {
+      "primary": "Newport",
+      "others": ["Bardo"],
+      "formula": "6,8,20:e,h:1,2",
+      "note": "6,8,20:e,h:1,2 — a single formula key that literally carries two serovar names. Newport is the common serovar; SeqSero2's rename_dict maps Bardo to Newport and comments that Bardo is exceedingly rare.",
+      "evidence": [
+        "SeqSero2 Initial_Conditions.rename_dict",
+        "WHO 2007 formula table row order"
+      ]
+    }
+  ]
+}

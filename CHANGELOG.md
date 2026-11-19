@@ -122,6 +122,29 @@
 
 ### Changed
 
+- **Salmonella serotyping reports a declared serovar name when a formula names
+  several, instead of leaving it to row order.** Three pairs are indistinguishable
+  by antigen testing — `C2-C3:r:l,w` names Goldcoast and Brikama,
+  `C2-C3:r:1,5` names Hindmarsh and Bovismorbificans, `6,8,20:e,h:1,2` names
+  Newport and Bardo — and for the first pair a reference laboratory's own slide
+  agglutination result reads literally "Goldcoast or Brikama" (PMC9150820,
+  isolates SAMN26764377 / SAMN26764405). The choice is **nomenclature, not
+  evidence**, so it is now declared in the database: `naming_priority` in
+  `gspec.serotype/2` (`scripts/salmonella/naming_priority.json`, with the papers
+  as `evidence`). Two behaviours follow from it:
+
+  * a name listed among a rule's `others` is **renamed** to the primary — the
+    tie lives in the H1 spelling (`r` versus `r,[i]`), so the lookup resolves one
+    row and never sees the twin, exactly the case SeqSero2's `rename_dict`
+    handles (`Hindmarsh → Bovismorbificans`, `Bardo → Newport`);
+  * when one row carries several names, the declared primary is reported and the
+    twin goes to `RUNNER_UP`.
+
+  A renamed call is capped at `medium` — it is a resolved ambiguity. Measured on
+  the 100-genome corpus: three-way agreement **92 → 94**, and the four former
+  misses now read Bovismorbificans ×2 and Goldcoast ×2, matching SISTR and
+  SeqSero2. A rule that names a serovar the formula table does not carry is a
+  `SEROTYPE_UNKNOWN_SEROVAR` error at load time.
 - **Salmonella serotyping confidence is now a three-tier ladder instead of a
   binary flag, so `high` finally means something.** The old rule required a
   100 %-identity/100 %-coverage hit on every antigen *and* no other antigen

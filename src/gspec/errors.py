@@ -86,6 +86,7 @@ ERROR_CODES: frozenset[str] = frozenset(
         "SCREEN_TABLE_MALFORMED",
         "SEROTYPE_MALFORMED",
         "SEROTYPE_UNKNOWN_GENE",
+        "SEROTYPE_UNKNOWN_SEROVAR",
         "SUMMARY_MALFORMED",
         "SUBSPECIES_MALFORMED",
         "TYPING_CLUSTER_DB",

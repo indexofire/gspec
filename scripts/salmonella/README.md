@@ -1032,10 +1032,15 @@ The mirror pair behaves the same way (Hindmarsh `8,20` versus Bovismorbificans
 `6,8,20`), and the O:6/O:20 factor that separates them has no marker in the rfb
 cluster (see the comparative-genomics result above).
 
-**Consequences for the panel, in order of correctness:**
+**Consequences for the panel, in order of correctness — 1 and 2 are implemented
+(2026-11-19) as a `naming_priority` block in the database:**
 
-1. Report **both names** for a one-to-many formula. This is the only output that
-   is true without new evidence, and it is what a serotyping laboratory prints.
+1. Report **both names** for a one-to-many formula, and declare which one is the
+   primary so the behaviour does not depend on row order. Shipped as
+   `scripts/salmonella/naming_priority.json` (three rules, each with the papers
+   that justify it); the engine renames a twin (`Hindmarsh → Bovismorbificans`,
+   `Bardo → Newport`) and prefers the primary when one row carries both names,
+   capping the call at `medium` because a renamed twin is a resolved ambiguity.
 2. Pick a **primary** by nomenclature convention only, and say so:
    `Goldcoast` before `Brikama`, `Bovismorbificans` before `Hindmarsh`,
    `Newport` before `Bardo` (WHO-2007 lists the common member first), with the

@@ -1157,3 +1157,96 @@ def test_partial_true_allele_still_beats_a_full_cross_reaction() -> None:
     call = evaluate_serotype(calls, _document())
     assert call.phenotype == "Enteritidis"
     assert any(note.startswith("O: 9 via o_9") for note in call.notes)
+
+
+def test_a_naming_rule_renames_the_twin_of_a_spelling_pair() -> None:
+    """`C2-C3:r:1,5` and `C2-C3:r,[i]:1,5` are two KEYS, so the lookup resolves
+    one row and never sees the twin — the tie lives in the H1 spelling. A rule
+    that lists the name among its `others` therefore acts as a rename
+    (SeqSero2's `rename_dict`: Hindmarsh → Bovismorbificans)."""
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "C2-C3", "genes": ["o_C2"]}]},
+            {"key": "h1", "entries": [{"name": "r", "genes": ["h1_r"]}]},
+            {"key": "h2", "entries": [{"name": "1,5", "genes": ["h2_15"]}]},
+        ],
+        formulas=[{"o": "C2-C3", "h1": "r", "h2": "1,5", "serovar": "Hindmarsh"}],
+        naming_priority=[
+            {
+                "primary": "Bovismorbificans",
+                "others": ["Hindmarsh"],
+                "formula": "C2-C3:r:1,5",
+            }
+        ],
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_C2": _call("o_C2"),
+        "h1_r": _call("h1_r"),
+        "h2_15": _call("h2_15"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Bovismorbificans"
+    assert any(
+        note.startswith("nomenclature priority: Hindmarsh reported as") for note in call.notes
+    )
+    # A renamed call is still a resolved ambiguity, never `high`.
+    assert call.confidence == "medium"
+
+
+def test_a_naming_rule_prefers_the_primary_when_one_row_carries_two_names() -> None:
+    """A single formula key can literally carry two serovar names (`6,8,20:e,h:1,2`
+    is Newport and Bardo). The rule names the primary instead of leaving it to
+    row order, and the twin rides in RUNNER_UP."""
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "C2-C3", "genes": ["o_C2"]}]},
+            {"key": "h1", "entries": [{"name": "e,h", "genes": ["h1_eh"]}]},
+            {"key": "h2", "entries": [{"name": "1,2", "genes": ["h2_12"]}]},
+        ],
+        formulas=[
+            {"o": "C2-C3", "h1": "e,h", "h2": "1,2", "serovar": "Bardo"},
+            {"o": "C2-C3", "h1": "e,h", "h2": "1,2", "serovar": "Newport"},
+        ],
+        naming_priority=[{"primary": "Newport", "others": ["Bardo"], "formula": "6,8,20:e,h:1,2"}],
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_C2": _call("o_C2"),
+        "h1_eh": _call("h1_eh"),
+        "h2_12": _call("h2_12"),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Newport"
+    assert call.runner_up is not None and call.runner_up.phenotype == "Bardo"
+    assert any(note.startswith("nomenclature priority: Newport over Bardo") for note in call.notes)
+
+
+def test_a_naming_rule_does_not_touch_a_third_serovar() -> None:
+    """The preference is a convention about two names, not evidence about a third:
+    an unrelated extra candidate must keep the ambiguity."""
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "C2-C3", "genes": ["o_C2"]}]},
+            {"key": "h1", "entries": [{"name": "r", "genes": ["h1_r"]}]},
+            {"key": "h2", "entries": [{"name": "1,5", "genes": ["h2_15"]}]},
+        ],
+        formulas=[
+            {"o": "C2-C3", "h1": "r", "h2": "1,5", "serovar": "Newport"},
+            {"o": "C2-C3", "h1": "r", "h2": "1,5", "serovar": "Bardo"},
+            {"o": "C2-C3", "h1": "r", "h2": "1,5", "serovar": "Haardt"},
+        ],
+        naming_priority=[{"primary": "Newport", "others": ["Bardo"]}],
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_C2": _call("o_C2"),
+        "h1_r": _call("h1_r"),
+        "h2_15": _call("h2_15"),
+    }
+    call = evaluate_serotype(calls, document)
+    # The rule does not fire: the third name is not one of its twins, so the call
+    # falls back to the documented shared-formula behaviour (first row named, the
+    # rest in RUNNER_UP) without any nomenclature note.
+    assert not any(note.startswith("nomenclature priority") for note in call.notes)
+    assert call.runner_up is not None and call.runner_up.phenotype == "Bardo"

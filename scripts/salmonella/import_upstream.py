@@ -599,6 +599,23 @@ def _add_o_subfactor(
     return subfactor, special_checks
 
 
+def _read_naming_priority(path: Path) -> list[dict[str, object]]:
+    """The curated nomenclature preferences, as the ``serotype/2`` block."""
+    spec = json.loads(path.read_text(encoding="utf-8"))
+    rules: list[dict[str, object]] = []
+    for rule in spec["rules"]:
+        rules.append(
+            {
+                "primary": rule["primary"],
+                "others": list(rule["others"]),
+                "formula": rule.get("formula", ""),
+                "note": rule.get("note", ""),
+                "evidence": list(rule.get("evidence", [])),
+            }
+        )
+    return rules
+
+
 def _write_database(
     *,
     name: str,
@@ -615,6 +632,7 @@ def _write_database(
     special_checks: list[dict[str, object]] | None = None,
     o_numeric: dict[str, str] | None = None,
     gene_locus: dict[str, str] | None = None,
+    naming_priority: list[dict[str, object]] | None = None,
 ) -> None:
     """Write ``sequences`` + ``serotype.json`` + ``info.json`` for one database."""
     dest.mkdir(parents=True, exist_ok=True)
@@ -641,6 +659,7 @@ def _write_database(
         **({"o_subfactor": o_subfactor} if o_subfactor else {}),
         **({"special_checks": special_checks} if special_checks else {}),
         **({"o_numeric": o_numeric} if o_numeric else {}),
+        **({"naming_priority": naming_priority} if naming_priority else {}),
         "fallback": "Not Salmonella",
         "unresolved": "Salmonella subsp. enterica (no antigen set resolved)",
         "partial": "Salmonella {formula} (serovar not in the formula table)",
@@ -891,6 +910,7 @@ def import_sistr(
     collapse_floor: float = REFERENCE_IDENTITY_FLOOR,
     o_discriminators: Path | None = None,
     o_subfactor: Path | None = None,
+    naming_priority: Path | None = None,
     cross_labels: Path | None = None,
     extra_refs: Path | None = None,
 ) -> None:
@@ -1055,6 +1075,9 @@ def import_sistr(
         special_checks=special_checks,
         o_numeric=_serogroup_numeric_o(table),
         gene_locus=gene_locus,
+        naming_priority=(
+            _read_naming_priority(naming_priority) if naming_priority is not None else None
+        ),
     )
     if kmer_k:
         _write_kmerdb(
@@ -1276,6 +1299,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--naming-priority",
+        type=Path,
+        help=(
+            "SISTR only: gspec.naming_priority/1 document (scripts/salmonella/"
+            "naming_priority.json) recording which serovar to report when a formula"
+            " names several — a nomenclature convention, not an antigen test"
+        ),
+    )
+    parser.add_argument(
         "--collapse-identity",
         type=float,
         default=REFERENCE_IDENTITY_FLOOR,
@@ -1309,6 +1341,7 @@ def main(argv: list[str] | None = None) -> int:
             collapse_floor=args.collapse_identity,
             o_discriminators=args.o_discriminators,
             o_subfactor=args.o_subfactor,
+            naming_priority=args.naming_priority,
             cross_labels=args.cross_labels,
             extra_refs=args.extra_refs,
         )

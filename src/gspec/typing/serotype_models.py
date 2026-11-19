@@ -303,6 +303,38 @@ class SpecialCheck(BaseModel, frozen=True):
     note: str = Field(min_length=1)
 
 
+class NamingPriority(BaseModel, frozen=True):
+    """Which of several serovars a one-to-many formula should report.
+
+    Some antigenic formulas name 2-3 serovars and no antigen test in routine use
+    splits them: `C2-C3:r:l,w` names Goldcoast and Brikama, and a reference
+    laboratory's slide agglutination for exactly that formula returned
+    "Goldcoast or Brikama". The choice between such twins is **nomenclature, not
+    evidence** — WHO-2007 lists the common serovar first, and the reference tools
+    hard-code the same preference (SeqSero2's ``rename_dict`` maps
+    ``Hindmarsh → Bovismorbificans`` and ``Bardo → Newport``).
+
+    Declaring the preference in the document, with its evidence, makes the
+    behaviour auditable: the call no longer depends on which row happens to come
+    first in the formula table.
+    """
+
+    #: The name to report.
+    primary: str = Field(min_length=1)
+    #: The twins it outranks; any of them may hold the tie.
+    others: tuple[str, ...] = Field(min_length=1)
+    #: The formula the rule is about, for the reader (not used for matching).
+    formula: str = ""
+    note: str = ""
+    evidence: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def _primary_is_not_a_twin(self) -> NamingPriority:
+        if self.primary in self.others:
+            raise ValueError(f"naming rule names {self.primary!r} as its own twin")
+        return self
+
+
 class SerotypeDocumentV2(BaseModel, frozen=True):
     """gspec.serotype/2 — ranked antigen families plus the formula table."""
 
@@ -360,6 +392,10 @@ class SerotypeDocumentV2(BaseModel, frozen=True):
     o_subfactor: OSubfactor | None = None
     #: Post-decision serovar refinements (see :class:`SpecialCheck`).
     special_checks: tuple[SpecialCheck, ...] = ()
+    #: Nomenclature preferences for formulas that name several serovars (see
+    #: :class:`NamingPriority`). Consulted only when the lookup leaves more than
+    #: one name; it never overrides a single name.
+    naming_priority: tuple[NamingPriority, ...] = ()
     #: Subspecies -> serogroup letter -> numeric O antigen (for the
     #: non-enterica ``NUMERAL O:H1:H2`` rendering). A serogroup letter is not
     #: consistent across subspecies (enterica ``F`` is O:11, indica ``F`` is
@@ -429,6 +465,7 @@ def o_discriminator_specs(document: SerotypeDocumentV2) -> tuple[ODiscriminator,
 def validate_serotype_references(document: AnySerotypeDocument, gene_ids: frozenset[str]) -> None:
     """Every marker a rule or antigen family references must exist."""
     if isinstance(document, SerotypeDocumentV2):
+        serovar_names = {row.serovar for row in document.formulas}
         for family in document.antigens:
             for entry in family.entries:
                 for gene in entry.genes:
@@ -457,6 +494,14 @@ def validate_serotype_references(document: AnySerotypeDocument, gene_ids: frozen
                             code="SEROTYPE_UNKNOWN_GENE",
                             context={"gene": gene},
                         )
+        for rule in document.naming_priority:
+            for name in (rule.primary, *rule.others):
+                if name not in serovar_names:
+                    raise DatabaseError(
+                        f"naming priority names unknown serovar {name!r}",
+                        code="SEROTYPE_UNKNOWN_SEROVAR",
+                        context={"serovar": name, "primary": rule.primary},
+                    )
         for check in document.special_checks:
             for gene in (*check.markers, *check.versus):
                 if gene not in gene_ids:

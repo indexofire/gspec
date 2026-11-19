@@ -440,6 +440,65 @@ def _same_locus(a: _FamilyCall, b: _FamilyCall) -> bool:
     return overlap / shorter > SAME_LOCUS
 
 
+#: Rank of the confidence ladder, so a step can be capped without repeating it.
+_CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
+
+
+def _cap_confidence(value: Confidence, ceiling: Confidence) -> Confidence:
+    """Clamp a tier to a ceiling (a renamed twin is a resolved ambiguity)."""
+    return value if _CONFIDENCE_ORDER[value] <= _CONFIDENCE_ORDER[ceiling] else ceiling
+
+
+def _apply_naming_merge(
+    document: SerotypeDocumentV2, serovar: str | None
+) -> tuple[str | None, str | None]:
+    """Fold a deprecated twin onto the name the convention reports.
+
+    ``C2-C3:r:1,5`` and ``C2-C3:r,[i]:1,5`` are two *keys*, so the lookup usually
+    resolves one row and never sees the twin — the tie exists in the H1 spelling,
+    not in the formula. A rule that lists a name among its ``others`` therefore
+    acts as a rename (SeqSero2's ``rename_dict``): ``Hindmarsh →
+    Bovismorbificans``, ``Bardo → Newport``. Without this the declared preference
+    would only ever fire when the formula table happened to carry both rows.
+    """
+    if serovar is None:
+        return None, None
+    for rule in document.naming_priority:
+        if serovar in rule.others:
+            note = (
+                f"nomenclature priority: {serovar} reported as {rule.primary}"
+                f" ({rule.formula or 'shared formula'}) — {serovar} is the twin"
+                f" name of one antigenic formula"
+            )
+            return rule.primary, note
+    return serovar, None
+
+
+def _apply_naming_priority(
+    document: SerotypeDocumentV2, serovars: tuple[str, ...]
+) -> tuple[str | None, tuple[str, ...], str | None]:
+    """Pick the declared primary when a formula leaves several names.
+
+    ``(chosen, remaining, note)``. The rule only matches when *all* surviving
+    names are the rule's primary plus its twins — a genuinely different third
+    serovar keeps the ambiguity, because the preference was never evidence about
+    it. Returns ``(None, serovars, None)`` when no declared rule covers the set.
+    """
+    if len(serovars) < 2:
+        return None, serovars, None
+    survivors = set(serovars)
+    for rule in document.naming_priority:
+        if rule.primary in survivors and survivors <= {rule.primary, *rule.others}:
+            rest = tuple(name for name in serovars if name != rule.primary)
+            note = (
+                f"nomenclature priority: {rule.primary} over {', '.join(rest)}"
+                f" ({rule.formula or 'shared formula'}) — the formula cannot"
+                f" separate them, the convention does"
+            )
+            return rule.primary, rest, note
+    return None, serovars, None
+
+
 def _numeric_o(
     document: SerotypeDocumentV2, serogroup: str | None, subspecies: str = "enterica"
 ) -> str | None:
@@ -1507,6 +1566,21 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
                 notes=tuple(notes),
             )
         if len(exact_serovars) > 1:
+            chosen, rest, priority_note = _apply_naming_priority(document, tuple(exact_serovars))
+            if chosen is not None:
+                notes.append(priority_note or "")
+                notes.append(f"formula shared with {', '.join(rest)}")
+                notes.extend(_special_notes(chosen, calls, document))
+                return SchemeCall(
+                    phenotype=chosen,
+                    score=round(score, 4),
+                    confidence=_confidence(widened=class_exact, shared=True),
+                    components=components,
+                    runner_up=(
+                        PhenotypeScore(phenotype=rest[0], score=round(score, 4)) if rest else None
+                    ),
+                    notes=tuple(notes),
+                )
             broken = _break_o_subfactor(exact_serovars, calls, document)
             if broken is not None:
                 winner, discriminator_note = broken
@@ -1528,12 +1602,18 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             notes.append(f"formula shared with {', '.join(exact_serovars[1:])}")
         if class_exact:
             notes.append("matched after widening the antigen names to their class")
-        notes.extend(_special_notes(exact_serovars[0], calls, document))
+        merged_name, merge_note = _apply_naming_merge(document, exact_serovars[0])
+        if merge_note is not None:
+            notes.append(merge_note)
+        notes.extend(_special_notes(merged_name or exact_serovars[0], calls, document))
         return SchemeCall(
-            phenotype=exact_serovars[0],
+            phenotype=merged_name or exact_serovars[0],
             antigenic_formula=formula,
             score=round(score, 4),
-            confidence=_confidence(widened=class_exact, shared=len(exact_serovars) > 1),
+            confidence=_cap_confidence(
+                _confidence(widened=class_exact, shared=len(exact_serovars) > 1),
+                "medium" if merge_note is not None else "high",
+            ),
             components=components,
             runner_up=(
                 PhenotypeScore(phenotype=exact_serovars[1], score=round(score, 4))
@@ -1603,16 +1683,36 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
     if len(serovars) == 1:
         # The widened pass found exactly one row: a name, but evidence weaker
         # than reading the formula off the table (hence never `high`).
-        notes.extend(_special_notes(serovars[0], calls, document))
+        merged_name, merge_note = _apply_naming_merge(document, serovars[0])
+        if merge_note is not None:
+            notes.append(merge_note)
+        notes.extend(_special_notes(merged_name or serovars[0], calls, document))
         return SchemeCall(
-            phenotype=serovars[0],
+            phenotype=merged_name or serovars[0],
             antigenic_formula=formula,
             score=round(score, 4),
-            confidence=_confidence(widened=True, shared=False),
+            confidence=_cap_confidence(
+                _confidence(widened=True, shared=False),
+                "medium" if merge_note is not None else "high",
+            ),
             components=components,
             notes=tuple(notes),
         )
     if len(serovars) > 1:
+        chosen, rest, priority_note = _apply_naming_priority(document, serovars)
+        if chosen is not None:
+            notes.append(priority_note or "")
+            notes.extend(_special_notes(chosen, calls, document))
+            return SchemeCall(
+                phenotype=chosen,
+                score=round(score, 4),
+                confidence=_confidence(widened=True, shared=True),
+                components=components,
+                runner_up=(
+                    PhenotypeScore(phenotype=rest[0], score=round(score, 4)) if rest else None
+                ),
+                notes=tuple(notes),
+            )
         broken = _break_o_subfactor(serovars, calls, document)
         if broken is not None:
             winner, discriminator_note = broken
