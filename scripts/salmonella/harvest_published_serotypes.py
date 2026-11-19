@@ -36,11 +36,13 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import csv
 import io
 import json
 import re
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -51,6 +53,8 @@ from pathlib import Path
 
 EPMC = "https://www.ebi.ac.uk/europepmc/webservices/rest"
 PAUSE = 0.4
+#: A supplementary archive larger than this is a data dump, not a strain table.
+MAX_SUPPLEMENT_BYTES = 40 * 1024 * 1024
 USER_AGENT = "gspec-serotype-harvest/1 (+https://github.com/indexofire/gspec)"
 
 ACCESSION_RE = re.compile(
@@ -129,8 +133,26 @@ def _looks_like_serovar(value: str) -> bool:
 BASE_FILTER = "AND (OPEN_ACCESS:Y) AND HAS_SUPPL:Y"
 
 
-def _get(url: str, *, binary: bool = False, attempt_limit: int = 5) -> bytes:
+#: One global rate limiter: 8 worker threads must not turn into 8x the request
+#: rate, which Europe PMC answers with 429s. Five requests per second total.
+_RATE_LOCK = threading.Lock()
+_RATE_NEXT = 0.0
+_MIN_INTERVAL = 0.2
+
+
+def _throttle() -> None:
+    global _RATE_NEXT
+    with _RATE_LOCK:
+        now = time.monotonic()
+        wait = _RATE_NEXT - now
+        _RATE_NEXT = max(now, _RATE_NEXT) + _MIN_INTERVAL
+    if wait > 0:
+        time.sleep(wait)
+
+
+def _get(url: str, *, binary: bool = False, attempt_limit: int = 7) -> bytes:
     for attempt in range(attempt_limit):
+        _throttle()
         try:
             request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(request, timeout=180) as response:
@@ -139,10 +161,13 @@ def _get(url: str, *, binary: bool = False, attempt_limit: int = 5) -> bytes:
             # 404/403 mean "no supplement for this paper" — retrying cannot help.
             if exc.code in (403, 404):
                 raise SystemExit(f"not available: {url} ({exc.code})") from exc
-            if exc.code >= 500 and attempt >= 1:
-                # A broken supplement endpoint stays broken; do not spend four
-                # back-off sleeps on it.
-                raise SystemExit(f"server error: {url} ({exc.code})") from exc
+            if exc.code >= 500:
+                # Europe PMC answers 502/503 in bursts under load; back off and
+                # try again rather than throwing away a multi-minute search.
+                if attempt == attempt_limit - 1:
+                    raise SystemExit(f"server error: {url} ({exc.code})") from exc
+                time.sleep(2 ** (attempt + 1))
+                continue
             if attempt == attempt_limit - 1:
                 raise SystemExit(f"giving up on {url}: {exc}") from exc
             print(f"  retry {attempt + 1} (HTTP {exc.code})", file=sys.stderr)
@@ -163,13 +188,48 @@ def search(query: str, page_size: int = 25) -> list[dict[str, object]]:
         "pageSize": str(page_size),
         "resultType": "core",
     }
-    time.sleep(PAUSE)
     payload = json.loads(_get(f"{EPMC}/search?{urllib.parse.urlencode(params)}").decode())
     hits = int(payload.get("hitCount") or 0)
     print(f"  query {query!r}: {hits} hits", file=sys.stderr)
     results = payload.get("resultList", {}).get("result", [])
     assert isinstance(results, list)
     return [r for r in results if isinstance(r, dict)]
+
+
+def search_all(query: str, *, budget: int, page_size: int = 50) -> list[dict[str, object]]:
+    """Every result of one query up to ``budget``, following ``cursorMark``.
+
+    Europe PMC caps a page at 1,000 and reports the true ``hitCount``; a first
+    harvest that took only the top 25 of five queries found 133 papers out of the
+    6,468 that match "serovar" + "genome" alone, so the depth is a knob, not a
+    property of the literature.
+    """
+    out: list[dict[str, object]] = []
+    cursor = "*"
+    while len(out) < budget:
+        params = {
+            "query": f"{query} {BASE_FILTER}",
+            "format": "json",
+            "pageSize": str(min(page_size, budget - len(out))),
+            "resultType": "core",
+            "cursorMark": cursor,
+        }
+        payload = json.loads(_get(f"{EPMC}/search?{urllib.parse.urlencode(params)}").decode())
+        hits = int(payload.get("hitCount") or 0)
+        results = payload.get("resultList", {}).get("result", [])
+        assert isinstance(results, list)
+        if not results:
+            break
+        out.extend(r for r in results if isinstance(r, dict))
+        print(
+            f"  query {query!r}: {hits} hits, collected {len(out)}",
+            file=sys.stderr,
+        )
+        following = payload.get("nextCursorMark")
+        if following in (None, cursor):
+            break
+        cursor = str(following)
+    return out[:budget]
 
 
 def _xlsx_rows(blob: bytes) -> list[list[str]]:
@@ -309,10 +369,13 @@ def harvest_paper(paper: dict[str, object], cache: Path) -> list[tuple[str, str,
     archive_path = cache / f"{pmcid}.zip"
     if not archive_path.exists():
         try:
-            time.sleep(PAUSE)
             archive_path.write_bytes(_get(f"{EPMC}/{pmcid}/supplementaryFiles"))
         except SystemExit:
             return []
+    if archive_path.stat().st_size > MAX_SUPPLEMENT_BYTES:
+        # Some supplements are raw sequencing archives; they carry no table.
+        archive_path.unlink(missing_ok=True)
+        return []
     try:
         archive = zipfile.ZipFile(archive_path)
     except zipfile.BadZipFile:
@@ -429,29 +492,81 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="also search this serovar by name (repeatable), e.g. --serovar Brikama",
     )
-    parser.add_argument("--page-size", type=int, default=25)
+    parser.add_argument(
+        "--max-papers",
+        type=int,
+        default=150,
+        help="stop after this many papers per general query (default 150)",
+    )
+    parser.add_argument(
+        "--max-serovar-papers",
+        type=int,
+        default=2000,
+        help=(
+            "budget for a targeted --serovar query; rare serovars are cheap to"
+            " exhaust, so this is deliberately high (default 2000)"
+        ),
+    )
+    parser.add_argument(
+        "--refresh-search",
+        action="store_true",
+        help="ignore search_index.json and re-run the Europe PMC queries",
+    )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=8,
+        help="concurrent supplement fetches (default 8; the shared limiter caps"
+        " the request rate, not the thread count)",
+    )
     args = parser.parse_args(argv)
 
     out_dir: Path = args.out
     cache = out_dir / "supplements"
     cache.mkdir(parents=True, exist_ok=True)
 
-    queries = list(DEFAULT_QUERIES)
-    queries += [f'"Salmonella" AND "{name}" AND genome' for name in args.serovar]
+    plans: list[tuple[str, int]] = [(query, args.max_papers) for query in DEFAULT_QUERIES]
+    plans += [(f'"Salmonella" AND "{name}"', args.max_serovar_papers) for name in args.serovar]
 
+    index_path = out_dir / "search_index.json"
     papers: dict[str, dict[str, object]] = {}
-    for query in queries:
-        for paper in search(query, args.page_size):
-            pmcid = str(paper.get("pmcid") or "")
-            if pmcid:
-                papers.setdefault(pmcid, paper)
+    if index_path.is_file() and not args.refresh_search:
+        cached = json.loads(index_path.read_text(encoding="utf-8"))
+        papers = {str(key): value for key, value in cached.items()}
+        print(f"{len(papers)} papers reused from {index_path.name}", file=sys.stderr)
+    else:
+        for query, budget in plans:
+            for paper in search_all(query, budget=budget):
+                pmcid = str(paper.get("pmcid") or "")
+                if pmcid:
+                    papers.setdefault(pmcid, paper)
+        index_path.write_text(json.dumps(papers, indent=1), encoding="utf-8")
+        print(f"{len(papers)} papers indexed -> {index_path.name}", file=sys.stderr)
 
     print(f"{len(papers)} open-access papers with supplements", file=sys.stderr)
+    order = sorted(papers)
+    harvested: dict[str, list[tuple[str, str, str]]] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
+        futures = {pool.submit(harvest_paper, papers[pmcid], cache): pmcid for pmcid in order}
+        for done, future in enumerate(concurrent.futures.as_completed(futures), start=1):
+            pmcid = futures[future]
+            try:
+                harvested[pmcid] = future.result()
+            except Exception as exc:  # pragma: no cover - one paper must not stop the run
+                print(f"  {pmcid}: {type(exc).__name__}: {exc}", file=sys.stderr)
+                harvested[pmcid] = []
+            rows_found = len(harvested[pmcid])
+            if rows_found:
+                print(f"  [{done}/{len(order)}] {pmcid}: {rows_found} rows", file=sys.stderr)
+            elif done % 50 == 0:
+                print(f"  [{done}/{len(order)}] …", file=sys.stderr)
+
     rows: list[tuple[str, str, str, str, str]] = []
     paper_rows: list[list[str]] = []
-    for index, (pmcid, paper) in enumerate(sorted(papers.items()), start=1):
-        harvested = harvest_paper(paper, cache)
-        for accession, serovar, source in harvested:
+    for pmcid in order:
+        paper = papers[pmcid]
+        found = harvested.get(pmcid, [])
+        for accession, serovar, source in found:
             rows.append((accession, serovar, str(paper.get("doi") or ""), pmcid, source))
         paper_rows.append(
             [
@@ -459,10 +574,9 @@ def main(argv: list[str] | None = None) -> int:
                 str(paper.get("doi") or ""),
                 str(paper.get("pubYear") or ""),
                 re.sub(r"<[^>]+>", "", str(paper.get("title") or "")),
-                str(len(harvested)),
+                str(len(found)),
             ]
         )
-        print(f"  [{index}/{len(papers)}] {pmcid}: {len(harvested)} rows", file=sys.stderr)
 
     accession_path = out_dir / "accessions_from_papers.tsv"
     with accession_path.open("w", encoding="utf-8", newline="") as handle:
@@ -476,9 +590,12 @@ def main(argv: list[str] | None = None) -> int:
         writer.writerows(sorted(paper_rows, key=lambda row: -int(row[4])))
     (out_dir / "README.md").write_text(README, encoding="utf-8")
     distinct = {row[1] for row in rows}
+    with_rows = sum(1 for row in paper_rows if int(row[4]) > 0)
     print(
-        f"{accession_path}: {len(set(rows))} (accession, serovar) rows"
-        f" from {len(papers)} papers, {len(distinct)} distinct serovar values",
+        f"{accession_path}: {len(set(rows))} (accession, serovar) rows from"
+        f" {with_rows}/{len(order)} papers with a table"
+        f" ({100 * with_rows / max(1, len(order)):.1f} % yield),"
+        f" {len(distinct)} distinct serovar values",
         file=sys.stderr,
     )
     return 0

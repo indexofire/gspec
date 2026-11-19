@@ -50,6 +50,7 @@ import io
 import re
 import subprocess
 import sys
+import time
 import zipfile
 from collections import defaultdict
 from collections.abc import Iterable
@@ -289,42 +290,60 @@ def select_genomes(
     return sorted(chosen, key=lambda genome: (genome.group, genome.serovar, genome.accession))
 
 
-def _run(command: list[str], **kwargs: Any) -> str:
-    result = subprocess.run(command, capture_output=True, text=True, check=False, **kwargs)
-    if result.returncode != 0:
-        raise SystemExit(f"{' '.join(command)} failed:\n{result.stderr[-2000:]}")
-    return result.stdout
+def _run(command: list[str], *, attempts: int = 3, **kwargs: Any) -> str:
+    """Run one external tool, retrying the flaky ones (NCBI's download stream
+    drops a transfer now and then; a half-downloaded set must not abort a run)."""
+    last = ""
+    for attempt in range(attempts):
+        result = subprocess.run(command, capture_output=True, text=True, check=False, **kwargs)
+        if result.returncode == 0:
+            return result.stdout
+        last = result.stderr[-2000:]
+        if attempt < attempts - 1:
+            print(f"  retry {attempt + 1}: {command[0]}", file=sys.stderr)
+            time.sleep(5 * (attempt + 1))
+    raise SystemExit(f"{' '.join(command)} failed:\n{last}")
 
 
 def download(genomes: list[Genome], work: Path) -> dict[str, Path]:
-    """Fetch genome + CDS for each accession; returns ``base -> genome fasta``."""
+    """Fetch genome + CDS per accession; returns ``accession -> genome fasta``.
+
+    One accession at a time on purpose: a single batched archive is 5-10 MB and
+    NCBI's stream drops mid-transfer on a congested link, which loses the whole
+    set. Per-accession also lets a retry resume just the failed genome.
+    """
     work.mkdir(parents=True, exist_ok=True)
     data = work / "ncbi_dataset" / "data"
-    if not data.is_dir():
-        accessions = "\n".join(genome.accession for genome in genomes) + "\n"
-        accession_file = work / "accessions.txt"
-        accession_file.write_text(accessions, encoding="utf-8")
+    for genome in genomes:
+        if (data / genome.accession).is_dir():
+            continue
+        archive = work / f"{genome.accession}.zip"
         _run(
             [
                 "datasets",
                 "download",
                 "genome",
                 "accession",
-                "--inputfile",
-                str(accession_file),
+                genome.accession,
                 "--include",
                 "genome,cds",
                 "--filename",
-                str(work / "set.zip"),
-            ]
+                str(archive),
+            ],
+            attempts=4,
         )
-        with zipfile.ZipFile(work / "set.zip") as archive:
-            archive.extractall(work)
+        with zipfile.ZipFile(archive) as handle:
+            handle.extractall(work)
+        archive.unlink(missing_ok=True)
+        print(f"  fetched {genome.accession}", file=sys.stderr)
     found: dict[str, Path] = {}
-    for directory in sorted(data.iterdir()):
-        genome = next((p for p in directory.glob("*genomic.fna") if "cds_from" not in p.name), None)
-        if genome is not None:
-            found[directory.name] = genome
+    if data.is_dir():
+        for directory in sorted(data.iterdir()):
+            genome_fasta = next(
+                (p for p in directory.glob("*genomic.fna") if "cds_from" not in p.name), None
+            )
+            if genome_fasta is not None:
+                found[directory.name] = genome_fasta
     return found
 
 
