@@ -51,6 +51,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 DATASETS = "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/taxon/28901/dataset_report"
@@ -451,6 +452,100 @@ here rather than inferring confirmation from catalogue status.
 """
 
 
+def _read_tsv(path: Path) -> list[dict[str, Any]]:
+    """Rows of one of this module's own TSVs (``[]`` when absent)."""
+    if not path.is_file():
+        return []
+    with path.open(encoding="utf-8", newline="") as handle:
+        return [dict(row) for row in csv.DictReader(handle, delimiter="\t")]
+
+
+def _serovar_assemblies(rows: list[dict[str, Any]], serovar: str) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in rows
+        if str(row.get("serovar", "")).lower() == serovar.lower()
+        and str(row.get("accession", "")).startswith(("GCF_", "GCA_"))
+    ]
+
+
+def write_tie_candidates(out_dir: Path, naming_priority: Path) -> Path | None:
+    """Every RefSeq assembly of each serovar that shares a formula (a tie pair).
+
+    The serovar set comes from the panel's own curation —
+    ``naming_priority.json`` lists the pairs the panel cannot separate — so this
+    file follows the database rather than a hand-typed list.
+    """
+    if not naming_priority.is_file():
+        print(f"  (no {naming_priority.name}: skipping the tie-pair list)", file=sys.stderr)
+        return None
+    spec = json.loads(naming_priority.read_text(encoding="utf-8"))
+    rows = _read_tsv(out_dir / "ncbi_refseq_serovars.tsv")
+    if not rows:
+        return None
+    wanted: list[str] = []
+    for rule in spec.get("rules", []):
+        for name in (rule.get("primary"), *(rule.get("others") or [])):
+            if name and name not in wanted:
+                wanted.append(str(name))
+    path = out_dir / "tie_serovars_candidates.tsv"
+    written = 0
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(["accession", "serovar", "assembly_level", "organism_name", "bioproject"])
+        for serovar in wanted:
+            for row in sorted(
+                _serovar_assemblies(rows, serovar), key=lambda r: str(r["accession"])
+            ):
+                writer.writerow(
+                    [
+                        row["accession"],
+                        row["serovar"],
+                        row["assembly_level"],
+                        row["organism_name"],
+                        row["bioproject"],
+                    ]
+                )
+                written += 1
+    print(f"{path}: {written} assemblies over {len(wanted)} tie serovars", file=sys.stderr)
+    return path
+
+
+def write_serovar_leads(out_dir: Path, leads_document: Path) -> Path | None:
+    """Render the curated literature leads (strains of a serovar with no genome)."""
+    if not leads_document.is_file():
+        print(f"  (no {leads_document.name}: skipping the leads table)", file=sys.stderr)
+        return None
+    spec = json.loads(leads_document.read_text(encoding="utf-8"))
+    path = out_dir / f"{spec.get('name', leads_document.stem)}.tsv"
+    columns = [
+        "pmcid",
+        "doi",
+        "isolate",
+        "accessions",
+        "bioproject",
+        "reported_serovar",
+        "what_it_shows",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(columns)
+        for lead in spec.get("leads", []):
+            writer.writerow(
+                [
+                    lead.get("pmcid", ""),
+                    lead.get("doi", ""),
+                    lead.get("isolate", ""),
+                    ";".join(lead.get("accessions") or []),
+                    lead.get("bioproject", ""),
+                    lead.get("reported_serovar", ""),
+                    lead.get("what_it_shows", ""),
+                ]
+            )
+    print(f"{path}: {len(spec.get('leads', []))} curated leads", file=sys.stderr)
+    return path
+
+
 def write_readme(out_dir: Path) -> None:
     (out_dir / "README.md").write_text(README, encoding="utf-8")
 
@@ -458,6 +553,15 @@ def write_readme(out_dir: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=Path.home() / "data" / "sen")
+    parser.add_argument(
+        "--curation-dir",
+        type=Path,
+        default=Path(__file__).resolve().parent,
+        help=(
+            "directory holding the curated documents this step renders"
+            " (naming_priority.json, brikama_leads.json); default: next to this script"
+        ),
+    )
     parser.add_argument(
         "--skip-refseq",
         action="store_true",
@@ -468,6 +572,9 @@ def main(argv: list[str] | None = None) -> int:
     fetch_reference_cultures(args.out)
     if not args.skip_refseq:
         fetch_refseq_serovars(args.out)
+    curation = args.curation_dir
+    write_tie_candidates(args.out, curation / "naming_priority.json")
+    write_serovar_leads(args.out, curation / "brikama_leads.json")
     write_readme(args.out)
     return 0
 

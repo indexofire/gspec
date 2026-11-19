@@ -555,6 +555,35 @@ DEFAULT_QUERIES = (
 )
 
 
+def prune_supplements(out_dir: Path) -> None:
+    """Drop the cached archives that produced no rows.
+
+    A supplement is re-downloadable; its *rows* cache is the thing worth keeping
+    (that is what makes a re-run incremental). One harvest accumulated 3.6 GB of
+    archives of which 0.2 GB belonged to papers with a table.
+    """
+    cache = out_dir / "supplements"
+    if not cache.is_dir():
+        return
+    before = sum(path.stat().st_size for path in cache.glob("*.zip"))
+    removed = 0
+    for archive in cache.glob("*.zip"):
+        rows = _rows_cache(cache, archive.stem)
+        if not rows.is_file():
+            continue
+        with rows.open(encoding="utf-8", newline="") as handle:
+            has_rows = any(True for _ in csv.DictReader(handle, delimiter="\t"))
+        if not has_rows:
+            archive.unlink()
+            removed += 1
+    after = sum(path.stat().st_size for path in cache.glob("*.zip"))
+    print(
+        f"pruned {removed} supplements with no table"
+        f" ({before / 1e9:.2f} GB -> {after / 1e9:.2f} GB)",
+        file=sys.stderr,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=Path.home() / "data" / "sen" / "published")
@@ -578,6 +607,11 @@ def main(argv: list[str] | None = None) -> int:
             "budget for a targeted --serovar query; rare serovars are cheap to"
             " exhaust, so this is deliberately high (default 2000)"
         ),
+    )
+    parser.add_argument(
+        "--prune-supplements",
+        action="store_true",
+        help="only delete cached archives whose paper produced no rows, then exit",
     )
     parser.add_argument(
         "--count-only",
@@ -604,6 +638,10 @@ def main(argv: list[str] | None = None) -> int:
 
     plans: list[tuple[str, int]] = [(query, args.max_papers) for query in DEFAULT_QUERIES]
     plans += [(f'"Salmonella" AND "{name}"', args.max_serovar_papers) for name in args.serovar]
+
+    if args.prune_supplements:
+        prune_supplements(out_dir)
+        return 0
 
     if args.count_only:
         for query, _budget in plans:

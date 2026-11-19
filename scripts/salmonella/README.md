@@ -297,12 +297,25 @@ rather than counted as wins.
 
 | script | what it does |
 | --- | --- |
-| `import_upstream.py` | build a panel from SISTR/SeqSero2 (`--bundle`, `--kmerdb`, `--o-discriminators`, `--cross-labels`, `--extra-refs`) |
-| `build_o_discriminators.py` | extract the O9/O2 `rfbS` pair from RefSeq annotations |
+| `import_upstream.py` | build a panel from SISTR/SeqSero2 (`--bundle`, `--kmerdb`, `--o-discriminators`, `--o-subfactor`, `--naming-priority`, `--cross-labels`, `--extra-refs`) |
+| `build_o_discriminators.py` | extract the SNP-level O discriminators from RefSeq annotations: A/D1 `rfbS`, D1/D2 `wbaV`, E1/E4 `wbaP` |
+| `build_o_subfactor.py` | extract the O:22/O:23 sub-factor genes (Poona O:22, Cubana O:23) and the Sdf I region |
+| `build_subspecies_kmers.py` | differential k-mer signatures for the six subspecies (one NCBI reference each) |
 | `audit_cross_labels.py` | find references whose k-mer sets overlap across antigen labels |
 | `build_h_diversity.py` | extract novel H alleles from local assemblies |
 | `regress_serovar.py` | measure accuracy against `sistr --no-cgmlst -f tab` |
 | `sketch_tiebreak.py` | measure the anchored-sketch signal itself |
+| `build_sen_dataset.py` | **one entry point** for `~/data/sen`: runs the three steps below in order |
+| `fetch_serotype_evidence.py` | the two public layers (`reference_cultures.tsv`, `ncbi_refseq_serovars.tsv`) plus the curated `tie_serovars_candidates.tsv` and `brikama_leads.tsv` |
+| `harvest_published_serotypes.py` | mine open-access papers for accession+serovar tables (`published/`); incremental (`--count-only`, `--prune-supplements`) |
+| `merge_compare_serotypes.py` | `merge` the layers into `merged_evidence.tsv` + `label_conflicts.tsv`; `compare` two serovar groups for a discriminating rfb cluster |
+
+The serotype-evidence dataset lives **outside** the repository (`~/data/sen/`, ~390 MB
+with the supplement caches) and every file in it is produced by one of these
+scripts — nothing is hand-edited in. Curated inputs that are *data* rather than
+code sit next to them: `naming_priority.json` (which name to report when a formula
+names several, with its evidence) and `brikama_leads.json` (strains of a serovar
+that has no public genome).
 
 ## Current state after the fixes (spot check)
 

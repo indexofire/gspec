@@ -1,0 +1,50 @@
+{
+  "schema": "gspec.serovar_leads/1",
+  "name": "brikama_leads",
+  "description": "Strains of a serovar that has no public genome, read out of the literature. Brikama is O:8,20 and shares its formula with Goldcoast (O:6,8); it has 0 RefSeq assemblies, 0 catalogue strains and 0 machine-readable accession+serovar rows, so the only route to a genome is the isolates recorded here.",
+  "license": "gspec curation (reading published tables and text); the strains belong to their submitters",
+  "updated": "2026-11-19",
+  "caveat": "A serovar NAME can be a place name: 'Brikama' is also a town in The Gambia, so a text search returns 14 papers of which most are about a health centre, not the serovar. Only serovar-style mentions are kept here.",
+  "leads": [
+    {
+      "pmcid": "PMC8552638",
+      "doi": "10.1128/Spectrum.00248-21",
+      "isolate": "A030_06/19",
+      "accessions": ["SRR13527948", "SAMN16824822"],
+      "bioproject": "PRJNA678820",
+      "reported_serovar": "Goldcoast",
+      "what_it_shows": "Submitted as S. Goldcoast; the authors' own in-silico call was 'S. Goldcoast or S. Brikama' for the same isolate, i.e. the identical tie, resolved phenotypically to Goldcoast.",
+      "source": "supplementary spectrum00248-21_supp_2_seq6.xlsx, Table 1"
+    },
+    {
+      "pmcid": "PMC9150820",
+      "doi": "10.3389/fmicb.2022.882647",
+      "isolate": "JL043518201500171",
+      "accessions": ["SAMN26764377"],
+      "bioproject": "",
+      "reported_serovar": "Goldcoast or Brikama",
+      "what_it_shows": "The serotype column is headed 'Predicted serotype after confirmation by serum agglutination' and reads literally 'Goldcoast or Brikama' - a reference laboratory ran agglutination and still could not split the pair.",
+      "source": "Table_3.XLSX"
+    },
+    {
+      "pmcid": "PMC9150820",
+      "doi": "10.3389/fmicb.2022.882647",
+      "isolate": "JL043510201400119",
+      "accessions": ["SAMN26764405"],
+      "bioproject": "",
+      "reported_serovar": "Goldcoast or Brikama",
+      "what_it_shows": "Same column, same value: agglutination-confirmed, still ambiguous.",
+      "source": "Table_3.XLSX"
+    },
+    {
+      "pmcid": "PMC9440507",
+      "doi": "10.3389/fmicb.2022.1029190",
+      "isolate": "(5 isolates, ids not in the full text)",
+      "accessions": [],
+      "bioproject": "",
+      "reported_serovar": "Brikama",
+      "what_it_shows": "Brikama is 4.6 % (n = 5) of a Gambian NTS collection and is overrepresented in Cluster 6, so five Brikama isolates exist in a published collection.",
+      "source": "full text results section"
+    }
+  ]
+}
