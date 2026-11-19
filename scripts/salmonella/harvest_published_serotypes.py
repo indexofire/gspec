@@ -50,6 +50,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
+from typing import Any
 
 EPMC = "https://www.ebi.ac.uk/europepmc/webservices/rest"
 PAUSE = 0.4
@@ -194,6 +195,13 @@ def search(query: str, page_size: int = 25) -> list[dict[str, object]]:
     results = payload.get("resultList", {}).get("result", [])
     assert isinstance(results, list)
     return [r for r in results if isinstance(r, dict)]
+
+
+def query_hits(query: str) -> int:
+    """How many open-access papers with a supplement match one query."""
+    params = {"query": f"{query} {BASE_FILTER}", "format": "json", "pageSize": "1"}
+    payload = json.loads(_get(f"{EPMC}/search?{urllib.parse.urlencode(params)}").decode())
+    return int(payload.get("hitCount") or 0)
 
 
 def search_all(query: str, *, budget: int, page_size: int = 50) -> list[dict[str, object]]:
@@ -360,14 +368,51 @@ def harvest_table(rows: list[list[str]]) -> tuple[list[tuple[str, str]], str]:
     return [], ""
 
 
+def _too_large(url: str) -> bool:
+    """True when the server advertises a body bigger than the supplement cap."""
+    try:
+        _throttle()
+        request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            length = response.headers.get("Content-Length")
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+    return bool(length) and length.isdigit() and int(length) > MAX_SUPPLEMENT_BYTES
+
+
+def _rows_cache(cache: Path, pmcid: str) -> Path:
+    return cache / f"{pmcid}.rows.tsv"
+
+
 def harvest_paper(paper: dict[str, object], cache: Path) -> list[tuple[str, str, str]]:
-    """``[(accession, serovar, "file:columns")]`` from one paper's supplement."""
+    """``[(accession, serovar, "file:columns")]`` from one paper's supplement.
+
+    The extracted rows are cached per paper (an empty file means "parsed, nothing
+    usable"), so adding one more serovar query re-parses only the new papers
+    instead of the whole literature. A re-run over 1,300 papers then takes
+    seconds rather than hours.
+    """
     pmcid = str(paper.get("pmcid") or "")
     doi = str(paper.get("doi") or "")
     if not pmcid:
         return []
+    cached_rows = _rows_cache(cache, pmcid)
+    if cached_rows.is_file():
+        with cached_rows.open(encoding="utf-8", newline="") as handle:
+            return [
+                (row["accession"], row["serovar"], row["source"])
+                for row in csv.DictReader(handle, delimiter="\t")
+            ]
     archive_path = cache / f"{pmcid}.zip"
     if not archive_path.exists():
+        # Ask for the size first: one harvest hit a 37 MB supplement and spent a
+        # minute downloading it to learn it holds no table.
+        if _too_large(f"{EPMC}/{pmcid}/supplementaryFiles"):
+            with _rows_cache(cache, pmcid).open("w", encoding="utf-8", newline="") as handle:
+                csv.writer(handle, delimiter="\t", lineterminator="\n").writerow(
+                    ["accession", "serovar", "source"]
+                )
+            return []
         try:
             archive_path.write_bytes(_get(f"{EPMC}/{pmcid}/supplementaryFiles"))
         except SystemExit:
@@ -392,6 +437,10 @@ def harvest_paper(paper: dict[str, object], cache: Path) -> list[tuple[str, str,
         pairs, label = harvest_table(rows)
         for accession, serovar in pairs:
             out.append((accession, serovar, f"{name}:{label}"))
+    with _rows_cache(cache, pmcid).open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(["accession", "serovar", "source"])
+        writer.writerows(sorted(set(out)))
     if out:
         print(f"  {pmcid} ({doi}): {len(out)} rows", file=sys.stderr)
     return out
@@ -471,6 +520,23 @@ Two caveats the numbers force:
   a different species group), i.e. a reminder that papers and the WHO table do not
   always agree.
 
+## The harvest is incremental and resumable
+
+Two caches make a re-run cheap, which matters because the literature is large and
+the network is not:
+
+* `search_index.json` stores the result set **per query**, so adding one serovar
+  keyword searches only that keyword instead of re-crawling every query.
+* `supplements/<PMCID>.rows.tsv` stores the **rows extracted from one paper** (an
+  empty file means "parsed, nothing usable"). A paper is never parsed twice, and a
+  killed run resumes where it stopped.
+
+Only papers that have never been parsed are fetched. The delivered state
+(69 papers with a table, 78,342 accession+serovar rows) came from a complete run;
+481 papers carry a row cache, and the remaining ones from the 1,317-paper index
+are pending. A `--max-papers` budget per query bounds the crawl, so "the whole
+literature" is a knob, not a prerequisite.
+
 ## Refresh
 
 ```bash
@@ -514,6 +580,11 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--count-only",
+        action="store_true",
+        help="print the hit count of every query and exit (no downloads)",
+    )
+    parser.add_argument(
         "--refresh-search",
         action="store_true",
         help="ignore search_index.json and re-run the Europe PMC queries",
@@ -534,20 +605,41 @@ def main(argv: list[str] | None = None) -> int:
     plans: list[tuple[str, int]] = [(query, args.max_papers) for query in DEFAULT_QUERIES]
     plans += [(f'"Salmonella" AND "{name}"', args.max_serovar_papers) for name in args.serovar]
 
+    if args.count_only:
+        for query, _budget in plans:
+            print(f"{query_hits(query):7}  {query}")
+        return 0
+
     index_path = out_dir / "search_index.json"
-    papers: dict[str, dict[str, object]] = {}
+    index: dict[str, Any] = {"queries": {}, "papers": {}}
     if index_path.is_file() and not args.refresh_search:
-        cached = json.loads(index_path.read_text(encoding="utf-8"))
-        papers = {str(key): value for key, value in cached.items()}
-        print(f"{len(papers)} papers reused from {index_path.name}", file=sys.stderr)
-    else:
-        for query, budget in plans:
-            for paper in search_all(query, budget=budget):
-                pmcid = str(paper.get("pmcid") or "")
-                if pmcid:
-                    papers.setdefault(pmcid, paper)
-        index_path.write_text(json.dumps(papers, indent=1), encoding="utf-8")
-        print(f"{len(papers)} papers indexed -> {index_path.name}", file=sys.stderr)
+        loaded = json.loads(index_path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict) and "papers" in loaded:
+            index = loaded
+        else:  # older flat format: keep the papers, re-run every query
+            index = {"queries": {}, "papers": dict(loaded)}  # type: ignore[arg-type]
+
+    papers: dict[str, Any] = dict(index.get("papers") or {})
+    known_queries: dict[str, Any] = dict(index.get("queries") or {})
+    for query, budget in plans:
+        if query in known_queries and not args.refresh_search:
+            # Already searched: reuse its result set, so adding one more serovar
+            # query does not re-crawl the whole literature.
+            pmcids = [str(pmcid) for pmcid in known_queries[query]]
+            print(f"  query {query!r}: {len(pmcids)} papers (cached)", file=sys.stderr)
+            continue
+        found = search_all(query, budget=budget)
+        pmcids = []
+        for paper in found:
+            pmcid = str(paper.get("pmcid") or "")
+            if pmcid:
+                pmcids.append(pmcid)
+                papers.setdefault(pmcid, paper)
+        known_queries[query] = sorted(set(pmcids))
+    index_path.write_text(
+        json.dumps({"queries": known_queries, "papers": papers}, indent=1), encoding="utf-8"
+    )
+    print(f"{len(papers)} papers indexed -> {index_path.name}", file=sys.stderr)
 
     print(f"{len(papers)} open-access papers with supplements", file=sys.stderr)
     order = sorted(papers)

@@ -411,6 +411,37 @@ of the other. First run (O:6 question, 11 genomes, 2,640 CDS, 2,065 clusters):
 **no perfect group-splitting cluster** — matching the manual analysis, which is
 the point of having the tool.
 
+## Brikama: no genome, but the literature has the strains (2026-11-19)
+
+Brikama is a rare serovar **whose name collides with Brikama, a town in The
+Gambia** — a text search for it returns 14 open-access papers, and most are
+about patients from that health centre, not the serovar. Filtering to
+serovar-style mentions leaves two real leads, both recorded in
+`published/brikama_leads.tsv`:
+
+| paper | what it says |
+| --- | --- |
+| PMC8552638 | isolate **A030_06/19**: submitted serovar **S. Goldcoast**
+(`8:r:l,w`); the authors' own in-silico call was "**S. Goldcoast or
+S. Brikama**" — the exact tie gspec hits, resolved phenotypically to Goldcoast |
+| PMC9440507 | **Brikama 4.6 % (n = 5)** of a Gambian NTS collection,
+"overrepresented in Cluster 6" — five isolates exist in a published collection |
+
+So the picture is:
+
+| layer | Brikama found |
+| --- | --- |
+| catalogue strains (18,970 RefSeq assemblies filtered to a real `culture_collection`) | **0** |
+| asserted labels (all 18,970 RefSeq assemblies) | **0** |
+| machine-readable paper tables (1,199 papers mined) | **0 rows** |
+| paper *text* | **2 papers, 6 isolates** — actionable, but no accessions in the text |
+| SISTR's reference list (84,463 genomes / 780 serovars) | **0** |
+
+Nothing upstream ships a Brikama genome; the strains are in the literature and in
+a laboratory collection. **Chasing those isolates is the only route**, and the
+PMC8552638 evidence is worth noting for the tie itself: when a laboratory had to
+commit, it said **Goldcoast**.
+
 ## What would actually be gold standard
 
 Agglutination panels from a national reference laboratory (WHO Collaborating
