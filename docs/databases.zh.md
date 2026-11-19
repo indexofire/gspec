@@ -404,8 +404,8 @@ manifest 一旦存在，重跑都是无操作。`db list` 在物化前显示 `bu
 ```console
 $ gspec screen isolate.fa --db cje_cps --output cj.tsv --quiet
 $ gspec typing cj.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-isolate.fa	penner_cps	HS4 complex (HS4/13/43/50/62/65)	HS4A;lpxA	high	1.0000	HS16 (0.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+isolate.fa	penner_cps	HS4 complex (HS4/13/43/50/62/65)	-	HS4A;lpxA	high	1.0000	HS16 (0.0000)	...
 ```
 
 面板能判什么、不能判什么，都写在规则里而不是藏在文档外：

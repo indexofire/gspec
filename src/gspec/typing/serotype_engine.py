@@ -49,19 +49,43 @@ def _evidence(call: GeneCall) -> float:
     return (call.identity_pct / 100.0) * (call.coverage_pct / 100.0)
 
 
+#: A hit this covered but at ``TRUNCATED_IDENTITY`` or better is a locus the
+#: assembly broke, not a weak match: rank it by the identity it shows, exactly
+#: like the partial rule below. Measured on two published genomes whose fliC and
+#: fljB genes sit across contig boundaries (Bovismorbificans 6,8,20:r:1,5): the
+#: true `r` (99.8 % over 68.6 %) and `1,5` (99.3-100 % over 77-79 %) must not be
+#: discounted by their missing middle, while a cross-reactive `i`/`e,n,z15`
+#: reference stays below the identity bar and keeps identity x coverage.
+TRUNCATED_COVERAGE = 90.0
+TRUNCATED_IDENTITY = 98.0
+
+#: How much more identical a partial hit must be than the best full-length hit
+#: in its family to keep the identity-only rank. A cross-reactive partial aligns
+#: only the conserved ends of a sibling antigen, so it is *less* identical than
+#: the true full-length allele even when its identity looks high (measured:
+#: `i` 99.30 % vs `r` 99.82 %, `e,n,z15` 96.90 % vs `1,5` 99.25 %).
+PARTIAL_IDENTITY_MARGIN = 0.5
+
+
 def _antigen_score(call: GeneCall, document: SerotypeDocumentV2) -> float:
     """How strongly one allele supports its antigen.
 
     Usually identity x coverage. A hit that only qualifies through the partial
-    rule is truncated by the assembly, not by nature, so it is ranked by the
-    identity it does show — otherwise a 99.85 %-identical 52 %-covered `wzx`
-    loses to a 95 %-identical full-length cross-reactive sibling and the
-    serogroup flips (measured on a real D1 genome). It still cannot be perfect.
+    rule — or a full-length hit truncated below ``TRUNCATED_COVERAGE`` at
+    ``TRUNCATED_IDENTITY`` or better — is truncated by the assembly, not by
+    nature, so it is ranked by the identity it does show; otherwise a
+    99.85 %-identical 52 %-covered `wzx` loses to a 95 %-identical full-length
+    cross-reactive sibling and the serogroup flips (measured on a real D1
+    genome). A cross-reactive partial is demoted back to identity x coverage by
+    ``_family_call`` (``PARTIAL_IDENTITY_MARGIN``). It still cannot be perfect.
     """
-    if _partial_evidence(call, document) and not _present(
-        call, document.coverage_floor, document.identity_floor
-    ):
-        return call.identity_pct / 100.0
+    identity = call.identity_pct / 100.0
+    if _present(call, document.coverage_floor, document.identity_floor):
+        if call.coverage_pct < TRUNCATED_COVERAGE and call.identity_pct >= TRUNCATED_IDENTITY:
+            return identity
+        return _evidence(call)
+    if _partial_evidence(call, document):
+        return identity
     return _evidence(call)
 
 
@@ -220,6 +244,12 @@ class _FamilyCall:
     #: means the family is decided; a longer tuple feeds the equal-tie lookup
     #: pass instead of letting declaration order pick a winner.
     equal_ties: tuple[str, ...] = ()
+    #: Every name within the document's ``margin`` BEFORE the sketch/length
+    #: tie-break narrows the field. The O family's SNP discriminators consult
+    #: this set: an anchored sketch may collapse an A/D1 margin tie to one name,
+    #: and the marker (rfbS/wbaV) is stronger evidence than a k-mer containment
+    #: score, so it must still see the pair the sketch hid.
+    margin_ties: tuple[str, ...] = ()
     #: The winning allele's alignment evidence (0.0 on an absent family), for
     #: the per-family note: which allele named the antigen, at what identity
     #: and coverage.
@@ -263,7 +293,11 @@ def _same_class(
 
 
 def _family_call(
-    family: AntigenFamily, calls: Mapping[str, GeneCall], document: SerotypeDocumentV2
+    family: AntigenFamily,
+    calls: Mapping[str, GeneCall],
+    document: SerotypeDocumentV2,
+    *,
+    exclude: frozenset[str] = frozenset(),
 ) -> _FamilyCall:
     """The winning antigen of one family: (name|None, score, winning gene ids).
 
@@ -271,9 +305,16 @@ def _family_call(
     metric); alleles within the document's ``margin`` of the winner make the
     family ambiguous (None), which is how near-identical alleles are pinned
     down — SeqSero2 compares two such scores by hand, gspec by the margin.
+
+    ``exclude`` removes whole antigens by name from the ranking. It exists for
+    the phase guard's fallback: when a cross-reacting allele wins a phase family
+    and the duplicate-phase rule drops it, the family is re-called without that
+    antigen so the runner-up (the real allele) can be named.
     """
     scored: list[_Ranked] = []
     for entry in family.entries:
+        if entry.name in exclude:
+            continue
         best = 0.0
         winners: tuple[str, ...] = ()
         sketch: float | None = None
@@ -314,6 +355,21 @@ def _family_call(
     if not scored:
         return _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
     scored.sort(key=lambda item: item.score, reverse=True)
+    # A cross-reactive partial aligns only a sibling antigen's conserved ends, so
+    # its identity looks high while it covers half the locus (measured: `i`
+    # 99.30 % over 51 % against a true `r` at 99.82 % over 76.8 %). It may keep
+    # the identity-only rank only when it is meaningfully MORE identical than the
+    # best full-length hit; otherwise it is ranked by identity x coverage.
+    best_full_identity = max((item.identity_pct for item in scored if item.full), default=0.0)
+    if best_full_identity > 0.0:
+        adjusted = [
+            replace(item, score=item.identity_pct * item.coverage_pct / 10000.0)
+            if not item.full and item.identity_pct < best_full_identity + PARTIAL_IDENTITY_MARGIN
+            else item
+            for item in scored
+        ]
+        if any(new is not old for new, old in zip(adjusted, scored, strict=True)):
+            scored = sorted(adjusted, key=lambda item: item.score, reverse=True)
     if family.key in _PHASE_FAMILIES and scored[0].score < document.phase_floor:
         # Below the naming bar a phase is absent, not weak: monophasic genomes
         # carry cross-reactions that would otherwise invent a second phase.
@@ -322,7 +378,12 @@ def _family_call(
         )
     names = {item.name for item in scored}
     cutoff = scored[0].score - document.margin
-    tied = _sketch_break([item for item in scored if item.score >= cutoff])
+    margin = [item for item in scored if item.score >= cutoff]
+    # The pre-tie-break candidates, kept for the O SNP discriminators: a marker
+    # is stronger evidence than the sketch and must still see a pair the sketch
+    # collapsed to one name (A/D1 on `rfbS`, measured on a real D1 genome).
+    margin_ties = tuple(dict.fromkeys(item.name for item in margin))
+    tied = _sketch_break(margin)
     if family.key == "o" and len(tied) > 1:
         # Length-aware tie-break for the O family: within the margin, a full
         # longer gene (the real wzx/wzy) beats a shorter cross-reacting paralog
@@ -349,6 +410,7 @@ def _family_call(
         ambiguous=len(ties) > 1,
         ties=ties,
         equal_ties=equal_ties,
+        margin_ties=margin_ties,
         identity_pct=best.identity_pct,
         coverage_pct=best.coverage_pct,
         length=best.length,
@@ -396,7 +458,7 @@ def _numeric_o(
 
 def _drop_duplicate_phase(
     h1: _FamilyCall, h2: _FamilyCall
-) -> tuple[_FamilyCall, _FamilyCall, str | None, bool]:
+) -> tuple[_FamilyCall, _FamilyCall, str | None, bool, tuple[str, str] | None]:
     """H1 and H2 cannot carry the same antigen — drop the weaker phase.
 
     The two phases are different flagellin genes (`fliC` / `fljB`), so an identical
@@ -408,10 +470,12 @@ def _drop_duplicate_phase(
     The weaker phase loses and the survivor is returned unchanged. A tie cannot
     say which one is the cross-reaction, so the drop is then by convention and the
     caller must cap confidence: the third element is the note to add, the fourth
-    says "this needed a resolution".
+    says "this needed a resolution", and the fifth names what was dropped
+    (``(family, antigen)``) so the caller can re-call that phase from the alleles
+    that remain instead of reporting a blank phase.
     """
     if h1.name is None or h2.name is None or h1.name != h2.name:
-        return h1, h2, None, False
+        return h1, h2, None, False, None
     h2_loses = h1.score >= h2.score
     dropped, kept = (h2, h1) if h2_loses else (h1, h2)
     label, other = ("H2", "H1") if h2_loses else ("H1", "H2")
@@ -427,11 +491,15 @@ def _drop_duplicate_phase(
         genes=(),
         ties=(),
         equal_ties=(),
+        margin_ties=(),
         ambiguous=False,
         identity_pct=0.0,
         coverage_pct=0.0,
     )
-    return (kept, blank, note, tie) if h2_loses else (blank, kept, note, tie)
+    dropped_info = ("h2", str(dropped.name)) if h2_loses else ("h1", str(dropped.name))
+    if h2_loses:
+        return kept, blank, note, tie, dropped_info
+    return blank, kept, note, tie, dropped_info
 
 
 def _reconcile_o(wzx: _FamilyCall, wzy: _FamilyCall) -> _FamilyCall:
@@ -449,14 +517,22 @@ def _reconcile_o(wzx: _FamilyCall, wzy: _FamilyCall) -> _FamilyCall:
         return wzx
     if wzx.name == wzy.name:
         merged_ties = tuple(dict.fromkeys((*wzx.ties, *wzy.ties)))
-        return replace(wzx, ties=merged_ties, ambiguous=len(merged_ties) > 1)
+        merged_margin = tuple(dict.fromkeys((*wzx.margin_ties, *wzy.margin_ties)))
+        return replace(
+            wzx,
+            ties=merged_ties,
+            margin_ties=merged_margin,
+            ambiguous=len(merged_ties) > 1,
+        )
     if _same_locus(wzx, wzy):
         # Same physical gene: keep both names live so a discriminator (or the
         # honest "ambiguous" answer) decides, never the gene's length.
         merged_ties = tuple(dict.fromkeys((*wzx.ties, *wzy.ties)))
+        merged_margin = tuple(dict.fromkeys((*wzx.margin_ties, *wzy.margin_ties)))
         return replace(
             wzx if wzx.score >= wzy.score else wzy,
             ties=merged_ties,
+            margin_ties=merged_margin,
             ambiguous=len(merged_ties) > 1,
         )
     wzx_evidence = wzx.score * wzx.length
@@ -951,7 +1027,8 @@ def _discriminate_o(
     a point and the honest answer stays "ambiguous".
     """
     specs = o_discriminator_specs(document)
-    if not specs or len(family_call.ties) < 2:
+    candidates = family_call.margin_ties or family_call.ties
+    if not specs or len(candidates) < 2:
         return None
     result: _DiscriminatorResult | None = None
     for spec in specs:
@@ -972,7 +1049,8 @@ def _apply_discriminator(
     spec: ODiscriminator,
 ) -> _DiscriminatorResult | None:
     """One discriminator's verdict, or None when the tie does not span its names."""
-    contested = [name for name in family_call.ties if name in spec.favours]
+    candidates = family_call.margin_ties or family_call.ties
+    contested = [name for name in candidates if name in spec.favours]
     if len(contested) < 2:
         return None
     scored: dict[str, float] = {}
@@ -1017,7 +1095,13 @@ def _apply_discriminator(
     return _DiscriminatorResult(
         # The marker settled the pair, so the family is decided again — the
         # exact-formula call may fire with the marker's name.
-        replace(family_call, name=winner, ties=(winner,), equal_ties=(winner,)),
+        replace(
+            family_call,
+            name=winner,
+            ties=(winner,),
+            equal_ties=(winner,),
+            margin_ties=(winner,),
+        ),
         [f"{winner} over {loser}: {marker} gap {gap:.2f} pp"],
     )
 
@@ -1186,10 +1270,27 @@ def _class_exact_serovars(
     return tuple(found)
 
 
+def _with_demoted(call: _FamilyCall, extra: tuple[str, ...]) -> _FamilyCall:
+    """Keep a phase-demoted antigen visible as a candidate while the family's
+    own locus is weak.
+
+    The phase assignment is solid, but the family's own locus is weak: this is
+    where erasing the demoted name loses the serovar (Braenderup's `e,h`
+    references fit its fljB locus better than its own fliC, at 0.86). A family
+    the phase floor already marked absent (a monophasic genome) is left alone:
+    resurrecting the demoted name would invent a second phase.
+    """
+    if call.name is None or not extra or call.score >= DEMOTED_SCORE_FLOOR:
+        return call
+    merged = tuple(dict.fromkeys((*call.ties, *extra)))
+    return replace(call, ties=merged, ambiguous=len(merged) > 1)
+
+
 def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) -> SchemeCall:
     """Ranked antigen families, then the formula table."""
     control = _control_present(calls, document)
     calls, demoted = _separate_phases(calls, document)
+    families = {family.key: family for family in document.antigens}
     empty = _FamilyCall(name=None, score=0.0, genes=(), perfect=False, ambiguous=False)
     resolved: dict[str, _FamilyCall] = {
         family.key: (
@@ -1201,19 +1302,8 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
     }
     for family_key, extra in demoted.items():
         call = resolved.get(family_key)
-        if call is None or not extra or call.score >= DEMOTED_SCORE_FLOOR:
-            continue
-        if call.name is None:
-            # The phase floor already said this family is absent (a monophasic
-            # genome): resurrecting the demoted name would invent a second phase
-            # and pull in every serovar sharing the first one.
-            continue
-        # The phase assignment is solid, but the family's own locus is weak: this
-        # is where erasing the demoted name loses the serovar (Braenderup's `e,h`
-        # references fit its fljB locus better than its own fliC, at 0.86). Keep the
-        # name as a candidate only while the remaining evidence is poor.
-        merged = tuple(dict.fromkeys((*call.ties, *extra)))
-        resolved[family_key] = replace(call, ties=merged, ambiguous=len(merged) > 1)
+        if call is not None:
+            resolved[family_key] = _with_demoted(call, extra)
     o = resolved.get("o", empty)
     o_before = o
     discriminator = _discriminate_o(o, calls, document)
@@ -1229,7 +1319,35 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
     h1 = resolved.get("h1", empty)
     h2 = resolved.get("h2", empty)
     # An identical antigen in both phases is a cross-reaction, not a serovar.
-    h1, h2, phase_note, phase_tie = _drop_duplicate_phase(h1, h2)
+    duplicate: _FamilyCall | None = None
+    if h1.name is not None and h1.name == h2.name:
+        duplicate = h2 if h1.score >= h2.score else h1
+    h1, h2, phase_note, phase_tie, phase_drop = _drop_duplicate_phase(h1, h2)
+    if phase_drop is not None:
+        # The duplicate was the WINNER, not the only evidence: re-call that phase
+        # without it so the runner-up — the phase's real antigen — is named. A
+        # cross-reacting `l,v` on the `fliC` locus otherwise blanked a genuine
+        # `fljB` 1,7 and turned `9,12:l,v:1,7` into `9,12:l,v:-` (real genome).
+        dropped_key, dropped_name = phase_drop
+        family = families.get(dropped_key)
+        if family is not None:
+            rec_call = _family_call(family, calls, document, exclude=frozenset({dropped_name}))
+            # A runner-up on the cross-reaction's OWN physical gene is another
+            # reading of that gene, not independent phase evidence (a monophasic
+            # genome's `fliC` locus scores in the H2 pool too). Unknown loci
+            # cannot be disproved and fall back to the phase floor alone.
+            independent = duplicate is None or not _same_locus(duplicate, rec_call)
+            if rec_call.name is not None and independent:
+                extra = tuple(name for name in demoted.get(dropped_key, ()) if name != dropped_name)
+                rec_call = _with_demoted(rec_call, extra)
+                phase_note = (
+                    f"{phase_note}; {dropped_key.upper()} re-called as"
+                    f" {rec_call.name} ({rec_call.score:.4f}) from the remaining alleles"
+                )
+                if dropped_key == "h1":
+                    h1 = rec_call
+                else:
+                    h2 = rec_call
     if phase_note is not None:
         resolved["h1"], resolved["h2"] = h1, h2
     components = tuple(
@@ -1287,8 +1405,16 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             confidence="low",
             notes=("control gene absent",),
         )
+    subspecies = _detect_subspecies(calls)
+    numeric_map = document.o_numeric.get(subspecies or "enterica") or document.o_numeric.get(
+        "enterica", {}
+    )
+    numeric_o = numeric_map.get(o.name, o.name) if o.name is not None else None
+    formula = (
+        f"{numeric_o or FALLBACK_PHASE}:{h1.name or FALLBACK_PHASE}:{h2.name or FALLBACK_PHASE}"
+    )
     notes = [
-        f"formula {o.name or '-'}:{h1.name or '-'}:{h2.name or '-'}",
+        f"formula {formula}",
         *(
             f"{family_key.upper()}: {call.name or '-'}"
             + (
@@ -1322,7 +1448,6 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         notes.append(f"O group {o.name} = O:{numeric_group}")
     observed = (o.name, h1.name or FALLBACK_PHASE, h2.name or FALLBACK_PHASE)
     score = max(o.score, h1.score, h2.score)
-    subspecies = _detect_subspecies(calls)
     if subspecies is not None and subspecies != "enterica":
         # Non-enterica subspecies are reported by their own formula rows (the
         # Kauffmann-White ``NUMERAL O:H1:H2`` names), looked up by the H phases
@@ -1335,17 +1460,14 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             # Several rows share the H phases: disambiguate by the resolved O
             # serogroup, which maps consistently for most non-enterica rows.
             candidates = _lookup_subspecies_serovar(document, subspecies, h1.name, h2.name, o.name)
-        if candidates:
-            formula = candidates[0]
-        else:
-            numeric = document.o_numeric.get(subspecies) or document.o_numeric.get("enterica", {})
-            numeric_o = numeric.get(o.name, o.name) if o.name else "-"
-            formula = f"{numeral} {numeric_o}:{h1.name or '-'}:{h2.name or '-'}"
+        designation = candidates[0] if candidates else f"{numeral} {formula}"
         note = (
-            f"subspecies {subspecies} ({numeral}) outside the enterica panel; reported as {formula}"
+            f"subspecies {subspecies} ({numeral}) outside the enterica panel;"
+            f" reported as {designation}"
         )
         return SchemeCall(
-            phenotype=formula,
+            phenotype=designation,
+            antigenic_formula=formula,
             score=round(score, 4),
             confidence=_confidence(widened=False, shared=len(candidates) > 1, evidence_only=True),
             components=components,
@@ -1374,6 +1496,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             notes.append("formula matched several serovars after widening")
             return SchemeCall(
                 phenotype=None,
+                antigenic_formula=formula,
                 score=round(score, 4),
                 confidence="ambiguous",
                 components=components,
@@ -1392,6 +1515,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
                     notes.extend(_special_notes(winner, calls, document))
                     return SchemeCall(
                         phenotype=winner,
+                        antigenic_formula=formula,
                         score=round(score, 4),
                         # A serovar-level tie broken by dedicated markers: real
                         # evidence, but a resolved ambiguity rather than a
@@ -1407,6 +1531,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         notes.extend(_special_notes(exact_serovars[0], calls, document))
         return SchemeCall(
             phenotype=exact_serovars[0],
+            antigenic_formula=formula,
             score=round(score, 4),
             confidence=_confidence(widened=class_exact, shared=len(exact_serovars) > 1),
             components=components,
@@ -1443,6 +1568,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
                 # serovar, so the call stands (with the tie on record).
                 return SchemeCall(
                     phenotype=tied_serovars[0],
+                    antigenic_formula=formula,
                     score=round(score, 4),
                     confidence=_confidence(widened=False, shared=False),
                     components=components,
@@ -1450,6 +1576,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
                 )
             return SchemeCall(
                 phenotype=None,
+                antigenic_formula=formula,
                 score=round(score, 4),
                 confidence="ambiguous",
                 components=components,
@@ -1479,6 +1606,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         notes.extend(_special_notes(serovars[0], calls, document))
         return SchemeCall(
             phenotype=serovars[0],
+            antigenic_formula=formula,
             score=round(score, 4),
             confidence=_confidence(widened=True, shared=False),
             components=components,
@@ -1493,6 +1621,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
                 notes.extend(_special_notes(winner, calls, document))
                 return SchemeCall(
                     phenotype=winner,
+                    antigenic_formula=formula,
                     score=round(score, 4),
                     confidence=_confidence(widened=True, shared=True),
                     components=components,
@@ -1501,6 +1630,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             notes.append(discriminator_note)
         return SchemeCall(
             phenotype=None,
+            antigenic_formula=formula,
             score=round(score, 4),
             confidence="ambiguous",
             components=components,
@@ -1512,15 +1642,15 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
     if o.name is None:
         return SchemeCall(
             phenotype=document.unresolved,
+            antigenic_formula=formula,
             score=0.0,
             confidence="low",
             components=components,
             notes=tuple(notes),
         )
-    numeric_o = _numeric_o(document, o.name) or o.name
-    formula = f"{numeric_o}:{h1.name or '-'}:{h2.name or '-'}"
     return SchemeCall(
         phenotype=document.partial.format(formula=formula),
+        antigenic_formula=formula,
         score=round(max(o.score, h1.score, h2.score), 4),
         confidence="low",
         components=components,

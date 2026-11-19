@@ -1008,6 +1008,44 @@ assembly (`GCA_021104055.1`) is a divergent contig-level genome that shares only
 0.73–0.75 k-mer containment with everything else, so it cannot anchor a marker.
 A serovar label in an INSDC record is a submitter assertion, not a phenotype.
 
+### The pair is undecidable by antigen testing — a laboratory said so (2026-11-19)
+
+Two papers make the point better than any argument this file has made so far:
+
+* **PMC8552638** (`10.1128/Spectrum.00248-21`), isolate **A030_06/19**
+  (`SRR13527948` / `SAMN16824822`): the submitted serovar is **Goldcoast**, and
+  the authors' own in-silico prediction for that same isolate was
+  "**S. Goldcoast or S. Brikama**". Their table 1 lists the formula `8:r:l,w` for
+  it — the identical formula, with the identical ambiguity, in a different lab.
+* **PMC9150820** (`10.3389/fmicb.2022.882647`), isolates **SAMN26764377**
+  (JL043518201500171) and **SAMN26764405** (JL043510201400119): the serotype
+  column is headed **"Predicted serotype after confirmation by serum
+  agglutination"** and its value for both isolates is literally
+  "**Goldcoast or Brikama**".
+
+That second paper is the decisive datum: a laboratory that ran **agglutination**
+still could not separate the pair — so this is not a gspec defect, and it is not
+a bug in SeqSero2 or SISTR either. **`C2-C3:r:l,w` names two serovars and no
+antigen test in routine use splits them.**
+
+The mirror pair behaves the same way (Hindmarsh `8,20` versus Bovismorbificans
+`6,8,20`), and the O:6/O:20 factor that separates them has no marker in the rfb
+cluster (see the comparative-genomics result above).
+
+**Consequences for the panel, in order of correctness:**
+
+1. Report **both names** for a one-to-many formula. This is the only output that
+   is true without new evidence, and it is what a serotyping laboratory prints.
+2. Pick a **primary** by nomenclature convention only, and say so:
+   `Goldcoast` before `Brikama`, `Bovismorbificans` before `Hindmarsh`,
+   `Newport` before `Bardo` (WHO-2007 lists the common member first), with the
+   twin in `RUNNER_UP`. gspec already does this by declaration order — the
+   documented order is the point, not the accident.
+3. Do **not** invent a discriminator. `~/data/sen/` records what the public data
+   can and cannot supply: **Brikama has no genome anywhere** (0 RefSeq, 0
+   catalogue strains, 0 machine-readable paper rows), Hindmarsh has 2 contig-level
+   assemblies, and the only concrete Brikama leads are the isolates above.
+
 ### Recommended resolution (not implemented — deliberately deferred)
 
 1. **`A or B` output for one-to-many formulas** — report both names (the
@@ -1043,6 +1081,33 @@ A serovar label in an INSDC record is a submitter assertion, not a phenotype.
 - **220 formula rows were dropped as unreachable** at build time (serovars
   whose alleles no reference FASTA covers), so the panel cannot name them at
   all — a coverage gap recorded in `bundled.json`.
+
+## 2026-11-20: truncated-antigen scoring on fragmented assemblies (fixed)
+
+Two published Bovismorbificans genomes (`GCF_001083855.1`,
+`GCF_001123425.1`) typed as `C2-C3:-:e,n,z15` and `Aba C2-C3:i:e,n,z15` against
+SISTR's `6,8,20:r:1,5`. Both flagellin genes sit across contig boundaries, so
+the true `r`/`1,5` hits cover 68–79 % at 99.3–100 % identity, while
+cross-reactive `i`/`e,n,z15` references align only the conserved ends
+(51–58 % coverage) at 97–99 % identity. The old partial rule ranked the latter
+by identity alone (0.97–0.99) and beat the true alleles (0.77–0.79).
+
+Two changes fixed it (CHANGELOG `Unreleased / Fixed`):
+
+- a hit below 90 % coverage at 98 %+ identity ranks by identity (assembly
+  break, not a weak match), and a partial is demoted to identity × coverage
+  unless it is ≥ 0.5 pp more identical than the best full-length hit;
+- the union same-locus overlap gate moved from 50 % to 30 %, so an fljB block
+  overlapping an fliC block by 36 % (85.4 % identity) no longer extends the
+  fliC reference (78.7 % / 91.7 % before, 68.4 % / 98.8 % after).
+
+Both genomes now type `C2-C3:r:1,5`; the remaining `Hindmarsh` vs
+`Bovismorbificans` name difference is the C2-C3 O:20 / `r,[i]` bracket
+ambiguity above, not a scoring error. Measured on the 13-genome SISTR subset
+on disk: H2 exactly matches SISTR on 13/13, H1 on 9/13 (the four Goldcoast
+genomes differ only by the `r`/`r,[i]` class token), serovar name on 4/13
+(the five Bovismorbificans and four Goldcoast genomes land on the sibling row
+of the same bracket class). Full suite: 1658 passed.
 
 ## Provenance
 

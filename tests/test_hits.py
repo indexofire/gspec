@@ -330,3 +330,53 @@ def test_union_still_adds_disjoint_blocks_of_one_split_locus() -> None:
     assert hit.coverage_pct == 100.0
     assert hit.identity_pct == 100.0
     assert hit.sequence == "ctg1,ctg2"
+
+
+def test_union_drops_a_block_that_only_partly_overlaps_a_better_placement() -> None:
+    """A block overlapping ~36 % of a better placement is a paralogous remnant,
+    not a fragment of the same locus.
+
+    Measured on a Bovismorbificans genome: an fljB-locus block overlapping an
+    fliC reference block by 36 % (85.4 % identity) extended that reference's
+    coverage to 78.7 % and dragged its identity to 91.7 %. A 50 % overlap gate
+    let it through; the gate now sits at a third, and only disjoint blocks of a
+    split locus add coverage.
+    """
+    from gspec.align.blast import union_hits
+
+    rows = [
+        row(
+            qseqid="ctg1",
+            qstart=1,
+            qend=500,
+            sstart=1,
+            send=500,
+            slen=1000,
+            length=500,
+            pident=99.9,
+        ),
+        row(
+            qseqid="ctg2",
+            qstart=1,
+            qend=501,
+            sstart=320,
+            send=820,
+            slen=1000,
+            length=501,
+            pident=85.0,
+        ),
+        row(
+            qseqid="ctg3",
+            qstart=1,
+            qend=101,
+            sstart=900,
+            send=1000,
+            slen=1000,
+            length=101,
+            pident=99.0,
+        ),
+    ]
+    (hit,) = union_hits(rows, mincov=60.0, min_aligned_len=None, default_db="panel")
+    assert hit.sequence == "ctg1,ctg3"
+    assert hit.coverage_pct == pytest.approx(60.1)
+    assert hit.identity_pct == pytest.approx(99.75, abs=0.01)

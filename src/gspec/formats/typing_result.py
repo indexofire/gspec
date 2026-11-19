@@ -1,8 +1,8 @@
 """gspec.typing_result/1 — the `gspec typing` output document and renderers.
 
 One result per (FILE, scheme): the designated phenotype with its
-explainable breakdown. TSV/MD flatten each call to the eight reporting
-columns — the call's seven, then ``GENES``: the hits that drove the call —
+explainable breakdown. TSV/MD flatten each call to the nine reporting
+columns — the call's eight, then ``GENES``: the hits that drove the call —
 the FILE's present gene names (sorted, ``;``-joined) on marker panels, or
 one representative winning allele per antigen family on a ranked antigen
 panel (``gspec.serotype/2``, where a locus cross-hits dozens of sibling
@@ -25,7 +25,17 @@ from gspec.formats.json import ToolDocument, utc_timestamp
 from gspec.formats.md import frontmatter, md_row, md_table_head, yaml_scalar
 from gspec.typing.results import PhenotypeScore, SchemeCall
 
-COLUMNS = ("FILE", "SCHEME", "PHENOTYPE", "GENES", "CONFIDENCE", "SCORE", "RUNNER_UP", "NOTES")
+COLUMNS = (
+    "FILE",
+    "SCHEME",
+    "PHENOTYPE",
+    "FORMULA",
+    "GENES",
+    "CONFIDENCE",
+    "SCORE",
+    "RUNNER_UP",
+    "NOTES",
+)
 
 
 class TypingFileResult(NamedTuple):
@@ -77,15 +87,17 @@ def _notes(call: SchemeCall) -> str:
 
 def typing_row(result: TypingFileResult, scheme: str, call: SchemeCall) -> tuple[str, ...]:
     """One result row's cells: the phenotype (``-`` when ambiguous, fallback
-    strings verbatim — md.py's value semantics), the runner-up (``-`` when
-    none, and also on an ambiguous call whose candidate pair NOTES
-    carries), the flattened notes, and the FILE's sorted ``;``-joined gene
-    list (the same list on every scheme row of the FILE)."""
+    strings verbatim — md.py's value semantics), the antigenic formula (``-``
+    on schemes that do not carry one), the runner-up (``-`` when none, and
+    also on an ambiguous call whose candidate pair NOTES carries), the
+    flattened notes, and the FILE's sorted ``;``-joined gene list (the same
+    list on every scheme row of the FILE)."""
     called = call.runner_up if call.phenotype is not None else None
     return (
         result.file,
         scheme,
         call.phenotype or "-",
+        call.antigenic_formula or "-",
         ";".join(result.genes),
         call.confidence,
         f"{call.score:.4f}",
@@ -136,7 +148,7 @@ def render_typing_md(
     source: Sequence[str], db: str, results: Iterable[TypingFileResult], *, now: datetime
 ) -> str:
     """Render designation results as deterministic Markdown: YAML
-    frontmatter (tool, db, source tables) then one eight-column table."""
+    frontmatter (tool, db, source tables) then one nine-column table."""
     files = list(results)
     lines = frontmatter(
         "gspec.typing_result/1",

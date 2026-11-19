@@ -468,8 +468,8 @@ Designation is two-stage over a gene database (`gspec.typing/2`, scheme `penner_
 ```console
 $ gspec screen isolate.fa --db cje_cps --output cj.tsv --quiet
 $ gspec typing cj.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-isolate.fa	penner_cps	HS4 complex (HS4/13/43/50/62/65)	HS4A;lpxA	high	1.0000	HS16 (0.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+isolate.fa	penner_cps	HS4 complex (HS4/13/43/50/62/65)	-	HS4A;lpxA	high	1.0000	HS16 (0.0000)	...
 ```
 
 What the panel can and cannot resolve is encoded in the rules, not hidden:

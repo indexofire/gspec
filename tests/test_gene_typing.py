@@ -281,34 +281,40 @@ class TestTypingOutput:
         output = typing_stdout(typed_db, ["exact"], tmp_path)
         lines = output.splitlines()
         genes = "marker_a;marker_b;marker_c;marker_d"
-        assert lines[0] == "FILE\tSCHEME\tPHENOTYPE\tGENES\tCONFIDENCE\tSCORE\tRUNNER_UP\tNOTES"
+        assert lines[0] == (
+            "FILE\tSCHEME\tPHENOTYPE\tFORMULA\tGENES\tCONFIDENCE\tSCORE\tRUNNER_UP\tNOTES"
+        )
         pathotype, toxin = lines[1], lines[2]
         assert pathotype == (
-            f"{DATA / 'exact.fa'}\tpathotype\tEHEC\t{genes}\thigh\t1.0000\tEPEC (0.0000)\t"
+            f"{DATA / 'exact.fa'}\tpathotype\tEHEC\t-\t{genes}\thigh\t1.0000\tEPEC (0.0000)\t"
         )
         assert toxin == (
-            f"{DATA / 'exact.fa'}\ttoxin\t-\t{genes}\tambiguous\t1.0000\t-\t"
-            f"ambiguous: Toxin1 (1.0000), Toxin2 (1.0000)"
+            f"{DATA / 'exact.fa'}\ttoxin\t-\t-\t{genes}\tambiguous\t1.0000\t-"
+            f"\tambiguous: Toxin1 (1.0000), Toxin2 (1.0000)"
         )
 
-    def test_md_renders_the_eight_column_table(self, typed_db: Path, tmp_path: Path) -> None:
+    def test_md_renders_the_nine_column_table(self, typed_db: Path, tmp_path: Path) -> None:
         """Given the typed db and the exact sample, When typed as Markdown,
         Then one table row per scheme appears (the ambiguous toxin row
-        carrying the pair in NOTES, the GENES cell following PHENOTYPE),
-        frontmatter naming the db and the source table."""
+        carrying the pair in NOTES, the FORMULA cell after PHENOTYPE and the
+        GENES cell after it), frontmatter naming the db and the source
+        table."""
         output = typing_stdout(typed_db, ["exact"], tmp_path, "--format", "md")
         assert "schema: gspec.typing_result/1" in output
         assert f"db: {DB}" in output
         assert "source:" in output
-        header = "| FILE | SCHEME | PHENOTYPE | GENES | CONFIDENCE | SCORE | RUNNER_UP | NOTES |"
+        header = (
+            "| FILE | SCHEME | PHENOTYPE | FORMULA | GENES | CONFIDENCE | SCORE"
+            " | RUNNER_UP | NOTES |"
+        )
         genes = "marker_a;marker_b;marker_c;marker_d"
         assert header in output
         assert (
-            f"| {DATA / 'exact.fa'} | pathotype | EHEC | {genes} | high"
+            f"| {DATA / 'exact.fa'} | pathotype | EHEC | - | {genes} | high"
             f" | 1.0000 | EPEC (0.0000) |  |"
         ) in output
         assert (
-            f"| {DATA / 'exact.fa'} | toxin | - | {genes} | ambiguous | 1.0000 | - |"
+            f"| {DATA / 'exact.fa'} | toxin | - | - | {genes} | ambiguous | 1.0000 | - |"
             f" ambiguous: Toxin1 (1.0000), Toxin2 (1.0000) |"
         ) in output
 

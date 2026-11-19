@@ -14,17 +14,20 @@ the similarity-group widening the port does carry reconciles the bracket tokens
 so a future regression cannot hide.
 """
 
+import json
 from pathlib import Path
 
 from click.testing import CliRunner
 
 from gspec.cli import app
+from gspec.cluster.core import GeneCall
 from gspec.db.bundled import find_bundled
 from gspec.dbcodec import decode_seqid
 from gspec.fasta import iter_fasta
 from gspec.formats.typing_result import TypingResultDocument
 from gspec.typing.results import SchemeCall
-from gspec.typing.serotype_models import SerotypeDocumentV2, read_serotype_document
+from gspec.typing.serotype_engine import evaluate_serotype
+from gspec.typing.serotype_models import ODiscriminator, SerotypeDocumentV2, read_serotype_document
 
 ASSET = Path(__file__).resolve().parents[1] / "src/gspec/data/dbs/sen_sero"
 runner = CliRunner()
@@ -119,9 +122,11 @@ def test_most_formula_rows_are_reachable() -> None:
 def test_typhimurium_markers_reach_the_right_row(tmp_path: Path) -> None:
     """group B + H:i + H:1,2 addresses the Typhimurium row verbatim: the call
     is the formula's own serovar, not a candidate list widened through the H2
-    similarity class."""
+    similarity class. Group B has no single numeric O antigen (4,5,12 / 4,12 /
+    4,27 are all "B"), so the formula keeps the letter."""
     call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
     assert call.phenotype == "Typhimurium"
+    assert call.antigenic_formula == "B:i:1,2"
 
 
 def test_genes_column_lists_the_winning_alleles(tmp_path: Path) -> None:
@@ -195,3 +200,220 @@ def test_widening_keeps_the_candidate_list_visible(tmp_path: Path) -> None:
     call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
     assert call.phenotype == "Typhimurium"
     assert not call.ambiguous
+
+
+def _call(
+    gene: str,
+    identity: float,
+    *,
+    sketch: float | None = None,
+    contig: str | None = None,
+    start: int = 1,
+    end: int = 1000,
+) -> GeneCall:
+    return GeneCall(
+        gene_id=gene,
+        start=start,
+        end=end,
+        strand="+",
+        coverage_pct=100.0,
+        identity_pct=identity,
+        verdict="present",
+        sketch_pct=sketch,
+        contig=contig,
+    )
+
+
+def _gene_at(family: str, antigen: str, locus: str) -> str:
+    """First reference id of one antigen at a named locus (wzx/wzy)."""
+    for declared in _document().antigens:
+        if declared.key != family:
+            continue
+        for entry in declared.entries:
+            if entry.name == antigen and entry.locus == locus:
+                return entry.genes[0]
+    raise AssertionError(f"{family}:{antigen}:{locus} not declared")
+
+
+def _discriminator(name: str) -> ODiscriminator:
+    for spec in _document().o_discriminators:
+        if spec.name == name:
+            return spec
+    raise AssertionError(f"discriminator {name!r} not declared")
+
+
+def test_cross_reactive_phase_falls_back_to_the_real_allele() -> None:
+    """A cross-reacting `l,v` that wins the H2 family must not blank the phase.
+
+    Without locus coordinates (a frozen table without SEQUENCE/START/END) the
+    fliC `l,v` is free to score in the H2 pool, where it outranks the real
+    `1,7`; the H1==H2 guard used to drop the whole phase and report
+    `9,12:l,v:-`. The guard now re-calls the phase without the duplicate, so
+    the runner-up — the phase's real antigen — is named.
+    """
+    document = _document()
+    lv_h1 = _gene("h1", "l,v")
+    lv_h2 = _gene("h2", "l,v")
+    h2_17 = _gene("h2", "1,7")
+    calls = {
+        _gene("o", "D1"): _call(_gene("o", "D1"), 99.92),
+        lv_h1: _call(lv_h1, 99.73),
+        lv_h2: _call(lv_h2, 99.67),
+        h2_17: _call(h2_17, 99.14),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Kapemba"
+    assert call.antigenic_formula == "9,12:l,v:1,7"
+    assert any("re-called as 1,7" in note for note in call.notes)
+
+
+def test_identical_phase_without_a_runner_up_stays_absent() -> None:
+    """The fallback must not invent a phase: when the duplicate was the only
+    evidence, the phase is still reported absent."""
+    document = _document()
+    lv_h1 = _gene("h1", "l,v")
+    lv_h2 = _gene("h2", "l,v")
+    calls = {
+        _gene("o", "D1"): _call(_gene("o", "D1"), 99.92),
+        lv_h1: _call(lv_h1, 99.73),
+        lv_h2: _call(lv_h2, 99.67),
+    }
+    call = evaluate_serotype(calls, document)
+    assert any("H2 'l,v' repeats H1" in note for note in call.notes)
+    assert not any("re-called" in note for note in call.notes)
+
+
+def test_sketch_tie_break_still_lets_the_snp_discriminator_decide_o() -> None:
+    """The anchored sketch may collapse an A/D1 margin tie to A; the rfbS/wbaV
+    markers are stronger evidence and must still decide D1.
+
+    Real genome: every O channel ties (wzx A/D1 at 99.92 %), the sketch favoured
+    A, and the family never presented the pair to the discriminator because the
+    sketch had already narrowed `ties` to one name. The measured D1/D2 `wbaV`
+    gap then settles the group as D1, which names the exact formula row.
+    """
+    document = _document()
+    rfb_s = _discriminator("A/D1 rfbS")
+    wba_v = _discriminator("D1/D2 wbaV")
+    h1 = _gene("h1", "l,v")
+    h2 = _gene("h2", "1,7")
+    calls = {
+        _gene_at("o", "A", "wzx"): _call(_gene_at("o", "A", "wzx"), 99.92, sketch=95.0),
+        _gene_at("o", "D1", "wzx"): _call(_gene_at("o", "D1", "wzx"), 99.92, sketch=85.0),
+        _gene_at("o", "D2", "wzx"): _call(_gene_at("o", "D2", "wzx"), 99.31, sketch=80.0),
+        rfb_s.favours["D1"][0]: _call(rfb_s.favours["D1"][0], 99.76),
+        rfb_s.favours["A"][0]: _call(rfb_s.favours["A"][0], 99.29),
+        wba_v.favours["D1"][0]: _call(wba_v.favours["D1"][0], 99.80),
+        wba_v.favours["D2"][0]: _call(wba_v.favours["D2"][0], 98.90),
+        h1: _call(h1, 99.73),
+        h2: _call(h2, 99.14),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Kapemba"
+    assert any("D1 over D2" in note for note in call.notes)
+
+
+def test_tsv_table_types_the_phase_like_the_json_document(tmp_path: Path) -> None:
+    """The frozen table's SEQUENCE/START/END/STRAND columns reach the phase guard.
+
+    A hand-written 15-column table whose `fliC` `l,v` locus also scores in the H2
+    family used to type as `9,12:l,v:-` because the table's coordinates were
+    dropped at the typing boundary; the JSON document typed it `9,12:l,v:1,7`.
+    Both inputs must now give the same serovar.
+    """
+    tsv_header = (
+        "#FILE\tSEQUENCE\tSTART\tEND\tSTRAND\tGENE\tCOVERAGE\tCOVERAGE_MAP\tGAPS"
+        "\t%COVERAGE\t%IDENTITY\tDATABASE\tACCESSION\tPRODUCT\tRESISTANCE"
+    )
+
+    def table_row(
+        contig: str, start: int, end: int, strand: str, gene: str, identity: float
+    ) -> str:
+        length = end - start + 1
+        return (
+            f"{genome.name}\t{contig}\t{start}\t{end}\t{strand}\t{gene}"
+            f"\t1-{length}/{length}\t{'=' * 15}\t0/0\t100.00\t{identity:.2f}"
+            f"\tsen_sero\tupstream:test\tantigen test\tantigen"
+        )
+
+    genome = tmp_path / "genome.fna"
+    lv_h1 = _gene("h1", "l,v")
+    lv_h2 = _gene("h2", "l,v")
+    h2_17 = _gene("h2", "1,7")
+    o_d1 = _gene("o", "D1")
+    table = tmp_path / "screen.tsv"
+    table.write_text(
+        "\n".join(
+            [
+                tsv_header,
+                # One physical fliC gene, scored by both phase families.
+                table_row("ctg1", 1, 1503, "-", lv_h1, 99.73),
+                table_row("ctg1", 1, 1503, "-", lv_h2, 99.67),
+                # The real fljB locus.
+                table_row("ctg2", 1, 1148, "+", h2_17, 99.14),
+                table_row("ctg3", 1, 1299, "+", o_d1, 99.92),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    typed = runner.invoke(
+        app,
+        [
+            "typing",
+            str(table),
+            "--datadir",
+            str(tmp_path / "dd"),
+            "--format",
+            "json",
+            "--quiet",
+        ],
+        catch_exceptions=False,
+    )
+    assert typed.exit_code == 0, typed.stderr
+    document = TypingResultDocument.model_validate_json(typed.stdout)
+    call = document.files[0].phenotypes["serotype"]
+    assert call.phenotype == "Kapemba"
+    # D1 is the serogroup; the WHO table pins it to 9,12, so the formula spells
+    # the numeric O antigen. The TSV carries the same value in its FORMULA cell.
+    assert call.antigenic_formula == "9,12:l,v:1,7"
+    payload = json.loads(typed.stdout)
+    assert payload["files"][0]["phenotypes"]["serotype"]["antigenic_formula"] == "9,12:l,v:1,7"
+    table_out = runner.invoke(
+        app,
+        [
+            "typing",
+            str(table),
+            "--datadir",
+            str(tmp_path / "dd"),
+            "--quiet",
+        ],
+        catch_exceptions=False,
+    )
+    assert table_out.exit_code == 0, table_out.stderr
+    first_line, data_line = table_out.stdout.splitlines()[:2]
+    assert first_line.split("\t")[3] == "FORMULA"
+    assert data_line.split("\t")[3] == "9,12:l,v:1,7"
+
+
+def test_duplicate_phase_fallback_requires_an_independent_locus() -> None:
+    """A runner-up on the cross-reaction's own physical gene is not independent
+    phase evidence: a monophasic genome keeps its phase absent.
+
+    Both H2 candidates sit on the `fliC` locus, so the second one is another
+    reading of the phase-1 gene, not a `fljB` signal. Only evidence from its own
+    locus may resurrect the phase.
+    """
+    document = _document()
+    lv_h1 = _gene("h1", "l,v")
+    lv_h2 = _gene("h2", "l,v")
+    h2_12 = _gene("h2", "1,2")
+    calls = {
+        _gene("o", "D1"): _call(_gene("o", "D1"), 99.92, contig="ctg3"),
+        lv_h1: _call(lv_h1, 99.73, contig="ctg1", start=1, end=1503),
+        lv_h2: _call(lv_h2, 99.67, contig="ctg1", start=1, end=1503),
+        h2_12: _call(h2_12, 99.50, contig="ctg1", start=1, end=1503),
+    }
+    call = evaluate_serotype(calls, document)
+    assert any("H2 'l,v' repeats H1" in note for note in call.notes)
+    assert not any("re-called" in note for note in call.notes)

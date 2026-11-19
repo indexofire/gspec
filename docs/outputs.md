@@ -115,9 +115,9 @@ table and renders the calls (real output; `screen --output` wrote the table):
 ```console
 $ gspec screen dec_s2_pic_astA_uidA.fasta --db eco_dec --output dec.tsv --quiet
 $ gspec typing dec.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-dec_s2_pic_astA_uidA.fasta	gb4789_6	EAEC	astA;pic;uidA	high	1.0000	EHEC (0.0000)	GB 4789.6: any of aggR/pic/astA
-dec_s2_pic_astA_uidA.fasta	risk_monitoring	non-DEC	astA;pic;uidA	low	0.0000	STEC (0.0000)	GB 4789.6-2016: EHEC = stx (any subunit) + escV (LEE); severity order EHEC>STEC/EPEC>ETEC>EIEC>EAEC: rules are declared in severity order so hybrids surface as runner_up
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+dec_s2_pic_astA_uidA.fasta	gb4789_6	EAEC	-	astA;pic;uidA	high	1.0000	EHEC (0.0000)	GB 4789.6: any of aggR/pic/astA
+dec_s2_pic_astA_uidA.fasta	risk_monitoring	non-DEC	-	astA;pic;uidA	low	0.0000	STEC (0.0000)	GB 4789.6-2016: EHEC = stx (any subunit) + escV (LEE); severity order EHEC>STEC/EPEC>ETEC>EIEC>EAEC: rules are declared in severity order so hybrids surface as runner_up
 ```
 
 The pic+astA profile without aggR is the headline divergence — GB 4789.6 calls EAEC while
@@ -287,15 +287,21 @@ row by `(%IDENTITY, %COVERAGE)`. Real document (trimmed):
 | `files` | array | One entry per FILE that has data rows, first-appearance order |
 | `files[].genes` | array | That FILE's present gene names, sorted — the hits behind the calls; on a ranked antigen panel (`gspec.serotype/2`) one representative winning allele per family |
 | `files[].phenotypes` | object | Scheme name → its call (the additive shape below) |
+| `files[].phenotypes.<scheme>.antigenic_formula` | string, optional | A serotype call's observed `O:H1:H2` (e.g. `9,12:l,v:1,7`), numeric O where the WHO table pins one, `-` for an unresolved/absent phase; absent on every other scheme |
 
 Each call carries `phenotype` (null on an ambiguous call), `score`, `confidence`
-(`high`/`medium`/`low`/`ambiguous`), `components[{name, score}]`, and the optional `runner_up`,
+(`high`/`medium`/`low`/`ambiguous`), `components[{name, score}]`, the optional
+`antigenic_formula` (a serotype call's observed `O:H1:H2`, numeric O where the WHO table
+pins one, `-` for an unresolved/absent phase), and the optional `runner_up`,
 `ambiguous[]` (the tied pair), and `notes[]` — the same bodies the evaluator produces on
-the cluster path. The TSV/Markdown projection flattens each call to the eight `FILE`,
-`SCHEME`, `PHENOTYPE`, `GENES`, `CONFIDENCE`, `SCORE`, `RUNNER_UP`, `NOTES` columns:
-ambiguous calls render `-` for the phenotype and carry the candidate pair in `NOTES` (the
+the cluster path. The TSV/Markdown projection flattens each call to the nine `FILE`,
+`SCHEME`, `PHENOTYPE`, `FORMULA`, `GENES`, `CONFIDENCE`, `SCORE`, `RUNNER_UP`, `NOTES`
+columns: `SCHEME` is the scheme declared by the typing document (one row per
+`(FILE, scheme)`; the database itself is the root `db` field and the screen table's
+`DATABASE` column), `FORMULA` renders `-` on schemes without a formula; ambiguous calls
+render `-` for the phenotype and carry the candidate pair in `NOTES` (the
 runner-up cell also renders `-` there — the pair already speaks); `GENES` follows the
-phenotype with the FILE's sorted `;`-joined gene list, repeated on every scheme row of that FILE.
+formula with the FILE's sorted `;`-joined gene list, repeated on every scheme row of that FILE.
 Typed errors: mixed `DATABASE` values across rows are `DATABASE_MISMATCH`, a table with no
 data rows `TYPING_NO_DATA`,
 a database without a `typing.json` `TYPING_NO_SCHEME`, and a cluster database

@@ -102,6 +102,12 @@ class SchemeCall(BaseModel, frozen=True):
     Kaptive's Typeable/Untypeable split over the same evidence."""
 
     phenotype: str | None
+    #: The antigenic formula behind a serotype call (``O:H1:H2``), with a
+    #: numeric O antigen where the Kauffmann-White table pins one (``D1`` ->
+    #: ``9,12``; ``B`` stays ``B`` because 4,5,12 / 4,12 / 4,27 are all "B");
+    #: ``-`` marks a phase the evidence leaves unresolved or absent. None on
+    #: non-serotype schemes and on every other engine.
+    antigenic_formula: str | None = None
     score: float
     confidence: Literal["high", "medium", "ambiguous", "low"]
     components: tuple[ScoreComponent, ...] = ()
@@ -119,12 +125,14 @@ class SchemeCall(BaseModel, frozen=True):
 
     @model_serializer
     def _serialize(self) -> dict[str, object]:
-        data: dict[str, object] = {
-            "phenotype": self.phenotype,
-            "score": self.score,
-            "confidence": self.confidence,
-            "components": [component.model_dump(mode="json") for component in self.components],
-        }
+        data: dict[str, object] = {"phenotype": self.phenotype}
+        if self.antigenic_formula is not None:
+            # Next to the phenotype in the serialized order (dicts keep insertion
+            # order): the two halves of a serotype call read together.
+            data["antigenic_formula"] = self.antigenic_formula
+        data["score"] = self.score
+        data["confidence"] = self.confidence
+        data["components"] = [component.model_dump(mode="json") for component in self.components]
         if self.runner_up is not None:
             data["runner_up"] = self.runner_up.model_dump(mode="json")
         if self.ambiguous:

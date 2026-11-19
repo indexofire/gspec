@@ -15,9 +15,9 @@
 ```console
 $ gspec screen contigs.fa --db eco_dec --output result.tsv --quiet
 $ gspec typing result.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-contigs.fa	gb4789_6	EHEC	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
-contigs.fa	risk_monitoring	EHEC	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+contigs.fa	gb4789_6	EHEC	-	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
+contigs.fa	risk_monitoring	EHEC	-	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
 ```
 
 第一阶段是纯基因检测：typed 基因数据库与 untyped 的筛查输出逐字节相同——每种格式
@@ -33,7 +33,9 @@ contigs.fa	risk_monitoring	EHEC	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
 ——该命中基因组窗口的 k-mer 与每个参考**等位**的包含度——JSON 报告以 `sketch_pct` 携带。
 TSV 表格看不到这个分数（15 列已冻结），所以 `gspec typing results.json` 会用 sketch
 裁决 margin 内的平手，而 `gspec typing results.tsv` 仍会将其放宽为候选列表。sketch
-也无法分开的平手仍然是平手：候选保持可见。
+也无法分开的平手仍然是平手：候选保持可见。表格的冻结列仍携带命中的位点
+（`SEQUENCE`/`START`/`END`/`STRAND`），因此把同一个物理鞭毛基因排除在两个 H 族之外的
+相位保护，对表格与 JSON 文档同样生效。
 
 reads 模式的表也可以直接输入：`gspec screen --r1/--r2 ... | gspec typing` 会折叠
 `#SAMPLE`/`BREADTH%` 表，以 `#SAMPLE` 作为 FILE 键、breadth 作为覆盖度，并跳过
@@ -55,18 +57,32 @@ $ gspec screen 1.fna --db eco_dec --quiet | gspec typing --quiet
 
 用法：`gspec typing RESULT.tsv [RESULT2.tsv ...] [-D datadir] [-f tsv|json|md] [-o FILE]
 [-q]`，或如上经管道输入（`-` 为显式 stdin）。默认 TSV 按 (FILE, scheme) 一行，列为
-`FILE`、`SCHEME`、`PHENOTYPE`、
+`FILE`、`SCHEME`、`PHENOTYPE`、`FORMULA`、
 `GENES`、`CONFIDENCE`、`SCORE`、`RUNNER_UP`、`NOTES`——歧义判定的表型（与 runner-up）
-渲染为 `-`，候选对写入 NOTES；`GENES` 紧跟表型之后，列出该 FILE 的 present 基因名
+渲染为 `-`，候选对写入 NOTES；`FORMULA` 在血清型判定上给出抗原式，其他 scheme 为 `-`；
+`GENES` 紧跟其后，列出该 FILE 的 present 基因名
 （排序后、`;` 串接），且在该 FILE 的每个 scheme 行上重复——即驱动该判定的命中，
 一目了然。对排序抗原面板（`gspec.serotype/2`，如 `sen_sero`），present 指每个
 抗原家族一个代表性胜出等位基因（`o_C2-C3;h1_d__31;h2_1_2__79`，与逐家族备注点名的
 等位基因相同）——而非一个位点交叉命中的上百个兄弟等位基因。
 `json` 输出 `gspec.typing_result/1`（完整分数分解外加同样的逐文件 `genes` 列表；
 `gspec schema typing_result`）；`md` 在标明数据库与来源表的 frontmatter 下渲染同样的
-八列表。类型化错误：`DATABASE` 值混杂为 `DATABASE_MISMATCH`，无数据行的表为
+九列表。类型化错误：`DATABASE` 值混杂为 `DATABASE_MISMATCH`，无数据行的表为
 `TYPING_NO_DATA`（要评估的数据库只能从数据行得知），无 `typing.json` 的数据库为
 `TYPING_NO_SCHEME`，基因簇数据库为 `TYPING_CLUSTER_DB`——基因簇判定不经过该命令。
+
+`SCHEME` 是 typing 文档声明的 **scheme 名，不是数据库名**：每个 (FILE, scheme) 一行，
+因为一个数据库可以声明多个 scheme（`eco_dec` 声明 `gb4789_6` 与 `risk_monitoring`；
+`sen_sero` 只声明一个 `serotype`）。数据库在 JSON 文档的 `db` 字段与筛查表的
+`DATABASE` 列里，一次调用内恒定。
+
+血清型判定的 `PHENOTYPE` 对肠道亚种（*S.* enterica subsp. enterica）是血清型名
+（`Kapemba`，与 SISTR、SeqSero2 输出的裸名一致），对其他亚种是 Kauffmann-White 抗原式
+/罗马数字（`IIIb 47:l,v:-`，这些行大多没有血清型名）。`FORMULA` 对所有亚种都给出观测到的
+`O:H1:H2`，当 WHO 表能唯一确定数字 O 抗原时写数字（`D1` → `9,12`；`B` 保留字母，因为
+4,5,12 / 4,12 / 4,27 都属于 "B"）。正式命名：肠道亚种为
+`Salmonella enterica subsp. enterica serovar <PHENOTYPE>`，其余亚种为罗马数字加抗原式
+（`Salmonella enterica subsp. diarizonae 47:l,v:1,7`）。
 
 **基因簇例外。** 基因簇数据库的判定保持集成在 `gspec screen` 内：其判定单元是最佳
 *位点* call，只有 minimap2 基因簇引擎能算。紧凑的 cluster TSV 不是基因表，也没有
@@ -104,7 +120,7 @@ cluster/2 的 `phenotypes` 中给出 `locus_status`（`known` / `unknown_locus` 
 
 | 数据库类型 | 输入 | 引擎 | 判定出现的位置 |
 |---|---|---|---|
-| **gene（基因）** | 标记 FASTA | blastn 基因路径 | 对筛查结果运行 `gspec typing`：`gspec.typing_result/1`（JSON）与八列 TSV/MD 表 |
+| **gene（基因）** | 标记 FASTA | blastn 基因路径 | 对筛查结果运行 `gspec typing`：`gspec.typing_result/1`（JSON）与九列 TSV/MD 表 |
 | **cluster（基因簇，单 scheme）** | GBK/GFF 位点 | minimap2 位点路径 | 集成在 `gspec screen` 内：`gspec.cluster/1` 的 `best.phenotype` + `best.phenotype_detail`，以及仅限已分型数据库的 TSV `PHENOTYPE` 列 |
 | **cluster（基因簇，多 scheme）** | GBK/GFF 位点 | minimap2 位点路径 | 集成在 `gspec screen` 内：`gspec.cluster/2` 的 `files[].phenotypes`（每个 scheme 一个 call，compose 由兄弟 scheme 渲染），以及每方案的胜出位点证据 TSV 列 |
 
@@ -220,9 +236,9 @@ ORF2819+ORF2110 谱式判给变体。大写基因名（`ORF2819`、`ORF2110`）�
 ```console
 $ gspec screen isolates.fa --db lmo_sero --output lm.tsv --quiet
 $ gspec typing lm.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-lmo_sero_iia.fa	doumith_serogroup	IIa	lmo0737;prs	high	1.0000	IVb-v (0.0000)	...
-lmo_sero_ivb.fa	doumith_serogroup	IVb	ORF2110;ORF2819;prs	high	1.0000	IVb-v (0.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+lmo_sero_iia.fa	doumith_serogroup	IIa	-	lmo0737;prs	high	1.0000	IVb-v (0.0000)	...
+lmo_sero_ivb.fa	doumith_serogroup	IVb	-	ORF2110;ORF2819;prs	high	1.0000	IVb-v (0.0000)	...
 ```
 
 fallback 为 `untypeable (4a/4c, atypical profile, or non-Lm Listeria)`；缺 `prs` 时
@@ -394,8 +410,8 @@ $ gspec db build doumith doumith.fa --typing doumith.json
 
 $ gspec screen lm_4b.fa --db doumith --output lm_4b.tsv --quiet
 $ gspec typing lm_4b.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-lm_4b.fa	doumith	4b-4d-4e	orf2110;orf2819;prs	high	1.0000	1/2a-3a (0.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+lm_4b.fa	doumith	4b-4d-4e	-	orf2110;orf2819;prs	high	1.0000	1/2a-3a (0.0000)	...
 
 $ gspec screen vc_inaba.fa --db vc_subserotype --quiet
 FILE      BEST_LOCUS  TYPE  PHENOTYPE  COVERAGE  IDENTITY  PRESENT  PARTIAL  MISSING_IDS

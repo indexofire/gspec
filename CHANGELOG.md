@@ -1,5 +1,62 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **`gspec typing` carries the antigenic formula.** A serotype call gains an
+  additive `antigenic_formula` field (e.g. `9,12:l,v:1,7`) and the TSV/MD
+  projection a `FORMULA` column after `PHENOTYPE` (`-` on every other scheme).
+  The O antigen is numeric where the Kauffmann-White table pins one — `D1` →
+  `9,12`, `A` → `2,12` — and keeps the group letter where several numeric
+  formulas share it (`B` is 4,5,12 / 4,12 / 4,27; `C2-C3` is 6,8 / 8,20 / 8 /
+  6,8,20). `PHENOTYPE` keeps the bare serovar name for *S.* enterica subsp.
+  enterica (the SISTR/SeqSero2 convention) and the Kauffmann-White
+  formula/numeral for the other subspecies; the formal name is
+  `Salmonella enterica subsp. enterica serovar <PHENOTYPE>`.
+- **The `SCHEME` column is documented as the scheme name, not the database.**
+  One row per (FILE, scheme) because a database may declare several (`eco_dec`
+  declares `gb4789_6` and `risk_monitoring`); the database is the JSON `db`
+  field and the screen table's `DATABASE` column.
+
+### Fixed
+
+- **A truncated but near-perfect antigen is ranked by the identity it shows, and
+  a cross-reactive partial can no longer outrank the true full-length allele.**
+  Two published Bovismorbificans genomes whose `fliC` and `fljB` genes sit
+  across contig boundaries (`GCF_001083855.1`, `GCF_001123425.1`) came back as
+  `C2-C3:-:e,n,z15` and `Aba C2-C3:i:e,n,z15`. The true `r` and `1,5` alleles
+  are 99.3–100 % identical over 68–79 % of the locus; cross-reactive `i` and
+  `e,n,z15` references align only the conserved ends (51–58 % coverage) at
+  97–99 % identity and won the old identity-only partial rank (0.97–0.99 against
+  the true 0.77–0.79). Hits below 90 % coverage at 98 %+ identity now rank by
+  identity (an assembly break, not a weak match), and a partial hit is demoted
+  to identity × coverage unless it is at least 0.5 pp more identical than the
+  best full-length hit. Both genomes now type `C2-C3:r:1,5`.
+- **Union coverage drops a paralogous block that only partly overlaps a better
+  placement.** The same-locus overlap gate moved from 50 % to 30 %: an
+  fljB-locus block overlapping an fliC block by 36 % (85.4 % identity) extended
+  that reference to 78.7 % coverage / 91.7 % identity. It is now discarded, so
+  only disjoint blocks of a split locus add coverage.
+- **A contig screen table now carries its locus, so a TSV types the H2 phase
+  like the JSON document.** The frozen 15-column surface has always had
+  `SEQUENCE`/`START`/`END`/`STRAND`, but the typing boundary dropped them, and
+  the phase guard that keeps one physical flagellin gene out of both H families
+  needs the locus. On a real genome whose `fliC` `l,v` locus also scores in the
+  `fljB` family, `gspec typing results.tsv` reported `9,12:l,v:-` while
+  `gspec typing results.json` named the correct `9,12:l,v:1,7` (Kapemba); the two
+  inputs now agree.
+- **The duplicate-phase guard re-calls the phase instead of blanking it.** When
+  a cross-reacting allele wins a phase family and repeats the other phase's
+  antigen, the weaker phase is dropped — but the runner-up was discarded with
+  it, so a real `fljB` `1,7` became `-`. The family is now re-called without the
+  duplicated antigen and the surviving allele is named.
+- **The O SNP discriminators see the pre-sketch margin candidates.** An
+  anchored allele sketch could collapse an A/D1 margin tie to one name before
+  `rfbS`/`wbaV` were consulted, leaving O at A when the marker evidence (and the
+  D1/D2 `wbaV` gap) said D1. A discriminator is stronger evidence than a k-mer
+  containment score, so the family now keeps the pre-tie-break candidates for it.
+
 ## [0.11.0] - 2026-11-19
 
 ### Added

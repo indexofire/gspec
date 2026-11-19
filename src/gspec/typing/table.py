@@ -46,11 +46,14 @@ class ScreenRow(NamedTuple):
     sketch_pct: float | None = None
     # Wire the phase affinity alongside the sketch score (screen JSON only).
     phase_pct: float | None = None
-    # The hit's locus (screen JSON only; the frozen table has no coordinates).
-    # Needed to keep one physical flagellin gene out of BOTH phase families.
+    # The hit's locus. A screen JSON document always carries it; a contig table
+    # carries it too (SEQUENCE/START/END are three of its frozen 15 columns), and
+    # the antigen typing needs it to keep one physical flagellin gene out of both
+    # phase families. Only a table without those columns leaves it None.
     contig: str | None = None
     start: int | None = None
     end: int | None = None
+    strand: str | None = None
 
 
 class _Columns(NamedTuple):
@@ -68,13 +71,27 @@ class _Columns(NamedTuple):
     coverage_range: int | None
     present: int | None
     reads: bool
+    #: Locus columns (contig tables only; optional in a hand-written or
+    #: third-party table, mandatory in the frozen 15-column abricate surface).
+    sequence: int | None = None
+    start: int | None = None
+    end: int | None = None
+    strand: int | None = None
 
     @property
     def last(self) -> int:
         indexes = [self.file, self.gene, self.database, self.coverage]
         indexes.extend(
             index
-            for index in (self.identity, self.coverage_range, self.present)
+            for index in (
+                self.identity,
+                self.coverage_range,
+                self.present,
+                self.sequence,
+                self.start,
+                self.end,
+                self.strand,
+            )
             if index is not None
         )
         return max(indexes)
@@ -152,6 +169,10 @@ def _header(label: str, line_number: int, columns: list[str]) -> _Columns:
         indexes.get("COVERAGE"),
         None,
         reads=False,
+        sequence=indexes.get("SEQUENCE"),
+        start=indexes.get("START"),
+        end=indexes.get("END"),
+        strand=indexes.get("STRAND"),
     )
 
 
@@ -201,6 +222,35 @@ def _numeric_detail(header: _Columns) -> str:
     return "non-numeric %IDENTITY/%COVERAGE"
 
 
+def _locus_columns(
+    columns: list[str], header: _Columns, label: str, line_number: int
+) -> tuple[str | None, int | None, int | None, str | None]:
+    """A contig table row's ``(contig, start, end, strand)``, when it has them.
+
+    The frozen 15-column surface carries SEQUENCE/START/END/STRAND, and typing
+    needs them: without the locus a cross-reacting `fliC` allele is free to win
+    the `fljB` family and the phase's real antigen is lost (this is what a screen
+    JSON document has always provided). A table without those columns, or a row
+    whose cells are blank, keeps the locus unknown rather than inventing one.
+    """
+    if header.sequence is None or header.start is None or header.end is None:
+        return None, None, None, None
+    contig = columns[header.sequence].strip()
+    start_text = columns[header.start].strip()
+    end_text = columns[header.end].strip()
+    if not contig or not start_text or not end_text:
+        return None, None, None, None
+    try:
+        start = int(start_text)
+        end = int(end_text)
+    except ValueError as exc:
+        raise _malformed(label, line_number, "START/END must be integers") from exc
+    if start <= 0 or end < start:
+        raise _malformed(label, line_number, f"START/END out of range: {start}-{end}")
+    strand = columns[header.strand].strip() if header.strand is not None else ""
+    return contig, start, end, strand or None
+
+
 def parse_table(label: str, text: str) -> list[ScreenRow]:
     """One table's data rows (``label`` names it in errors); the first line
     is the column map and later ``#``-prefixed lines are skipped headers
@@ -234,6 +284,7 @@ def parse_table(label: str, text: str) -> list[ScreenRow]:
             alignment_start, subject_len = _coverage_range(
                 columns[header.coverage_range], label, line_number
             )
+        contig, start, end, strand = _locus_columns(columns, header, label, line_number)
         rows.append(
             ScreenRow(
                 columns[header.file],
@@ -243,6 +294,10 @@ def parse_table(label: str, text: str) -> list[ScreenRow]:
                 coverage,
                 alignment_start,
                 subject_len,
+                contig=contig,
+                start=start,
+                end=end,
+                strand=strand,
             )
         )
     return rows

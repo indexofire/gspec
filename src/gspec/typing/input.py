@@ -167,11 +167,12 @@ def read_typing_input(paths: list[Path], stdin_text: str | None = None) -> Typin
                 calls={
                     gene: GeneCall(
                         gene_id=gene,
-                        # Coordinates when the source knows them (screen JSON):
-                        # the phase guard needs the locus, not the offsets.
+                        # Coordinates when the source knows them (screen JSON or
+                        # the frozen table's SEQUENCE/START/END): the phase guard
+                        # needs the locus, not the offsets.
                         start=row.start or 0,
                         end=row.end or 0,
-                        strand="+",
+                        strand=row.strand or "+",
                         coverage_pct=row.coverage_pct,
                         identity_pct=row.identity_pct,
                         verdict="present",

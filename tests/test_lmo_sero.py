@@ -215,6 +215,7 @@ def test_typing_command_end_to_end_on_one_representative(tmp_path: Path) -> None
         "FILE",
         "SCHEME",
         "PHENOTYPE",
+        "FORMULA",
         "GENES",
         "CONFIDENCE",
         "SCORE",
@@ -222,7 +223,7 @@ def test_typing_command_end_to_end_on_one_representative(tmp_path: Path) -> None
         "NOTES",
     ]
     row = lines[1].split("\t")
-    assert row[:4] == ["lmo_sero_iia.fa", "doumith_serogroup", "IIa", "lmo0737;prs"]
+    assert row[:5] == ["lmo_sero_iia.fa", "doumith_serogroup", "IIa", "-", "lmo0737;prs"]
 
 
 def test_typing_golden_iia_and_ivb(tmp_path: Path) -> None:

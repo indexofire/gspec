@@ -260,7 +260,7 @@ def test_bundled_shi_sero_without_control_is_not_shigella(tmp_path: Path) -> Non
     )
     assert typed.exit_code == 0, typed.stderr
     row = typed.stdout.splitlines()[1].split("\t")
-    assert row[1:4] == ["serotype", "Not Shigella/EIEC", "Sd1_wzx"]
+    assert row[1:5] == ["serotype", "Not Shigella/EIEC", "-", "Sd1_wzx"]
 
 
 def test_db_info_exposes_the_serotype_schema(tmp_path: Path) -> None:

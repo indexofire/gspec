@@ -254,8 +254,12 @@ def run_blastn(
 #: Two blocks of one reference whose reference spans overlap by more than this
 #: fraction of the shorter span are alternate placements of the same locus, so
 #: only the better one is kept. Disjoint spans (a locus split across contigs)
-#: stay additive.
-_SAME_LOCUS_OVERLAP = 0.5
+#: stay additive. A third (not a half): a paralogous remnant can overlap a true
+#: block by ~36 % and still slip through a 50 % gate, extending the reference's
+#: coverage with low-identity sequence (measured on a Bovismorbificans genome: an
+#: fljB-locus block at 85.4 % coverage-over-identity inflated an fliC reference
+#: to 78.7 % coverage / 91.7 % identity).
+_SAME_LOCUS_OVERLAP = 0.3
 
 
 def _distinct_loci(blocks: list[tuple["BlastRow", int, int]]) -> list[tuple["BlastRow", int, int]]:

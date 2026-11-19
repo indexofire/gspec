@@ -544,12 +544,13 @@ def test_typing_genes_column_lists_sorted_present_genes(tmp_path: Path) -> None:
     result = runner.invoke(app, ["typing", str(table), "--datadir", str(datadir), "--quiet"])
     assert result.exit_code == 0, result.stderr
     lines = result.stdout.splitlines()
-    assert lines[0].split("\t")[3] == "GENES"  # column follows PHENOTYPE
+    assert lines[0].split("\t")[3] == "FORMULA"  # column follows PHENOTYPE
+    assert lines[0].split("\t")[4] == "GENES"  # then the hits behind the call
     hybrid = [line for line in lines[1:] if line.startswith("dec_s3_stx2a_escV_aggR_uidA.fasta")]
     headline = [line for line in lines[1:] if line.startswith("dec_s2_pic_astA_uidA.fasta")]
     assert len(hybrid) == 2 and len(headline) == 2
-    assert [line.split("\t")[3] for line in hybrid] == ["aggR;escV;stx2a;uidA"] * 2
-    assert [line.split("\t")[3] for line in headline] == ["astA;pic;uidA"] * 2
+    assert [line.split("\t")[4] for line in hybrid] == ["aggR;escV;stx2a;uidA"] * 2
+    assert [line.split("\t")[4] for line in headline] == ["astA;pic;uidA"] * 2
 
 
 # --------------------------------------------------- untyped gene bundle (vf) --

@@ -19,9 +19,9 @@ detects genes, `gspec typing` designates from the results.**
 ```console
 $ gspec screen contigs.fa --db eco_dec --output result.tsv --quiet
 $ gspec typing result.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-contigs.fa	gb4789_6	EHEC	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
-contigs.fa	risk_monitoring	EHEC	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+contigs.fa	gb4789_6	EHEC	-	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
+contigs.fa	risk_monitoring	EHEC	-	escV;stx2a;uidA	high	1.0000	EAEC (1.0000)	...
 ```
 
 Stage 1 is pure gene detection: a typed gene database screens byte-identically to an
@@ -40,7 +40,9 @@ hit — the k-mers of the hit's genomic window against each reference *allele* �
 JSON report carries it as `sketch_pct`. Typing a screen table cannot see that score (its
 15 columns are frozen), so `gspec typing results.json` decides a margin tie with the
 sketch while `gspec typing results.tsv` still widens it into a candidate list. A tie the
-sketch cannot separate stays a tie: the candidates remain visible.
+sketch cannot separate stays a tie: the candidates remain visible. The table does carry
+the hit's locus (`SEQUENCE`/`START`/`END`/`STRAND`), so the guard that keeps one physical
+flagellin gene out of both H families works for a table and a JSON document alike.
 
 Reads-mode tables are accepted too: `gspec screen --r1/--r2 ... | gspec typing` folds the
 `#SAMPLE`/`BREADTH%` table with `#SAMPLE` as the FILE key and breadth as coverage, skipping
@@ -64,9 +66,10 @@ piped table's JSON `source` renders as `["-"]`.
 Usage: `gspec typing RESULT.tsv [RESULT2.tsv ...] [-D datadir] [-f tsv|json|md] [-o FILE]
 [-q]`, or piped as above (`-` for explicit stdin). The default TSV carries one row per
 (FILE, scheme) with the columns `FILE`, `SCHEME`,
-`PHENOTYPE`, `GENES`, `CONFIDENCE`, `SCORE`, `RUNNER_UP`, `NOTES` — ambiguous calls render
-`-` for the phenotype (and runner-up) and carry the candidate pair in NOTES; `GENES`
-follows the phenotype with the FILE's present gene names (sorted, `;`-joined), the same
+`PHENOTYPE`, `FORMULA`, `GENES`, `CONFIDENCE`, `SCORE`, `RUNNER_UP`, `NOTES` — ambiguous
+calls render `-` for the phenotype (and runner-up) and carry the candidate pair in NOTES;
+`FORMULA` carries the antigenic formula on a serotype call and `-` on every other scheme;
+`GENES` follows it with the FILE's present gene names (sorted, `;`-joined), the same
 list on each of the FILE's scheme rows — the hits that drove the call, in the open. For a
 ranked antigen panel (`gspec.serotype/2`, e.g. `sen_sero`) that means one
 representative winning allele per antigen family (`o_C2-C3;h1_d__31;h2_1_2__79`), the
@@ -74,11 +77,26 @@ same allele the per-family note names — not the hundred-plus sibling alleles a
 cross-hits. `json` emits
 `gspec.typing_result/1` (full score breakdowns plus the same per-file `genes` list;
 `gspec schema typing_result`); `md` renders
-the same eight columns under a frontmatter naming the db and source tables. Typed errors:
+the same nine columns under a frontmatter naming the db and source tables. Typed errors:
 mixed `DATABASE` values are `DATABASE_MISMATCH`, a table with no data rows `TYPING_NO_DATA`
 (the database is only knowable from rows), a database without a `typing.json`
 `TYPING_NO_SCHEME`, and a cluster database `TYPING_CLUSTER_DB` — cluster typing never goes
 through the command.
+
+`SCHEME` is the scheme declared by the typing document, **not** the database: there is one
+row per (FILE, scheme) because a database may declare several (`eco_dec` declares
+`gb4789_6` and `risk_monitoring`; `sen_sero` declares the single `serotype` scheme). The
+database is the JSON document's `db` field and the screen table's `DATABASE` column, and it
+is constant for one invocation.
+
+A serotype call's `PHENOTYPE` is the serovar name for *S.* enterica subsp. enterica
+(`Kapemba` — the same bare name SISTR and SeqSero2 print) and the Kauffmann-White
+formula/numeral for the other subspecies (`IIIb 47:l,v:-`, whose rows mostly carry no
+serovar name). `FORMULA` carries the observed `O:H1:H2` for every subspecies, spelling the
+numeric O antigen when the WHO table pins one (`D1` → `9,12`; `B` stays `B` because
+4,5,12 / 4,12 / 4,27 are all "B"). The formal name is `Salmonella enterica subsp. enterica
+serovar <PHENOTYPE>` for the enterica subspecies, and the numeral plus the formula
+(`Salmonella enterica subsp. diarizonae 47:l,v:1,7`) for the rest.
 
 **The cluster exception.** A cluster database's designation stays integrated in
 `gspec screen`: its unit of typing is the best *locus* call, which only the minimap2
@@ -119,7 +137,7 @@ Which engine evaluates the document depends on the database kind:
 
 | Database kind | Input | Engine | Where the calls appear |
 |---|---|---|---|
-| **gene** | marker FASTA | blastn gene path | `gspec typing` over the screen results: `gspec.typing_result/1` (JSON) and the eight-column TSV/MD table |
+| **gene** | marker FASTA | blastn gene path | `gspec typing` over the screen results: `gspec.typing_result/1` (JSON) and the nine-column TSV/MD table |
 | **cluster** (one scheme) | GBK/GFF loci | minimap2 locus path | integrated in `gspec screen`: `best.phenotype` + `best.phenotype_detail` of `gspec.cluster/1`, plus the typed-only `PHENOTYPE` TSV column |
 | **cluster** (multi-scheme) | GBK/GFF loci | minimap2 locus path | integrated in `gspec screen`: `files[].phenotypes` of `gspec.cluster/2` (one call per scheme, compose rendered from its ingredients), plus per-scheme winner-evidence TSV columns |
 
@@ -269,9 +287,9 @@ zero network (the bundle materializes on first screen):
 ```console
 $ gspec screen isolates.fa --db lmo_sero --output lm.tsv --quiet
 $ gspec typing lm.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-lmo_sero_iia.fa	doumith_serogroup	IIa	lmo0737;prs	high	1.0000	IVb-v (0.0000)	...
-lmo_sero_ivb.fa	doumith_serogroup	IVb	ORF2110;ORF2819;prs	high	1.0000	IVb-v (0.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+lmo_sero_iia.fa	doumith_serogroup	IIa	-	lmo0737;prs	high	1.0000	IVb-v (0.0000)	...
+lmo_sero_ivb.fa	doumith_serogroup	IVb	-	ORF2110;ORF2819;prs	high	1.0000	IVb-v (0.0000)	...
 ```
 
 Fallback `untypeable (4a/4c, atypical profile, or non-Lm Listeria)`; without `prs` the
@@ -457,8 +475,8 @@ $ gspec db build doumith doumith.fa --typing doumith.json
 
 $ gspec screen lm_4b.fa --db doumith --output lm_4b.tsv --quiet
 $ gspec typing lm_4b.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-lm_4b.fa	doumith	4b-4d-4e	orf2110;orf2819;prs	high	1.0000	1/2a-3a (0.0000)	...
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+lm_4b.fa	doumith	4b-4d-4e	-	orf2110;orf2819;prs	high	1.0000	1/2a-3a (0.0000)	...
 
 $ gspec screen vc_inaba.fa --db vc_subserotype --quiet
 FILE      BEST_LOCUS  TYPE  PHENOTYPE  COVERAGE  IDENTITY  PRESENT  PARTIAL  MISSING_IDS

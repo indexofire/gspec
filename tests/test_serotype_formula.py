@@ -390,6 +390,7 @@ def test_non_enterica_subspecies_renders_numeric_formula() -> None:
     }
     call = evaluate_serotype(calls, document)
     assert call.phenotype == "VI 6,7:z41:1,7"
+    assert call.antigenic_formula == "6,7:z41:1,7"
     assert any("subspecies indica" in note for note in call.notes)
 
 
@@ -1070,3 +1071,89 @@ def test_merge_evidence_keeps_the_strongest_layer_and_flags_conflicts() -> None:
     assert by_base["GCF_000000002"]["serovar"] == "Typhimurium"
     assert by_base["GCF_000000002"]["layer"] == "verified"
     assert by_base["GCF_000000002"]["conflict"] == "Typhimurium"
+
+
+def test_cross_reactive_partial_cannot_outrank_the_full_allele() -> None:
+    """A partial hit that aligns only a sibling antigen's conserved ends must
+    not beat the true full-length allele on identity alone.
+
+    Measured on a published Bovismorbificans genome whose fliC gene sits across
+    two contigs: the true `r` is 99.82 % identical over 76.8 %, while a
+    cross-reactive `i` reference is 99.30 % over 51.0 %. The partial ranker used
+    to score the `i` hit at 0.993 and the `r` hit at 0.767, naming `i`; the
+    partial must be demoted unless it is *more* identical than the full hit.
+    """
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "4", "genes": ["o_4"]}]},
+            {
+                "key": "h1",
+                "entries": [
+                    {"name": "r", "genes": ["h1_r"]},
+                    {"name": "i", "genes": ["h1_i"]},
+                ],
+            },
+            {"key": "h2", "entries": [{"name": "1,5", "genes": ["h2_15"]}]},
+        ],
+        formulas=[{"o": "4", "h1": "r", "h2": "1,5", "serovar": "Testovar"}],
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_4": _call("o_4"),
+        "h1_r": _call("h1_r", identity=99.82, coverage=76.8),
+        "h1_i": _call("h1_i", identity=99.30, coverage=51.0),
+        "h2_15": _call("h2_15", identity=100.0, coverage=77.4),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Testovar"
+    assert call.antigenic_formula == "4:r:1,5"
+    assert any(note.startswith("H1: r via h1_r") for note in call.notes)
+
+
+def test_truncated_near_perfect_allele_clears_the_phase_floor() -> None:
+    """A 99.8 %-identical `r` over 68.6 % is an assembly break, not a weak
+    cross-reaction: it must be named, not dropped by the phase floor, and must
+    beat a lower-identity full-length cross-reaction (`z39` 94.9 % over 79.3 %).
+    """
+    document = _document(
+        antigens=[
+            {"key": "o", "entries": [{"name": "4", "genes": ["o_4"]}]},
+            {
+                "key": "h1",
+                "entries": [
+                    {"name": "r", "genes": ["h1_r"]},
+                    {"name": "z39", "genes": ["h1_z39"]},
+                ],
+            },
+            {"key": "h2", "entries": [{"name": "1,5", "genes": ["h2_15"]}]},
+        ],
+        formulas=[{"o": "4", "h1": "r", "h2": "1,5", "serovar": "Testovar"}],
+    )
+    calls = {
+        "invA": _call("invA"),
+        "o_4": _call("o_4"),
+        "h1_r": _call("h1_r", identity=99.80, coverage=68.6),
+        "h1_z39": _call("h1_z39", identity=94.94, coverage=79.3),
+        "h2_15": _call("h2_15", identity=99.25, coverage=79.3),
+    }
+    call = evaluate_serotype(calls, document)
+    assert call.phenotype == "Testovar"
+    assert any(note.startswith("H1: r via h1_r") for note in call.notes)
+
+
+def test_partial_true_allele_still_beats_a_full_cross_reaction() -> None:
+    """The partial rule's motivating case must not regress: a 99.85 %-identical
+    truncated `wzx` still outranks a 95 %-identical full-length cross-reaction.
+
+    Here the partial is *more* identical than every full hit, so the guard leaves
+    it on the identity-only rank and the O group resolves to O:9 (Enteritidis).
+    """
+    calls = {
+        "invA": _call("invA"),
+        "o_9": _call("o_9", identity=99.85, coverage=52.0),
+        "o_4": _call("o_4", identity=95.0, coverage=100.0),
+        "h1_gm": _call("h1_gm"),
+    }
+    call = evaluate_serotype(calls, _document())
+    assert call.phenotype == "Enteritidis"
+    assert any(note.startswith("O: 9 via o_9") for note in call.notes)

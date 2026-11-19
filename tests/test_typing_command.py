@@ -344,7 +344,7 @@ class TestCommand:
         written = target.read_text(encoding="utf-8")
         assert (
             written.splitlines()[0]
-            == "FILE\tSCHEME\tPHENOTYPE\tGENES\tCONFIDENCE\tSCORE\tRUNNER_UP\tNOTES"
+            == "FILE\tSCHEME\tPHENOTYPE\tFORMULA\tGENES\tCONFIDENCE\tSCORE\tRUNNER_UP\tNOTES"
         )
 
     def test_quiet_silences_the_stderr_note(self, tmp_path: Path, typed_db: Path) -> None:

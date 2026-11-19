@@ -106,9 +106,9 @@ minimap 用 15 个字符格勾画比对落在基因的什么位置：
 ```console
 $ gspec screen dec_s2_pic_astA_uidA.fasta --db eco_dec --output dec.tsv --quiet
 $ gspec typing dec.tsv --quiet
-FILE	SCHEME	PHENOTYPE	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
-dec_s2_pic_astA_uidA.fasta	gb4789_6	EAEC	astA;pic;uidA	high	1.0000	EHEC (0.0000)	GB 4789.6: any of aggR/pic/astA
-dec_s2_pic_astA_uidA.fasta	risk_monitoring	non-DEC	astA;pic;uidA	low	0.0000	STEC (0.0000)	GB 4789.6-2016: EHEC = stx (any subunit) + escV (LEE); severity order EHEC>STEC/EPEC>ETEC>EIEC>EAEC: rules are declared in severity order so hybrids surface as runner_up
+FILE	SCHEME	PHENOTYPE	FORMULA	GENES	CONFIDENCE	SCORE	RUNNER_UP	NOTES
+dec_s2_pic_astA_uidA.fasta	gb4789_6	EAEC	-	astA;pic;uidA	high	1.0000	EHEC (0.0000)	GB 4789.6: any of aggR/pic/astA
+dec_s2_pic_astA_uidA.fasta	risk_monitoring	non-DEC	-	astA;pic;uidA	low	0.0000	STEC (0.0000)	GB 4789.6-2016: EHEC = stx (any subunit) + escV (LEE); severity order EHEC>STEC/EPEC>ETEC>EIEC>EAEC: rules are declared in severity order so hybrids surface as runner_up
 ```
 
 无 aggR 的 pic+astA 谱是头条分歧 —— GB 4789.6 判 EAEC，而风险监测 scheme 回退到
@@ -274,14 +274,19 @@ non-DEC。零命中文件不产生筛查行，因此不会出现在判定输出�
 | `files` | array | 每个有数据行的 FILE 一项，按首次出现顺序 |
 | `files[].genes` | array | 该 FILE 的 present 基因名，已排序 —— 驱动判定的命中；排序抗原面板（`gspec.serotype/2`）为每个抗原家族一个代表性胜出等位基因 |
 | `files[].phenotypes` | object | scheme 名 → 其判定（下述累加结构） |
+| `files[].phenotypes.<scheme>.antigenic_formula` | string，可选 | 血清型判定观测到的 `O:H1:H2`（如 `9,12:l,v:1,7`），WHO 表能唯一确定时写数字 O，未定/缺失相写 `-`；其他 scheme 不出现 |
 
 每条判定携带 `phenotype`（歧义为 null）、`score`、`confidence`
-（`high`/`medium`/`low`/`ambiguous`）、`components[{name, score}]`，以及可选的 `runner_up`、
+（`high`/`medium`/`low`/`ambiguous`）、`components[{name, score}]`、可选的
+`antigenic_formula`（血清型判定观测到的 `O:H1:H2`，WHO 表能唯一确定时写数字 O，
+未定/缺失相写 `-`），以及可选的 `runner_up`、
 `ambiguous[]`（并列的一对）与 `notes[]` —— 与评估器在基因簇路径上产出的结构相同。
-TSV/Markdown 投影把每条判定压平为 `FILE`、`SCHEME`、`PHENOTYPE`、`GENES`、
-`CONFIDENCE`、`SCORE`、`RUNNER_UP`、`NOTES` 八列：歧义判定的表型渲染 `-`、候选对写入
-NOTES（runner-up 单元格同样为 `-`——候选对已说明一切）；`GENES` 紧跟表型，给出该
-FILE 排序后 `;` 串接的基因名，并在该 FILE 的每个 scheme 行上重复。类型化错误：行间
+TSV/Markdown 投影把每条判定压平为 `FILE`、`SCHEME`、`PHENOTYPE`、`FORMULA`、`GENES`、
+`CONFIDENCE`、`SCORE`、`RUNNER_UP`、`NOTES` 九列：`SCHEME` 是 typing 文档声明的
+scheme 名（每个 `(FILE, scheme)` 一行；数据库本身是根部的 `db` 字段与筛查表的
+`DATABASE` 列），`FORMULA` 在没有抗原式的 scheme 上渲染 `-`；歧义判定的表型渲染 `-`、
+候选对写入 NOTES（runner-up 单元格同样为 `-`——候选对已说明一切）；`GENES` 紧跟其后，
+给出该 FILE 排序后 `;` 串接的基因名，并在该 FILE 的每个 scheme 行上重复。类型化错误：行间
 `DATABASE` 值混杂为 `DATABASE_MISMATCH`，无数据行的表为 `TYPING_NO_DATA`，无
 `typing.json` 的数据库为 `TYPING_NO_SCHEME`，基因簇数据库为 `TYPING_CLUSTER_DB`
 （其判定集成在 `gspec screen` 内）。其 JSON Schema 用 `gspec schema typing_result`
