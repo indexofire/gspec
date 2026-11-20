@@ -401,6 +401,12 @@ class SerotypeDocumentV2(BaseModel, frozen=True):
     #: consistent across subspecies (enterica ``F`` is O:11, indica ``F`` is
     #: O:6,7), so the mapping is keyed by subspecies.
     o_numeric: dict[str, dict[str, str]] = Field(default_factory=dict)
+    #: Serovar -> its Kauffmann-White O antigen formula, brackets included
+    #: (``"4,[5],12"``, ``"1,4,[5],12,[27]"``). Read only when the evidence pins
+    #: ONE serovar; an ambiguous call (or a naming-priority rename between twins
+    #: whose O formulas differ) keeps the serogroup letter, because backfilling
+    #: one twin's O would be a guess (Hindmarsh 8,20 vs Bovismorbificans 6,8,20).
+    serovar_o: dict[str, str] = Field(default_factory=dict)
     fallback: str = "Not Salmonella"
     unresolved: str = "Salmonella subsp. enterica (no antigen set resolved)"
     partial: str = "Salmonella {formula} (serovar not in the formula table)"

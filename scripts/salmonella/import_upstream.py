@@ -279,6 +279,30 @@ def _serogroup_numeric_o(path: Path) -> dict[str, dict[str, str]]:
     }
 
 
+def _serovar_o(path: Path) -> dict[str, str]:
+    """Serovar -> its Kauffmann-White O antigen formula (``"4,[5],12"``).
+
+    The formula table keys only the serogroup letter, so an O formula that
+    differs within a group (B is 4,12 / 4,5,12 / 4,12,27) cannot be read from
+    it. This map carries the WHO row's own O string (brackets preserved) so the
+    engine can report it **when the evidence pins one serovar**; an ambiguous
+    call keeps the group letter (see `serotype_engine._final_formula`).
+    Serovars whose rows disagree are omitted rather than guessed.
+    """
+    import csv as _csv
+
+    by_serovar: dict[str, set[str]] = {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row in _csv.DictReader(handle):
+            serovar = (row.get("Serovar") or "").strip()
+            raw = (row.get("O_antigen") or "").strip()
+            if serovar and raw:
+                by_serovar.setdefault(serovar, set()).add(raw)
+    return {
+        serovar: next(iter(values)) for serovar, values in by_serovar.items() if len(values) == 1
+    }
+
+
 def _formula_rows(path: Path) -> list[dict[str, str]]:
     """CSV rows normalized to ``{serovar, o, h1, h2}`` (header names guessed)."""
     with path.open(encoding="utf-8", newline="") as handle:
@@ -631,6 +655,7 @@ def _write_database(
     o_subfactor: dict[str, object] | None = None,
     special_checks: list[dict[str, object]] | None = None,
     o_numeric: dict[str, str] | None = None,
+    serovar_o: dict[str, str] | None = None,
     gene_locus: dict[str, str] | None = None,
     naming_priority: list[dict[str, object]] | None = None,
 ) -> None:
@@ -659,6 +684,7 @@ def _write_database(
         **({"o_subfactor": o_subfactor} if o_subfactor else {}),
         **({"special_checks": special_checks} if special_checks else {}),
         **({"o_numeric": o_numeric} if o_numeric else {}),
+        **({"serovar_o": serovar_o} if serovar_o else {}),
         **({"naming_priority": naming_priority} if naming_priority else {}),
         "fallback": "Not Salmonella",
         "unresolved": "Salmonella subsp. enterica (no antigen set resolved)",
@@ -1074,6 +1100,7 @@ def import_sistr(
         o_subfactor=subfactor,
         special_checks=special_checks,
         o_numeric=_serogroup_numeric_o(table),
+        serovar_o=_serovar_o(table),
         gene_locus=gene_locus,
         naming_priority=(
             _read_naming_priority(naming_priority) if naming_priority is not None else None

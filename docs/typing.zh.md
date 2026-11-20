@@ -79,9 +79,11 @@ $ gspec screen 1.fna --db eco_dec --quiet | gspec typing --quiet
 血清型判定的 `PHENOTYPE` 对肠道亚种（*S.* enterica subsp. enterica）是血清型名
 （`Kapemba`，与 SISTR、SeqSero2 输出的裸名一致），对其他亚种是 Kauffmann-White 抗原式
 /罗马数字（`IIIb 47:l,v:-`，这些行大多没有血清型名）。`FORMULA` 对所有亚种都给出观测到的
-`O:H1:H2`，当 WHO 表能唯一确定数字 O 抗原时写数字（`D1` → `9,12`；`B` 保留字母，因为
-4,5,12 / 4,12 / 4,27 都属于 "B"）。正式命名：肠道亚种为
-`Salmonella enterica subsp. enterica serovar <PHENOTYPE>`，其余亚种为罗马数字加抗原式
+`O:H1:H2`：WHO 表能唯一确定数字 O 时写数字（`D1` → `9,12`）；联合键唯一确定一个血清型时写
+该血清型自己的 KW O 式（`B:l,v:e,n,z15` → `4,[5],12`，保留括号）；联合键对应多个 O 式不同的
+血清型时保留群字母（Litchfield/Pakistan、Hindmarsh/Bovismorbificans）——回填双胞胎中任一个的
+O 都是猜。`oafA` 只作为备注报告（`O:5 may be positive`），不改写表里的 `[5]`。正式命名：肠道
+亚种为 `Salmonella enterica subsp. enterica serovar <PHENOTYPE>`，其余亚种为罗马数字加抗原式
 （`Salmonella enterica subsp. diarizonae 47:l,v:1,7`）。
 
 **基因簇例外。** 基因簇数据库的判定保持集成在 `gspec screen` 内：其判定单元是最佳

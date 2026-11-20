@@ -1123,9 +1123,25 @@ Both genomes now type `C2-C3:r:1,5`; the remaining `Hindmarsh` vs
 `Bovismorbificans` name difference is the C2-C3 O:20 / `r,[i]` bracket
 ambiguity above, not a scoring error. Measured on the 13-genome SISTR subset
 on disk: H2 exactly matches SISTR on 13/13, H1 on 9/13 (the four Goldcoast
-genomes differ only by the `r`/`r,[i]` class token), serovar name on 4/13
-(the five Bovismorbificans and four Goldcoast genomes land on the sibling row
-of the same bracket class). Full suite: 1658 passed.
+genomes differ only by the `r`/`r,[i]` class token), and the serovar name on
+13/13 once `naming_priority` folds the twins (`Hindmarsh → Bovismorbificans`,
+`Brikama → Goldcoast`).
+
+### O backfill for a confirmed serovar (2026-11-20, later the same day)
+
+A joint key that pins ONE serovar now reports that serovar's Kauffmann-White O
+string verbatim, brackets included: `B:l,v:e,n,z15` (Brandenburg alone) →
+`4,[5],12:l,v:e,n,z15`; `B:d:1,2` (Stanley alone) →
+`1,4,[5],12,[27]:d:1,2`. `oafA` is only a note (`O:5 may be positive` / `likely
+negative`), never a rewrite of the bracket — gene presence does not prove the
+epitope is expressed.
+
+Ambiguous keys and `naming_priority` twins keep the group letter, because their
+O rows differ: Litchfield `6,8` / Pakistan `8`; Albany `8,20` / Duesseldorf
+`6,8`; Hindmarsh `8,20` / Bovismorbificans `6,8,20`; Goldcoast `6,8` / Brikama
+`8,20`. So 26SAL0523 stays `C2-C3:l,v:1,2` until an O:6 marker exists, and the
+13-genome twins stay `C2-C3`. The panel carries a `serovar_o` map (2,659 WHO
+rows) written by `import_upstream.py`. Full suite: 1663 passed.
 
 ## Provenance
 

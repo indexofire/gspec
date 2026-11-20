@@ -92,9 +92,13 @@ is constant for one invocation.
 A serotype call's `PHENOTYPE` is the serovar name for *S.* enterica subsp. enterica
 (`Kapemba` — the same bare name SISTR and SeqSero2 print) and the Kauffmann-White
 formula/numeral for the other subspecies (`IIIb 47:l,v:-`, whose rows mostly carry no
-serovar name). `FORMULA` carries the observed `O:H1:H2` for every subspecies, spelling the
-numeric O antigen when the WHO table pins one (`D1` → `9,12`; `B` stays `B` because
-4,5,12 / 4,12 / 4,27 are all "B"). The formal name is `Salmonella enterica subsp. enterica
+serovar name). `FORMULA` carries the observed `O:H1:H2`: the numeric O when the WHO
+table pins one (`D1` → `9,12`), the serovar's own Kauffmann-White O string when the
+joint key confirms ONE serovar (`B:l,v:e,n,z15` → `4,[5],12`; brackets kept), and the
+serogroup letter when the formula names several serovars whose O rows differ
+(Litchfield/Pakistan, Hindmarsh/Bovismorbificans) — backfilling one twin's O would be
+a guess. `oafA` presence is reported as a note (`O:5 may be positive`), never folded
+into the table's `[5]`. The formal name is `Salmonella enterica subsp. enterica
 serovar <PHENOTYPE>` for the enterica subspecies, and the numeral plus the formula
 (`Salmonella enterica subsp. diarizonae 47:l,v:1,7`) for the rest.
 

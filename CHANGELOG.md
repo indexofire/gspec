@@ -21,6 +21,15 @@
 
 ### Fixed
 
+- **The antigenic formula uses the serovar's own WHO O when the evidence pins one
+  serovar.** `B:l,v:e,n,z15` is Brandenburg alone → `4,[5],12:l,v:e,n,z15`;
+  `B:d:1,2` is Stanley alone → `1,4,[5],12,[27]:d:1,2` (the table's brackets are
+  kept). An ambiguous key (Litchfield/Pakistan: `6,8` vs `8`), or a name chosen by
+  `naming_priority` between twins whose O rows differ (Hindmarsh `8,20` vs
+  Bovismorbificans `6,8,20`; Goldcoast `6,8` vs Brikama `8,20`), keeps the
+  serogroup letter — backfilling one twin's O would be a guess. `oafA` presence is
+  a note (“O:5 may be positive”), never a rewrite of the `[5]` bracket. The panel
+  gains a `serovar_o` map (2,659 WHO rows) written by the importer.
 - **A truncated but near-perfect antigen is ranked by the identity it shows, and
   a cross-reactive partial can no longer outrank the true full-length allele.**
   Two published Bovismorbificans genomes whose `fliC` and `fljB` genes sit

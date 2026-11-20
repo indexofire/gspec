@@ -123,10 +123,11 @@ def test_typhimurium_markers_reach_the_right_row(tmp_path: Path) -> None:
     """group B + H:i + H:1,2 addresses the Typhimurium row verbatim: the call
     is the formula's own serovar, not a candidate list widened through the H2
     similarity class. Group B has no single numeric O antigen (4,5,12 / 4,12 /
-    4,27 are all "B"), so the formula keeps the letter."""
+    4,27 are all "B"), but the key pins one serovar here, so its WHO row's O is
+    reported verbatim (`1,4,[5],12`)."""
     call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
     assert call.phenotype == "Typhimurium"
-    assert call.antigenic_formula == "B:i:1,2"
+    assert call.antigenic_formula == "1,4,[5],12:i:1,2"
 
 
 def test_genes_column_lists_the_winning_alleles(tmp_path: Path) -> None:
@@ -417,3 +418,65 @@ def test_duplicate_phase_fallback_requires_an_independent_locus() -> None:
     call = evaluate_serotype(calls, document)
     assert any("H2 'l,v' repeats H1" in note for note in call.notes)
     assert not any("re-called" in note for note in call.notes)
+
+
+def test_unique_serovar_takes_its_who_o_formula() -> None:
+    """When the joint key pins ONE serovar, the WHO row's O string is reported.
+
+    `B:l,v:e,n,z15` is Brandenburg alone, whose row is `4,[5],12`; the formula
+    keeps the table's bracket notation (the O:5 factor is optional and oafA is
+    only a note). `B:d:1,2` is Stanley alone, `1,4,[5],12,[27]`.
+    """
+    document = _document()
+    brandenburg = {
+        _gene("o", "B"): _call(_gene("o", "B"), 100.0),
+        _gene("h1", "l,v"): _call(_gene("h1", "l,v"), 100.0),
+        _gene("h2", "e,n,z15"): _call(_gene("h2", "e,n,z15"), 100.0),
+        "special_oafA": _call("special_oafA", 100.0),
+    }
+    call = evaluate_serotype(brandenburg, document)
+    assert call.phenotype == "Brandenburg"
+    assert call.antigenic_formula == "4,[5],12:l,v:e,n,z15"
+    assert any("oafA detected: O:5 may be positive" in note for note in call.notes)
+
+    stanley = {
+        _gene("o", "B"): _call(_gene("o", "B"), 100.0),
+        _gene("h1", "d"): _call(_gene("h1", "d"), 100.0),
+        _gene("h2", "1,2"): _call(_gene("h2", "1,2"), 100.0),
+    }
+    call = evaluate_serotype(stanley, document)
+    assert call.phenotype == "Stanley"
+    assert call.antigenic_formula == "1,4,[5],12,[27]:d:1,2"
+    assert any("oafA not detected: O:5 likely negative" in note for note in call.notes)
+
+
+def test_ambiguous_or_renamed_serovar_keeps_the_serogroup() -> None:
+    """Two names for one key (or a naming-priority twin) use the named
+    serovar's own O formula, not the raw serogroup letter.
+
+    `C2-C3:l,v:1,2` is Litchfield (6,8) and Pakistan (8); `C2-C3:r:1,5` is
+    Hindmarsh (8,20), renamed to Bovismorbificans (6,8,20) by convention.
+    Once the engine commits to a name, the formula reflects THAT serovar's
+    O expression — a report reading "Bovismorbificans" with "C2-C3" is
+    confusing to a lab (the user's Newport precedent). An ambiguous call
+    (no name) uses the group-level numeric mapping.
+    """
+    document = _document()
+    litchfield = {
+        _gene("o", "C2-C3"): _call(_gene("o", "C2-C3"), 100.0),
+        _gene("h1", "l,v"): _call(_gene("h1", "l,v"), 100.0),
+        _gene("h2", "1,2"): _call(_gene("h2", "1,2"), 100.0),
+    }
+    call = evaluate_serotype(litchfield, document)
+    # Ambiguous (Litchfield|Pakistan share the formula): numeric group level
+    assert call.antigenic_formula == "6,8:l,v:1,2"
+    assert call.phenotype in ("Litchfield", None)
+
+    bovis = {
+        _gene("o", "C2-C3"): _call(_gene("o", "C2-C3"), 100.0),
+        _gene("h1", "r"): _call(_gene("h1", "r"), 100.0),
+        _gene("h2", "1,5"): _call(_gene("h2", "1,5"), 100.0),
+    }
+    call = evaluate_serotype(bovis, document)
+    assert call.phenotype == "Bovismorbificans"
+    assert call.antigenic_formula == "6,8,20:r:1,5"

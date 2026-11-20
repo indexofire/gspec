@@ -1469,9 +1469,8 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         "enterica", {}
     )
     numeric_o = numeric_map.get(o.name, o.name) if o.name is not None else None
-    formula = (
-        f"{numeric_o or FALLBACK_PHASE}:{h1.name or FALLBACK_PHASE}:{h2.name or FALLBACK_PHASE}"
-    )
+    fallback_o = numeric_o or FALLBACK_PHASE
+    formula = f"{fallback_o}:{h1.name or FALLBACK_PHASE}:{h2.name or FALLBACK_PHASE}"
     notes = [
         f"formula {formula}",
         *(
@@ -1505,6 +1504,40 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
     numeric_group = _numeric_o(document, o.name)
     if numeric_group is not None:
         notes.append(f"O group {o.name} = O:{numeric_group}")
+
+    def final_formula(phenotype: str | None, *, confirmed: bool) -> str:
+        """The ``O:H1:H2`` to report, using the serovar's WHO O whenever a
+        serovar is named.
+
+        Once the engine commits to a name — whether by an exact single match
+        or by naming priority among twins — the formula should reflect THAT
+        serovar's O expression, not a group-level fallback. A report that
+        reads "Newport" with the formula "6,8" (group level) is confusing;
+        Newport is 6,8,20 and the formula should say so. For an ambiguous
+        call (``phenotype is None``) the group-level numeric mapping is the
+        honest answer, since no single serovar's O can be picked. The WHO
+        row's own O string is used verbatim, brackets included
+        (``4,[5],12``); ``oafA`` presence is only a note, never a rewrite
+        of the bracket (gene presence does not prove the O:5 epitope is
+        expressed).
+        """
+        o_text = fallback_o
+        if phenotype is not None:
+            o_text = document.serovar_o.get(phenotype, o_text)
+        result = f"{o_text}:{h1.name or FALLBACK_PHASE}:{h2.name or FALLBACK_PHASE}"
+        notes[0] = f"formula {result}"
+        if "[5]" in o_text:
+            oafa = calls.get("special_oafA")
+            detected = oafa is not None and _present(
+                oafa, document.coverage_floor, document.identity_floor
+            )
+            notes.append(
+                "oafA detected: O:5 may be positive"
+                if detected
+                else "oafA not detected: O:5 likely negative"
+            )
+        return result
+
     observed = (o.name, h1.name or FALLBACK_PHASE, h2.name or FALLBACK_PHASE)
     score = max(o.score, h1.score, h2.score)
     if subspecies is not None and subspecies != "enterica":
@@ -1553,9 +1586,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             # Two DIFFERENT rows matched through the class: genuine ambiguity, not
             # one formula with two names, so no primary may be picked.
             notes.append("formula matched several serovars after widening")
+            final = final_formula(None, confirmed=False)
             return SchemeCall(
                 phenotype=None,
-                antigenic_formula=formula,
+                antigenic_formula=final,
                 score=round(score, 4),
                 confidence="ambiguous",
                 components=components,
@@ -1571,8 +1605,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
                 notes.append(priority_note or "")
                 notes.append(f"formula shared with {', '.join(rest)}")
                 notes.extend(_special_notes(chosen, calls, document))
+                final = final_formula(chosen, confirmed=False)
                 return SchemeCall(
                     phenotype=chosen,
+                    antigenic_formula=final,
                     score=round(score, 4),
                     confidence=_confidence(widened=class_exact, shared=True),
                     components=components,
@@ -1587,9 +1623,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
                 if winner is not None:
                     notes.append(discriminator_note)
                     notes.extend(_special_notes(winner, calls, document))
+                    final = final_formula(winner, confirmed=True)
                     return SchemeCall(
                         phenotype=winner,
-                        antigenic_formula=formula,
+                        antigenic_formula=final,
                         score=round(score, 4),
                         # A serovar-level tie broken by dedicated markers: real
                         # evidence, but a resolved ambiguity rather than a
@@ -1606,9 +1643,11 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         if merge_note is not None:
             notes.append(merge_note)
         notes.extend(_special_notes(merged_name or exact_serovars[0], calls, document))
+        confirmed = len(exact_serovars) == 1 and merge_note is None
+        final = final_formula(merged_name or exact_serovars[0], confirmed=confirmed)
         return SchemeCall(
             phenotype=merged_name or exact_serovars[0],
-            antigenic_formula=formula,
+            antigenic_formula=final,
             score=round(score, 4),
             confidence=_cap_confidence(
                 _confidence(widened=class_exact, shared=len(exact_serovars) > 1),
@@ -1646,17 +1685,19 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             if len(tied_serovars) == 1:
                 # Both tied names key the same row: the tie cannot change the
                 # serovar, so the call stands (with the tie on record).
+                final = final_formula(tied_serovars[0], confirmed=True)
                 return SchemeCall(
                     phenotype=tied_serovars[0],
-                    antigenic_formula=formula,
+                    antigenic_formula=final,
                     score=round(score, 4),
                     confidence=_confidence(widened=False, shared=False),
                     components=components,
                     notes=tuple(notes),
                 )
+            final = final_formula(None, confirmed=False)
             return SchemeCall(
                 phenotype=None,
-                antigenic_formula=formula,
+                antigenic_formula=final,
                 score=round(score, 4),
                 confidence="ambiguous",
                 components=components,
@@ -1687,9 +1728,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         if merge_note is not None:
             notes.append(merge_note)
         notes.extend(_special_notes(merged_name or serovars[0], calls, document))
+        final = final_formula(merged_name or serovars[0], confirmed=merge_note is None)
         return SchemeCall(
             phenotype=merged_name or serovars[0],
-            antigenic_formula=formula,
+            antigenic_formula=final,
             score=round(score, 4),
             confidence=_cap_confidence(
                 _confidence(widened=True, shared=False),
@@ -1703,8 +1745,10 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
         if chosen is not None:
             notes.append(priority_note or "")
             notes.extend(_special_notes(chosen, calls, document))
+            final = final_formula(chosen, confirmed=False)
             return SchemeCall(
                 phenotype=chosen,
+                antigenic_formula=final,
                 score=round(score, 4),
                 confidence=_confidence(widened=True, shared=True),
                 components=components,
@@ -1719,18 +1763,20 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             if winner is not None:
                 notes.append(discriminator_note)
                 notes.extend(_special_notes(winner, calls, document))
+                final = final_formula(winner, confirmed=True)
                 return SchemeCall(
                     phenotype=winner,
-                    antigenic_formula=formula,
+                    antigenic_formula=final,
                     score=round(score, 4),
                     confidence=_confidence(widened=True, shared=True),
                     components=components,
                     notes=tuple(notes),
                 )
             notes.append(discriminator_note)
+        final = final_formula(None, confirmed=False)
         return SchemeCall(
             phenotype=None,
-            antigenic_formula=formula,
+            antigenic_formula=final,
             score=round(score, 4),
             confidence="ambiguous",
             components=components,
@@ -1740,17 +1786,19 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             notes=(*notes, "formula matched several serovars after widening"),
         )
     if o.name is None:
+        final = final_formula(None, confirmed=False)
         return SchemeCall(
             phenotype=document.unresolved,
-            antigenic_formula=formula,
+            antigenic_formula=final,
             score=0.0,
             confidence="low",
             components=components,
             notes=tuple(notes),
         )
+    final = final_formula(None, confirmed=False)
     return SchemeCall(
-        phenotype=document.partial.format(formula=formula),
-        antigenic_formula=formula,
+        phenotype=document.partial.format(formula=final),
+        antigenic_formula=final,
         score=round(max(o.score, h1.score, h2.score), 4),
         confidence="low",
         components=components,
