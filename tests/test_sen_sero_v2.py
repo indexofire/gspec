@@ -479,4 +479,4 @@ def test_ambiguous_or_renamed_serovar_keeps_the_serogroup() -> None:
     }
     call = evaluate_serotype(bovis, document)
     assert call.phenotype == "Bovismorbificans"
-    assert call.antigenic_formula == "6,8,20:r:1,5"
+    assert call.antigenic_formula == "6,8,_20_:r:1,5"
