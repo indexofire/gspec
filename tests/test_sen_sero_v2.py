@@ -127,7 +127,7 @@ def test_typhimurium_markers_reach_the_right_row(tmp_path: Path) -> None:
     reported verbatim (`1,4,[5],12`)."""
     call = _designate(tmp_path, ("o", "B"), ("h1", "i"), ("h2", "1,2"))
     assert call.phenotype == "Typhimurium"
-    assert call.antigenic_formula == "1,4,_5_,12:i:1,2"
+    assert call.antigenic_formula == "1,4,[5],12:i:1,2"
 
 
 def test_genes_column_lists_the_winning_alleles(tmp_path: Path) -> None:
@@ -436,7 +436,7 @@ def test_unique_serovar_takes_its_who_o_formula() -> None:
     }
     call = evaluate_serotype(brandenburg, document)
     assert call.phenotype == "Brandenburg"
-    assert call.antigenic_formula == "4,_5_,12:l,v:e,n,z15"
+    assert call.antigenic_formula == "4,[5],12:l,v:e,n,z15"
     assert any("oafA detected: O:5 may be positive" in note for note in call.notes)
 
     stanley = {
@@ -446,7 +446,7 @@ def test_unique_serovar_takes_its_who_o_formula() -> None:
     }
     call = evaluate_serotype(stanley, document)
     assert call.phenotype == "Stanley"
-    assert call.antigenic_formula == "1,4,_5_,12,_27_:d:1,2"
+    assert call.antigenic_formula == "1,4,[5],12,[27]:d:1,2"
     assert any("oafA not detected: O:5 likely negative" in note for note in call.notes)
 
 

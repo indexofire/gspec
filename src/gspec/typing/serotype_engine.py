@@ -1526,19 +1526,7 @@ def _evaluate_v2(calls: Mapping[str, GeneCall], document: SerotypeDocumentV2) ->
             o_text = document.serovar_o.get(phenotype, o_text)
         result = f"{o_text}:{h1.name or FALLBACK_PHASE}:{h2.name or FALLBACK_PHASE}"
         notes[0] = f"formula {result}"
-        # Notation legend, once, only when the formula needs it: _n_ is a
-        # lysogenic (phage-encoded) O factor — the KWL printed table
-        # underlines it; [n] is an optional antigen that does not affect
-        # the serovar identification.
-        if "_" in o_text and not any(
-            "notation" in n for n in notes
-        ):
-            notes.append(
-                "notation: _n_ = lysogenic O factor (phage-encoded, underlined"
-                " in KWL); [n] = optional antigen, not required for"
-                " identification"
-            )
-        if "_5_" in o_text:
+        if "[5]" in o_text:
             oafa = calls.get("special_oafA")
             detected = oafa is not None and _present(
                 oafa, document.coverage_floor, document.identity_floor
