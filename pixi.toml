@@ -34,6 +34,7 @@ twine = ">=7.0.0, <8"
 # hatchling>=1.27); only packaging>=25 parses it, and twine 6.x rejects it with
 # "InvalidDistribution: '2.5' is not a valid metadata version".
 packaging = ">=25"
+pymupdf = ">=2.1, <3"
 
 # abricate's bioconda perl stack (zlib 1.2) cannot co-solve with the python>=3.13
 # stack (libzlib>=1.3), so the parity env is abricate-only; the harness runs on
