@@ -14,6 +14,7 @@ already-evaluated ``phenotypes`` map is rendered as the same
 ``gspec.typing_result/1`` document, without re-running the aligner.
 """
 
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -124,7 +125,7 @@ def run_typing(
         else:
             sink(typing_tsv_preamble())
             for result in results:
-                sink(typing_file_chunk(result))
+                sink(typing_file_chunk(result, tty=sys.stdout.isatty()))
         return sink.text()
 
     cluster_input = read_cluster_typing_input(paths, stdin_text)

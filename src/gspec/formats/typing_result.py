@@ -85,19 +85,39 @@ def _notes(call: SchemeCall) -> str:
     return "; ".join(notes)
 
 
-def typing_row(result: TypingFileResult, scheme: str, call: SchemeCall) -> tuple[str, ...]:
+#: ANSI escape sequences for terminal rendering of lysogenic O factors.
+#: Applied only when stdout is a TTY — piped/redirected output keeps the
+#: parseable ``_n_`` text form.
+_ANSI_UNDERLINE = "\x1b[4m"
+_ANSI_RESET = "\x1b[24m"
+
+
+def _ansi_formula(formula: str) -> str:
+    """Render ``_n_`` lysogenic notation as ANSI-underlined ``n`` for TTY."""
+    import re
+
+    return re.sub(r"_([^_]+)_", _ANSI_UNDERLINE + r"\1" + _ANSI_RESET, formula)
+
+
+def typing_row(
+    result: TypingFileResult, scheme: str, call: SchemeCall, *, tty: bool = False
+) -> tuple[str, ...]:
     """One result row's cells: the phenotype (``-`` when ambiguous, fallback
     strings verbatim — md.py's value semantics), the antigenic formula (``-``
-    on schemes that do not carry one), the runner-up (``-`` when none, and
+    on schemes that do not carry one; rendered with ANSI underline on a TTY),
+    the runner-up (``-`` when none, and
     also on an ambiguous call whose candidate pair NOTES carries), the
     flattened notes, and the FILE's sorted ``;``-joined gene list (the same
     list on every scheme row of the FILE)."""
     called = call.runner_up if call.phenotype is not None else None
+    formula = call.antigenic_formula or "-"
+    if tty and formula != "-":
+        formula = _ansi_formula(formula)
     return (
         result.file,
         scheme,
         call.phenotype or "-",
-        call.antigenic_formula or "-",
+        formula,
         ";".join(result.genes),
         call.confidence,
         f"{call.score:.4f}",
@@ -111,11 +131,11 @@ def typing_tsv_preamble() -> str:
     return delimited_line(COLUMNS, as_csv=False)
 
 
-def typing_file_chunk(result: TypingFileResult) -> str:
+def typing_file_chunk(result: TypingFileResult, *, tty: bool = False) -> str:
     """One FILE's chunk: a row per scheme in declaration order — the
     streaming unit the use-case emits per typed file."""
     return "".join(
-        delimited_line(typing_row(result, scheme, call), as_csv=False)
+        delimited_line(typing_row(result, scheme, call, tty=tty), as_csv=False)
         for scheme, call in result.phenotypes.items()
     )
 
