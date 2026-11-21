@@ -104,15 +104,17 @@ def typing_row(
 ) -> tuple[str, ...]:
     """One result row's cells: the phenotype (``-`` when ambiguous, fallback
     strings verbatim — md.py's value semantics), the antigenic formula (``-``
-    on schemes that do not carry one; rendered with ANSI underline on a TTY),
-    the runner-up (``-`` when none, and
+    on schemes that do not carry one), the runner-up (``-`` when none, and
     also on an ambiguous call whose candidate pair NOTES carries), the
     flattened notes, and the FILE's sorted ``;``-joined gene list (the same
-    list on every scheme row of the FILE)."""
+    list on every scheme row of the FILE). On a TTY, every cell that
+    contains ``_n_`` lysogenic notation renders it as ANSI underline."""
     called = call.runner_up if call.phenotype is not None else None
     formula = call.antigenic_formula or "-"
-    if tty and formula != "-":
-        formula = _ansi_formula(formula)
+    notes = _notes(call)
+    if tty:
+        formula = _ansi_formula(formula) if formula != "-" else formula
+        notes = _ansi_formula(notes)
     return (
         result.file,
         scheme,
@@ -122,7 +124,7 @@ def typing_row(
         call.confidence,
         f"{call.score:.4f}",
         "-" if called is None else _pair(called),
-        _notes(call),
+        notes,
     )
 
 
